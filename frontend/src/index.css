@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 30% 96%;
+    --foreground: 210 100% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 100% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 100% 13%;
+
+    --primary: 336 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 233 49% 30%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 20% 93%;
+    --muted-foreground: 210 30% 42%;
+
+    --accent: 294 46% 33%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 336 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 18% 88%;
+    --input: 210 18% 88%;
+    --ring: 336 100% 50%;
+
+    --radius: 0.625rem;
+
+    /* Score tokens — derived from corporate palette */
+    --score-excellent: 152 56% 38%;
+    --score-good: 210 100% 13%;
+    --score-warning: 336 100% 50%;
+    --score-poor: 294 46% 33%;
+    --score-critical: 0 72% 48%;
+
+    --surface-elevated: 0 0% 100%;
+    --surface-sunken: 210 20% 95%;
+
+    --sidebar-background: 210 100% 13%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 336 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 233 49% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 226 62% 18%;
+    --sidebar-ring: 336 100% 50%;
+
+    /* Corporate palette as tokens */
+    --corp-navy: 210 100% 13%;
+    --corp-magenta: 336 100% 50%;
+    --corp-indigo: 233 49% 30%;
+    --corp-purple: 294 46% 33%;
+    --corp-deep: 226 62% 13%;
+  }
+
+  .dark {
+    --background: 226 62% 7%;
+    --foreground: 210 20% 94%;
+    --card: 226 62% 10%;
+    --card-foreground: 210 20% 94%;
+    --popover: 226 62% 10%;
+    --popover-foreground: 210 20% 94%;
+    --primary: 336 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 233 49% 30%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 226 40% 16%;
+    --muted-foreground: 210 15% 58%;
+    --accent: 294 46% 33%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 336 100% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 226 40% 18%;
+    --input: 226 40% 18%;
+    --ring: 336 100% 50%;
+    --sidebar-background: 226 62% 7%;
+    --sidebar-foreground: 210 20% 94%;
+    --sidebar-primary: 336 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 233 49% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 226 40% 18%;
+    --sidebar-ring: 336 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  .score-text-excellent {
+    color: hsl(var(--score-excellent));
+  }
+  .score-text-good {
+    color: hsl(var(--score-good));
+  }
+  .score-text-warning {
+    color: hsl(var(--score-warning));
+  }
+  .score-text-poor {
+    color: hsl(var(--score-poor));
+  }
+  .score-text-critical {
+    color: hsl(var(--score-critical));
+  }
+  .score-bg-excellent {
+    background-color: hsl(var(--score-excellent) / 0.12);
+  }
+  .score-bg-good {
+    background-color: hsl(var(--score-good) / 0.12);
+  }
+  .score-bg-warning {
+    background-color: hsl(var(--score-warning) / 0.12);
+  }
+  .score-bg-poor {
+    background-color: hsl(var(--score-poor) / 0.12);
+  }
+  .score-bg-critical {
+    background-color: hsl(var(--score-critical) / 0.12);
+  }
+  .gradient-corp {
+    background: linear-gradient(135deg, hsl(210 100% 13%), hsl(233 49% 30%), hsl(294 46% 33%), hsl(336 100% 50%));
+  }
+}
