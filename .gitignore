@@ -9,6 +9,7 @@ backend/app/services/__pycache__/
 *.py[cod]
 *.pyo
 .env
+CLAUDE.md
 
 # Node
 frontend/node_modules/
