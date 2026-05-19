@@ -5,9 +5,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 
-# Backend URL is baked in at build time by Vite
 ARG VITE_API_URL=http://localhost:8000
 ENV VITE_API_URL=$VITE_API_URL
+
+ARG VITE_GOOGLE_CLIENT_ID=""
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 
 COPY . .
 RUN npm run build

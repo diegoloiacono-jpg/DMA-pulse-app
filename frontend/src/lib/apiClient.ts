@@ -1,3 +1,5 @@
+import { clearToken, getToken } from "./auth";
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export interface BrandContextPayload {
@@ -68,10 +70,22 @@ export interface AuditState {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders },
     ...init,
   });
+
+  if (res.status === 401) {
+    clearToken();
+    window.location.reload();
+    throw new Error("Session expired — please sign in again");
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const d = body?.detail;

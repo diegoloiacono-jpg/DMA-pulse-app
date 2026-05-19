@@ -14,6 +14,8 @@ import textwrap
 
 import pandas as pd
 
+from google.cloud.bigquery import ScalarQueryParameter
+
 from app.config import GCP_PROJECT, BQ_DATASET, SPECIALIST_MODEL
 from app.models.audit import SpecialistResult
 from app.services.bigquery import run_query
@@ -117,14 +119,11 @@ def _call_bqml(category: str, data_json: str, topics: list[str]) -> list[Special
     )
     full_prompt = _SYSTEM_PROMPT + "\n\n" + user_prompt
 
-    # Escape single quotes for BigQuery string literal
-    escaped = full_prompt.replace("'", "\\'")
-
     sql = f"""
-    SELECT ml_generate_text_result AS result
+    SELECT ml_generate_text_llm_result AS result
     FROM ML.GENERATE_TEXT(
         MODEL `{SPECIALIST_MODEL}`,
-        (SELECT '{escaped}' AS prompt),
+        (SELECT @prompt AS prompt),
         STRUCT(
             0.1  AS temperature,
             4096 AS max_output_tokens,
@@ -133,7 +132,7 @@ def _call_bqml(category: str, data_json: str, topics: list[str]) -> list[Special
     )
     """
 
-    df = run_query(sql)
+    df = run_query(sql, params=[ScalarQueryParameter("prompt", "STRING", full_prompt)])
     raw = df["result"].iloc[0] if not df.empty else ""
 
     # The model may wrap the array in a markdown code fence — strip it

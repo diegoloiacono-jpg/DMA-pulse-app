@@ -41,17 +41,14 @@ def _campaign_setup(suffix: str) -> pd.DataFrame:
 
 def _audience_targeting(suffix: str) -> pd.DataFrame:
     """Combines audience segments, demographics, geo, and placement targeting."""
-    # Campaign-level audience segments
+    # Campaign-level audience segments (no standalone audience catalog in this dataset)
     audiences_sql = f"""
     SELECT
-        ca.campaign_id,
-        ca.campaign_name,
-        a.name             AS audience_name,
-        a.type             AS audience_type,
-        ca.bid_modifier
-    FROM {table("p_ads_CampaignAudience", suffix)} ca
-    LEFT JOIN {table("p_ads_Audience", suffix)} a
-        ON ca.user_list_id = a.audience_id
+        campaign_id,
+        campaign_name,
+        user_list_id  AS audience_id,
+        bid_modifier
+    FROM {table("p_ads_CampaignAudience", suffix)}
     """
 
     # Criteria: geo, device, keyword negatives
@@ -150,17 +147,6 @@ def _feeds_catalogue(suffix: str) -> pd.DataFrame:
     FROM {table("p_ads_ShoppingProductStats", suffix)}
     """
 
-    listing_sql = f"""
-    SELECT
-        asset_group_id,
-        listing_group_filter_type,
-        listing_group_filter_vertical,
-        case_value_product_brand,
-        case_value_product_category,
-        case_value_product_type
-    FROM {table("p_ads_AssetGroupListingGroupFilter", suffix)}
-    """
-
     product_group_sql = f"""
     SELECT
         campaign_id,
@@ -173,41 +159,23 @@ def _feeds_catalogue(suffix: str) -> pd.DataFrame:
     """
 
     shopping = run_query(shopping_sql)
-    listing = run_query(listing_sql)
     product_groups = run_query(product_group_sql)
 
     shopping["_source"] = "shopping_product_stats"
-    listing["_source"] = "asset_group_listing"
     product_groups["_source"] = "product_group_stats"
 
-    return pd.concat([shopping, listing, product_groups], ignore_index=True)
+    return pd.concat([shopping, product_groups], ignore_index=True)
 
 
 def _creative_content(suffix: str) -> pd.DataFrame:
-    asset_sql = f"""
+    ad_group_sql = f"""
     SELECT
-        asset_id,
-        type,
-        name,
-        text_asset_text,
-        image_asset_full_size_url,
-        video_asset_youtube_video_id,
-        policy_summary_approval_status
-    FROM {table("p_ads_Asset", suffix)}
-    """
-
-    asset_group_sql = f"""
-    SELECT
-        ag.asset_group_id,
-        ag.name              AS asset_group_name,
-        ag.status,
-        ag.campaign_id,
-        ag.ad_strength,
-        aga.asset_id,
-        aga.field_type
-    FROM {table("p_ads_AssetGroup", suffix)} ag
-    LEFT JOIN {table("p_ads_AssetGroupAsset", suffix)} aga
-        ON ag.asset_group_id = aga.asset_group_id
+        ad_group_id,
+        campaign_id,
+        name   AS ad_group_name,
+        status,
+        type   AS ad_group_type
+    FROM {table("p_ads_AdGroup", suffix)}
     """
 
     ad_sql = f"""
@@ -221,15 +189,13 @@ def _creative_content(suffix: str) -> pd.DataFrame:
     FROM {table("p_ads_Ad", suffix)}
     """
 
-    assets = run_query(asset_sql)
-    asset_groups = run_query(asset_group_sql)
+    ad_groups = run_query(ad_group_sql)
     ads = run_query(ad_sql)
 
-    assets["_source"] = "asset"
-    asset_groups["_source"] = "asset_group"
+    ad_groups["_source"] = "ad_group"
     ads["_source"] = "ad"
 
-    return pd.concat([assets, asset_groups, ads], ignore_index=True)
+    return pd.concat([ad_groups, ads], ignore_index=True)
 
 
 def _structural_view(suffix: str) -> str:
