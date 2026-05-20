@@ -1,6 +1,9 @@
+import logging
 import os
 
 from fastapi import FastAPI, Request
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from google.auth.transport import requests as google_requests

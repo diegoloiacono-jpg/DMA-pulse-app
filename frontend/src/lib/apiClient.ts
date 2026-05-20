@@ -9,6 +9,9 @@ export interface BrandContextPayload {
   demographics: string;
   markets: string[];
   selectedPlatforms: string[];
+  industry?: string;
+  hasCrmData?: boolean;
+  hasProductFeed?: boolean;
 }
 
 export interface SpecialistResult {

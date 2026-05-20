@@ -9,3 +9,6 @@ class BrandContext(BaseModel):
     demographics: str = ""
     markets: list[str] = []
     selectedPlatforms: list[str] = ["sea-google"]
+    industry: str = ""
+    hasCrmData: bool = False
+    hasProductFeed: bool = False

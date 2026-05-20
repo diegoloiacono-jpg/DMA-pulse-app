@@ -40,6 +40,12 @@ export interface BrandContext {
   demographics: string;
   /** Platforms the brand actively runs — drives which tabs appear */
   selectedPlatforms: PlatformKey[];
+  /** Industry vertical — used to calibrate keyword quality score thresholds */
+  industry?: string;
+  /** Whether the brand has CRM data available for customer match audiences */
+  hasCrmData?: boolean;
+  /** Whether the brand has a product feed (Shopping / PMax feed campaigns) */
+  hasProductFeed?: boolean;
 }
 
 export const DEFAULT_BRAND_CONTEXT: BrandContext = {
@@ -48,6 +54,9 @@ export const DEFAULT_BRAND_CONTEXT: BrandContext = {
   namingConvention: "",
   demographics: "",
   selectedPlatforms: PLATFORM_OPTIONS.filter(p => p.available).map(p => p.key),
+  industry: "",
+  hasCrmData: false,
+  hasProductFeed: false,
 };
 
 /** Fixed benchmark used by the radar chart (previously dynamic). */

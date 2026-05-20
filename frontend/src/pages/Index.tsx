@@ -584,6 +584,9 @@ export default function Index() {
                               demographics: brandContext.demographics ?? "",
                               markets: [],
                               selectedPlatforms: brandContext.selectedPlatforms ?? ["sea-google"],
+                              industry: brandContext.industry ?? "",
+                              hasCrmData: brandContext.hasCrmData ?? false,
+                              hasProductFeed: brandContext.hasProductFeed ?? false,
                             }}
                             onSpecialistReady={(id, state) => {
                               setAuditId(id);
@@ -1061,6 +1064,45 @@ function BrandContextForm({ context, onChange }: {
             Only checked platforms appear as tabs next to Overview. Reddit support is coming soon.
           </p>
         </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">Industry</label>
+          <input
+            type="text"
+            value={context.industry ?? ""}
+            onChange={e => update({ industry: e.target.value })}
+            placeholder="e.g. Finance, Retail, Insurance, Travel"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground
+                       placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Calibrates keyword quality score thresholds — competitive verticals are graded less harshly
+          </p>
+        </div>
+
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={context.hasCrmData ?? false}
+              onChange={e => update({ hasCrmData: e.target.checked })}
+              className="w-4 h-4 rounded border-input accent-primary"
+            />
+            <span className="text-xs font-medium text-foreground">CRM data available</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={context.hasProductFeed ?? false}
+              onChange={e => update({ hasProductFeed: e.target.checked })}
+              className="w-4 h-4 rounded border-input accent-primary"
+            />
+            <span className="text-xs font-medium text-foreground">Product feed available</span>
+          </label>
+        </div>
+        <p className="text-[10px] text-muted-foreground -mt-3">
+          Without CRM data, missing customer match signals are not penalised. Without a product feed, Shopping / feed-based topics are skipped.
+        </p>
       </div>
     </section>
   );
