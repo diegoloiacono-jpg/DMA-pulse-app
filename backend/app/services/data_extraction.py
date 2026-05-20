@@ -12,7 +12,7 @@ import pandas as pd
 from app.services.bigquery import run_query, table
 
 
-def _campaign_setup(suffix: str) -> pd.DataFrame:
+def _campaign_setup(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     sql = f"""
     SELECT
         c.campaign_id,
@@ -30,28 +30,26 @@ def _campaign_setup(suffix: str) -> pd.DataFrame:
         bg.type            AS bid_goal_type,
         bg.target_cpa_micros AS bid_goal_cpa,
         bg.target_roas     AS bid_goal_roas
-    FROM {table("p_ads_Campaign", suffix)} c
-    LEFT JOIN {table("p_ads_Budget", suffix)} b
+    FROM {table("p_ads_Campaign", suffix, dataset)} c
+    LEFT JOIN {table("p_ads_Budget", suffix, dataset)} b
         ON c.campaign_budget_id = b.budget_id
-    LEFT JOIN {table("p_ads_BidGoal", suffix)} bg
+    LEFT JOIN {table("p_ads_BidGoal", suffix, dataset)} bg
         ON c.campaign_id = bg.campaign_id
     """
     return run_query(sql)
 
 
-def _audience_targeting(suffix: str) -> pd.DataFrame:
+def _audience_targeting(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     """Combines audience segments, demographics, geo, and placement targeting."""
-    # Campaign-level audience segments (no standalone audience catalog in this dataset)
     audiences_sql = f"""
     SELECT
         campaign_id,
         campaign_name,
         user_list_id  AS audience_id,
         bid_modifier
-    FROM {table("p_ads_CampaignAudience", suffix)}
+    FROM {table("p_ads_CampaignAudience", suffix, dataset)}
     """
 
-    # Criteria: geo, device, keyword negatives
     criteria_sql = f"""
     SELECT
         campaign_id,
@@ -60,23 +58,21 @@ def _audience_targeting(suffix: str) -> pd.DataFrame:
         device,
         keyword_text,
         negative
-    FROM {table("p_ads_CampaignCriterion", suffix)}
+    FROM {table("p_ads_CampaignCriterion", suffix, dataset)}
     """
 
-    # Demographics
     demo_sql = f"""
     SELECT campaign_id, gender_type, impressions, clicks, cost_micros
-    FROM {table("p_ads_Gender", suffix)}
+    FROM {table("p_ads_Gender", suffix, dataset)}
     UNION ALL
     SELECT campaign_id, age_range_type AS gender_type, impressions, clicks, cost_micros
-    FROM {table("p_ads_AgeRange", suffix)}
+    FROM {table("p_ads_AgeRange", suffix, dataset)}
     """
 
     audiences = run_query(audiences_sql)
     criteria = run_query(criteria_sql)
     demographics = run_query(demo_sql)
 
-    # Tag each frame with its source so the specialist knows what it's reading
     audiences["_source"] = "campaign_audience"
     criteria["_source"] = "campaign_criterion"
     demographics["_source"] = "demographics"
@@ -84,7 +80,7 @@ def _audience_targeting(suffix: str) -> pd.DataFrame:
     return pd.concat([audiences, criteria, demographics], ignore_index=True)
 
 
-def _conversion_kpi(suffix: str) -> pd.DataFrame:
+def _conversion_kpi(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     """Campaign-level stats + conversion breakdown + pre-computed structural audit."""
     stats_sql = f"""
     SELECT
@@ -98,7 +94,7 @@ def _conversion_kpi(suffix: str) -> pd.DataFrame:
         conversions_value,
         SAFE_DIVIDE(conversions_value, SAFE_DIVIDE(cost_micros, 1e6)) AS roas,
         SAFE_DIVIDE(SAFE_DIVIDE(cost_micros, 1e6), NULLIF(conversions, 0)) AS cpa
-    FROM {table("p_ads_CampaignBasicStats", suffix)}
+    FROM {table("p_ads_CampaignBasicStats", suffix, dataset)}
     """
 
     conv_sql = f"""
@@ -108,13 +104,12 @@ def _conversion_kpi(suffix: str) -> pd.DataFrame:
         conversion_category,
         conversions,
         conversions_value
-    FROM {table("p_ads_CampaignConversionStats", suffix)}
+    FROM {table("p_ads_CampaignConversionStats", suffix, dataset)}
     """
 
-    # Pre-computed structural audit view — may already surface issues
     structural_sql = f"""
     SELECT *
-    FROM `{_structural_view(suffix)}`
+    FROM `{_structural_view(suffix, dataset)}`
     LIMIT 500
     """
 
@@ -133,7 +128,7 @@ def _conversion_kpi(suffix: str) -> pd.DataFrame:
     return pd.concat([stats, convs, structural], ignore_index=True)
 
 
-def _feeds_catalogue(suffix: str) -> pd.DataFrame:
+def _feeds_catalogue(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     shopping_sql = f"""
     SELECT
         campaign_id,
@@ -144,7 +139,7 @@ def _feeds_catalogue(suffix: str) -> pd.DataFrame:
         clicks,
         cost_micros,
         conversions
-    FROM {table("p_ads_ShoppingProductStats", suffix)}
+    FROM {table("p_ads_ShoppingProductStats", suffix, dataset)}
     """
 
     product_group_sql = f"""
@@ -155,7 +150,7 @@ def _feeds_catalogue(suffix: str) -> pd.DataFrame:
         clicks,
         cost_micros,
         conversions
-    FROM {table("p_ads_ProductGroupStats", suffix)}
+    FROM {table("p_ads_ProductGroupStats", suffix, dataset)}
     """
 
     shopping = run_query(shopping_sql)
@@ -167,7 +162,7 @@ def _feeds_catalogue(suffix: str) -> pd.DataFrame:
     return pd.concat([shopping, product_groups], ignore_index=True)
 
 
-def _creative_content(suffix: str) -> pd.DataFrame:
+def _creative_content(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     ad_group_sql = f"""
     SELECT
         ad_group_id,
@@ -175,7 +170,7 @@ def _creative_content(suffix: str) -> pd.DataFrame:
         name   AS ad_group_name,
         status,
         type   AS ad_group_type
-    FROM {table("p_ads_AdGroup", suffix)}
+    FROM {table("p_ads_AdGroup", suffix, dataset)}
     """
 
     ad_sql = f"""
@@ -186,7 +181,7 @@ def _creative_content(suffix: str) -> pd.DataFrame:
         type,
         status,
         final_urls
-    FROM {table("p_ads_Ad", suffix)}
+    FROM {table("p_ads_Ad", suffix, dataset)}
     """
 
     ad_groups = run_query(ad_group_sql)
@@ -198,13 +193,14 @@ def _creative_content(suffix: str) -> pd.DataFrame:
     return pd.concat([ad_groups, ads], ignore_index=True)
 
 
-def _structural_view(suffix: str) -> str:
+def _structural_view(suffix: str, dataset: str | None = None) -> str:
     """Return the dataset-qualified name of the structural audit view."""
     from app.config import GCP_PROJECT, BQ_DATASET
-    return f"{GCP_PROJECT}.{BQ_DATASET}.v_structural_audit_{suffix}"
+    ds = dataset or BQ_DATASET
+    return f"{GCP_PROJECT}.{ds}.v_structural_audit_{suffix}"
 
 
-def extract_audit_data(suffix: str) -> dict[str, pd.DataFrame]:
+def extract_audit_data(suffix: str, dataset: str | None = None) -> dict[str, pd.DataFrame]:
     """
     Run all five category extractions and return a dict of DataFrames.
     Any category that fails is returned as an empty DataFrame so the pipeline
@@ -221,7 +217,7 @@ def extract_audit_data(suffix: str) -> dict[str, pd.DataFrame]:
     results: dict[str, pd.DataFrame] = {}
     for name, fn in extractors.items():
         try:
-            results[name] = fn(suffix)
+            results[name] = fn(suffix, dataset)
         except Exception as exc:
             results[name] = pd.DataFrame({"_error": [str(exc)]})
 

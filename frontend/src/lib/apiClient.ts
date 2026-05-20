@@ -6,6 +6,7 @@ export interface BrandContextPayload {
   brandName: string;
   model: "B2B" | "B2C" | "D2C";
   namingConvention: string;
+  demographics: string;
   markets: string[];
   selectedPlatforms: string[];
 }
@@ -99,10 +100,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiClient = {
-  runAudit(brandContext: BrandContextPayload, accountId?: string) {
+  runAudit(brandContext: BrandContextPayload, accountId?: string, dataset?: string) {
     return request<{ audit_id: string; status: AuditStatus }>("/api/audit/run", {
       method: "POST",
-      body: JSON.stringify({ brand_context: brandContext, account_id: accountId }),
+      body: JSON.stringify({
+        brand_context: brandContext,
+        account_id: accountId || undefined,
+        dataset: dataset || undefined,
+      }),
     });
   },
 
@@ -126,5 +131,9 @@ export const apiClient = {
       `/api/audit/${auditId}/validate/scoring`,
       { method: "POST", body: JSON.stringify({ approved }) },
     );
+  },
+
+  listDatasets() {
+    return request<{ datasets: string[] }>("/api/datasets");
   },
 };

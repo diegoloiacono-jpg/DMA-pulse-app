@@ -13,18 +13,16 @@ Business-model multipliers mirror auditCriteria.ts exactly:
 """
 from __future__ import annotations
 
-import json
-import textwrap
+import logging
 from typing import Literal
 
-from app.config import SCORING_MODEL
 from app.models.audit import (
     CategoryScore,
     PrioritizedWin,
     ScoringOutput,
     SpecialistResult,
 )
-from app.services.bigquery import run_query
+logger = logging.getLogger(__name__)
 
 # Base category weights (mirror auditData.ts category weight fields)
 _BASE_WEIGHTS: dict[str, float] = {
@@ -148,108 +146,9 @@ def _compute_python(
     )
 
 
-# ---------------------------------------------------------------------------
-# BQML scoring agent call
-# ---------------------------------------------------------------------------
-
-_SCORING_SYSTEM_PROMPT = textwrap.dedent("""
-You are a Digital Maturity scoring engine.
-You receive a JSON array of specialist audit results and must return a scoring
-summary as a single JSON object with exactly these fields:
-
-{
-  "category_scores": [
-    {"name": "<category>", "score": <0-100>, "pass_rate": <0-100>, "weight": <float>}
-  ],
-  "platform_score": <0-100>,
-  "maturity_label": "Basic" | "Advanced" | "Expert" | "Champion",
-  "quick_wins": [
-    {
-      "topic": "<topic>",
-      "category": "<category>",
-      "impact": <1-10>,
-      "confidence": <1-10>,
-      "ease": <1-10>,
-      "priority_score": <0-10>,
-      "action": "<action>",
-      "explanation": "<explanation>"
-    }
-  ]
-}
-
-Scoring rules:
-- category score = (topics with level advanced/expert/champion) / total_topics * 100
-- platform_score = weighted average of category scores (weights already provided)
-- ICE priority = (impact * confidence * ease) / 10, capped at 10
-- Only include fail or warn topics in quick_wins, sorted by priority descending
-- Return the top 10 quick wins maximum
-- Return ONLY the JSON object — no markdown, no preamble
-""").strip()
-
-
-def _call_bqml_scoring(
-    results: list[SpecialistResult],
-    model: str,
-) -> dict:
-    results_json = json.dumps([r.model_dump() for r in results])
-    user_prompt = f"Business model: {model}\n\nSpecialist results:\n{results_json}"
-    full_prompt = _SCORING_SYSTEM_PROMPT + "\n\n" + user_prompt
-    escaped = full_prompt.replace("'", "\\'")
-
-    sql = f"""
-    SELECT ml_generate_text_result AS result
-    FROM ML.GENERATE_TEXT(
-        MODEL `{SCORING_MODEL}`,
-        (SELECT '{escaped}' AS prompt),
-        STRUCT(
-            0.1  AS temperature,
-            4096 AS max_output_tokens,
-            TRUE AS flatten_json_output
-        )
-    )
-    """
-
-    df = run_query(sql)
-    raw = df["result"].iloc[0] if not df.empty else "{}"
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-
-    return json.loads(raw)
-
-
 def run_scoring_agent(
     results: list[SpecialistResult],
     brand_model: Literal["B2B", "B2C", "D2C"],
     platform_id: str = "sea-google",
 ) -> ScoringOutput:
-    """
-    Compute the final ScoringOutput.  Tries BQML first; falls back to the
-    pure-Python implementation if the model call or parse fails.
-    """
-    # Always compute the Python fallback — it's cheap and guarantees a result
-    fallback = _compute_python(results, brand_model, platform_id)
-
-    try:
-        bqml_data = _call_bqml_scoring(results, brand_model)
-
-        category_scores = [
-            CategoryScore(**cs) for cs in bqml_data.get("category_scores", [])
-        ]
-        quick_wins = [
-            PrioritizedWin(**w) for w in bqml_data.get("quick_wins", [])
-        ]
-        platform_score = float(bqml_data.get("platform_score", fallback.platform_score))
-
-        return ScoringOutput(
-            platform_id=platform_id,
-            category_scores=category_scores or fallback.category_scores,
-            platform_score=round(platform_score, 1),
-            maturity_label=_maturity_label(platform_score),
-            quick_wins=quick_wins or fallback.quick_wins,
-        )
-    except Exception:
-        return fallback
+    return _compute_python(results, brand_model, platform_id)

@@ -2,6 +2,7 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 google-cloud-bigquery>=3.25
 google-cloud-bigquery-storage>=2.25
+google-genai>=1.0
 pandas>=2.2
 pydantic>=2.7
 python-dotenv>=1.0

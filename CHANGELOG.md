@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 
 ---
 
+## [0.5.1] — 2026-05-19
+
+### Bug fixes — CORS and auth middleware
+
+- Fixed "Failed to fetch" on Run Audit caused by incorrect Starlette middleware ordering: `CORSMiddleware` was inner, so 401/403 short-circuit responses were sent without CORS headers and the browser blocked them
+- Moved `CORSMiddleware` registration to after the auth middleware so it becomes the outermost layer and adds CORS headers to every response, including auth errors
+- Fixed auth middleware raising `HTTPException` (which Starlette wraps as 500 inside `BaseHTTPMiddleware`); replaced with direct `JSONResponse(401/403)` returns
+- Added `allow_origin_regex` for `*.run.app` unconditionally so both Cloud Run services always communicate correctly
+- Added `OPTIONS` method bypass so CORS preflight requests are never intercepted by the auth check
+
+---
+
 ## [0.5.0] — 2026-05-19
 
 ### Data source — switch to bwj_google_ads / account 6600502562

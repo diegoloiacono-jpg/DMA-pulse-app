@@ -62,6 +62,7 @@ class ScoringOutput(BaseModel):
 class AuditRunRequest(BaseModel):
     brand_context: BrandContext
     account_id: str | None = None   # overrides ACCOUNT_SUFFIX from env if provided
+    dataset: str | None = None      # overrides BQ_DATASET env var if provided
 
 
 class AuditState(BaseModel):

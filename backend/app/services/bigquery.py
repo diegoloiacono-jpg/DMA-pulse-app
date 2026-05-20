@@ -13,7 +13,8 @@ def run_query(sql: str, params: list[bigquery.ScalarQueryParameter] | None = Non
     return job.result().to_dataframe()
 
 
-def table(name: str, suffix: str) -> str:
+def table(name: str, suffix: str, dataset: str | None = None) -> str:
     """Return a fully-qualified table reference: `project.dataset.name_suffix`."""
     from app.config import BQ_DATASET
-    return f"`{GCP_PROJECT}.{BQ_DATASET}.{name}_{suffix}`"
+    ds = dataset or BQ_DATASET
+    return f"`{GCP_PROJECT}.{ds}.{name}_{suffix}`"

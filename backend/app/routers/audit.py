@@ -25,7 +25,7 @@ def _now() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-def _run_pipeline(audit_id: str, suffix: str) -> None:
+def _run_pipeline(audit_id: str, suffix: str, dataset: str | None = None) -> None:
     """Background task: extract data then run the specialist agent."""
     state = audit_sessions[audit_id]
 
@@ -33,12 +33,12 @@ def _run_pipeline(audit_id: str, suffix: str) -> None:
         # --- Extraction ---
         state.status = AuditStatus.EXTRACTING
         state.updated_at = _now()
-        audit_data = extract_audit_data(suffix)
+        audit_data = extract_audit_data(suffix, dataset=dataset)
 
         # --- Specialist ---
         state.status = AuditStatus.SPECIALIST_RUNNING
         state.updated_at = _now()
-        state.specialist_results = run_specialist_agent(audit_data)
+        state.specialist_results = run_specialist_agent(audit_data, state.brand_context)
 
         state.status = AuditStatus.SPECIALIST_REVIEW
         state.updated_at = _now()
@@ -54,6 +54,7 @@ def run_audit(payload: AuditRunRequest, background_tasks: BackgroundTasks) -> di
     """Kick off a new audit and immediately return the audit_id."""
     audit_id = str(uuid.uuid4())
     suffix = payload.account_id or ACCOUNT_SUFFIX
+    dataset = payload.dataset or None
     now = _now()
 
     audit_sessions[audit_id] = AuditState(
@@ -64,7 +65,7 @@ def run_audit(payload: AuditRunRequest, background_tasks: BackgroundTasks) -> di
         updated_at=now,
     )
 
-    background_tasks.add_task(_run_pipeline, audit_id, suffix)
+    background_tasks.add_task(_run_pipeline, audit_id, suffix, dataset)
     return {"audit_id": audit_id, "status": AuditStatus.PENDING}
 
 

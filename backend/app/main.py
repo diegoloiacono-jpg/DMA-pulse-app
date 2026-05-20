@@ -7,6 +7,7 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
 from app.routers import audit, validation
+from app.config import GCP_PROJECT, bq_client
 
 app = FastAPI(title="DMA Pulse API", version="0.1.0")
 
@@ -63,3 +64,9 @@ app.include_router(validation.router, prefix="/api/audit", tags=["validation"])
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/api/datasets")
+def list_datasets() -> dict:
+    datasets = [d.dataset_id for d in bq_client.list_datasets(project=GCP_PROJECT)]
+    return {"datasets": sorted(datasets)}

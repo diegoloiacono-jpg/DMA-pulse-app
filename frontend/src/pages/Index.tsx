@@ -18,6 +18,7 @@ import ValidationLayer from "@/components/ValidationLayer";
 import StrategicWins from "@/components/StrategicWins";
 import RawDataPreview from "@/components/RawDataPreview";
 import { type BrandContext, DEFAULT_BRAND_CONTEXT, getEffectiveBenchmark, PLATFORM_OPTIONS, type PlatformKey } from "@/utils/brandContext";
+import { listSavedContexts, saveContext, deleteContext, type SavedContext } from "@/utils/savedContexts";
 import { computeDashboardState, type DashboardState } from "@/utils/dashboardLogic";
 import {
   type ManualScoreMap,
@@ -59,6 +60,8 @@ export default function Index() {
   const [showSettings, setShowSettings] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [brandContext, setBrandContext] = useState<BrandContext>(DEFAULT_BRAND_CONTEXT);
+  const [savedContexts, setSavedContexts] = useState<SavedContext[]>(() => listSavedContexts());
+  const [editingContextId, setEditingContextId] = useState<string | null>(null);
   const [manualScores, setManualScores] = useState<ManualScoreMap>({});
   const [showGapsFlyout, setShowGapsFlyout] = useState(false);
 
@@ -343,8 +346,74 @@ export default function Index() {
               </button>
             </div>
           </div>
+          {/* Saved clients panel */}
+          {savedContexts.length > 0 && (
+            <div className="rounded-xl border bg-card p-4 space-y-2">
+              <h3 className="text-sm font-semibold">Saved Clients</h3>
+              <div className="flex flex-col gap-2">
+                {savedContexts.map(s => (
+                  <div key={s.id} className={`flex items-center justify-between rounded-lg border px-3 py-2 transition-colors ${editingContextId === s.id ? "border-primary/50 bg-primary/5" : "bg-muted/30"}`}>
+                    <div>
+                      <p className="text-sm font-medium">{s.label}</p>
+                      <p className="text-xs text-muted-foreground">{s.context.model} · saved {new Date(s.savedAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setBrandContext(s.context);
+                          setEditingContextId(s.id);
+                        }}
+                        className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${editingContextId === s.id ? "border-primary bg-primary text-primary-foreground" : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"}`}
+                      >
+                        {editingContextId === s.id ? "Editing…" : "Edit"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          deleteContext(s.id);
+                          if (editingContextId === s.id) setEditingContextId(null);
+                          setSavedContexts(listSavedContexts());
+                        }}
+                        className="text-xs px-2.5 py-1 rounded-md border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <BrandContextForm context={brandContext} onChange={setBrandContext} />
+            <div className="space-y-4">
+              {editingContextId && (
+                <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+                  <p className="text-xs text-primary font-medium">
+                    Editing: {savedContexts.find(s => s.id === editingContextId)?.label}
+                  </p>
+                  <button
+                    onClick={() => setEditingContextId(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              <BrandContextForm context={brandContext} onChange={setBrandContext} />
+              <div className="flex gap-2">
+                <button
+                  disabled={!brandContext.brandName}
+                  onClick={() => {
+                    saveContext(brandContext.brandName, brandContext, editingContextId ?? undefined);
+                    setEditingContextId(null);
+                    setSavedContexts(listSavedContexts());
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {editingContextId ? "Update client" : "Save as client"}
+                </button>
+              </div>
+            </div>
             <div className="space-y-4">
               <p className="text-xs text-muted-foreground">
                 Upload CSV/XLSX exports manually, or use the BigQuery connector on the main dashboard.
@@ -512,13 +581,15 @@ export default function Index() {
                               brandName: brandContext.brandName,
                               model: (brandContext.model || "B2B") as "B2B" | "B2C" | "D2C",
                               namingConvention: brandContext.namingConvention,
-                              markets: brandContext.markets ?? [],
+                              demographics: brandContext.demographics ?? "",
+                              markets: [],
                               selectedPlatforms: brandContext.selectedPlatforms ?? ["sea-google"],
                             }}
                             onSpecialistReady={(id, state) => {
                               setAuditId(id);
                               setApiAuditState(state);
                             }}
+                            onLoadContext={setBrandContext}
                           />
                           <button
                             onClick={() => setShowSettings(true)}
