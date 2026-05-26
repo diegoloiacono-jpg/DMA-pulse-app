@@ -4,6 +4,38 @@ All notable changes to this project are documented here.
 
 ---
 
+## [0.8.0] — 2026-05-22
+
+### Meta Ads → BigQuery extractor (Cloud Function)
+
+Replaces the failed BigQuery Data Transfer Service approach (HTTP 40005 "too much data" errors) with a direct Meta Graph API extractor that pulls one ad account at a time and writes to BigQuery in controlled chunks.
+
+#### New: `functions/meta_extractor/`
+
+**`main.py`** — HTTP Cloud Function (2nd gen) with five extractors:
+
+- **`_extract_campaigns()`** — campaign name, status, objective, bid strategy, daily/lifetime budget, start/stop times
+- **`_extract_adsets()`** — ad set config including full targeting blob: geo locations, age/gender, custom audience inclusions/exclusions, flexible spec
+- **`_extract_ads()`** — ad name, status, creative ID per ad
+- **`_extract_insights_window()`** — daily ad-set-level metrics: impressions, clicks, reach, spend, CPC, CPM, CTR, frequency, ROAS, and action-type breakdown (purchases, leads, add_to_cart, initiate_checkout, complete_registration, landing_page_views)
+- **`_extract_custom_audiences()`** — audience name, subtype, approximate count, lookalike spec (country, ratio), customer file source
+
+Design choices to stay within Facebook API limits:
+- Scoped to a **single ad account ID** passed as a POST body param — avoids the agency-wide "all authorized accounts" volume that caused BQ DTS failures
+- Insights fetched in **7-day chunks** via `_date_chunks()` — one API call per window, never a large date-range request
+- `level=adset` (not ad-level) for insights — reduces row count significantly vs per-ad breakdown
+- Entity tables (`campaigns`, `adsets`, `ads`, `custom_audiences`) use `WRITE_TRUNCATE` on every run (fresh snapshot); `adinsights` also truncate-and-reload per run
+
+Local test mode: `python main.py <account_id> [date_start] [date_end]` — defaults to last 7 days when no dates given.
+
+**`requirements.txt`** — `functions-framework==3.*`, `facebook-business==20.*`, `google-cloud-bigquery==3.*`
+
+**`deploy.sh`** — deploys as Cloud Function 2nd gen (europe-west1, python312, 512 MB, 540 s timeout); creates the `meta_data` BigQuery dataset if absent; accepts `META_ACCESS_TOKEN` and `META_ACCOUNT_ID` as env vars (can also be supplied per-request in the POST body)
+
+BQ tables written: `meta_data.campaigns`, `meta_data.adsets`, `meta_data.ads`, `meta_data.adinsights`, `meta_data.custom_audiences`
+
+---
+
 ## [0.7.0] — 2026-05-20
 
 ### Data extraction overhaul, Gemini optimisation, and BigQuery accuracy fixes
