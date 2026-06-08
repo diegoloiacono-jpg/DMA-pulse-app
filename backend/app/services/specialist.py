@@ -185,37 +185,76 @@ Manual/basic bidding types: MANUAL_CPC, ENHANCED_CPC, MAXIMIZE_CLICKS, TARGET_SP
     Warn: ad schedules are configured but the bidding strategy mix is unclear or partially manual.
 
 AUDIENCE TARGETING CATEGORY:
-campaign_criterion data is pre-aggregated: each row in _source="campaign_criterion" has
-(criterion_type, negative, count). Use the counts directly for all threshold checks.
+campaign_audience rows (_source="campaign_audience") have: campaign_id, audience_id, bid_modifier.
+campaign_criterion rows (_source="campaign_criterion") are pre-aggregated: criterion_type, negative, count.
+demographics rows (_source="demographics") have: campaign_id, demographic_type, bid_modifier, negative, demo_category (gender or age_range).
+geo_target_summary rows (_source="geo_target_summary") have: geo_target_type, campaign_count.
+  geo_target_type values: DONT_CARE (default, broad), AREA_OF_INTEREST, LOCATION_OF_PRESENCE (correct).
+NOTE: audience membership sizes and targeting mode (Observation vs Targeting) are not available in
+the exported data — flag these topics for manual verification where noted.
 
 - Audience segmentation:
-    Count distinct audience_id values from _source="campaign_audience" rows.
-    0 audiences -> fail;  1-3 -> warn/basic;  4-10 -> pass/advanced;  >10 -> expert.
+    The Observation vs Targeting mode flag is NOT available in the exported data; manual verification
+    is required to confirm it.
+    Use _source="campaign_audience" and _source="campaign_criterion" as proxies:
+    B2C pass signal: USER_LIST entries exist in campaign_criterion (count > 0, negative=false) AND
+      campaign_audience rows are present — suggests audiences are attached (mode requires manual check).
+    B2C fail signal: Zero campaign_audience rows AND zero USER_LIST in campaign_criterion — no audiences
+      attached at all; reach restriction or absence of data signals are both failures.
+    B2B: evaluate whether attached audiences (audience_id values in campaign_audience) are consistent
+      with the audience strategy described in brand context. If brand context has no audience strategy,
+      score as warn and note manual verification is required.
+    In the explanation, always flag that Observation vs Targeting mode requires manual verification
+    in the Google Ads UI under Audiences > Targeting setting.
+
 - Remarketing lists:
-    From _source="campaign_audience": non-default bid_modifier (not 0 or 1) indicates active remarketing.
-    No audience rows -> fail;  present but all bid_modifier = 1 -> warn;
-    differentiated bid_modifiers per audience -> pass.
-    Also note presence of USER_LIST entries in campaign_criterion (count > 0 = remarketing active).
+    From _source="campaign_criterion": find USER_LIST rows where negative=false.
+    Pass: USER_LIST count > 0 (remarketing lists are attached) AND campaign_audience rows are present
+      with differentiated bid_modifier values (not all = 1.0) — active remarketing.
+    Fail: USER_LIST count = 0 AND zero campaign_audience rows — no remarketing lists attached at all.
+    Warn: USER_LIST present in criteria but all campaign_audience bid_modifier = 1.0 — lists attached
+      but not actively optimized.
+    NOTE: member size validation (>1,000 active users threshold) requires manual verification in
+    Audience Manager — flag this in the explanation.
+
 - Similar audiences / lookalikes:
-    Check _source="campaign_criterion" for USER_LIST with negative=false and count > 0 -> pass.
-    Absence -> fail for B2C/D2C;  warn for B2B.
+    From _source="campaign_criterion": look for USER_LIST entries with negative=false and count > 0.
+    Pass: USER_LIST rows present — indicates first-party audience lists are attached and guiding
+      algorithmic expansion.
+    Fail: Zero USER_LIST entries with negative=false — no first-party lists supplied; platform
+      targeting is completely unguided.
+    NOTE: Customer Match list type and API upload freshness (30-day requirement) cannot be verified
+    from exported data — flag for manual verification in Audience Manager.
+
 - Demographic targeting:
-    From _source="demographics": bid_modifier and negative flag per gender/age_range segment.
-    All bid_modifier = 0 or 1 across all groups -> basic (no differentiation).
-    Any group with bid_modifier != 1 -> advanced.
-    Negative targeting on any group -> note it; expert if combined with bid adjustments.
+    From _source="demographics": review bid_modifier and negative per demographic_type.
+    Pass: at least one demographic segment has bid_modifier != 1.0 (positive adjustment) OR
+      negative=true (explicit exclusion) — historical data is being acted on.
+    Fail: all demographic bid_modifier values = 0 or 1.0 AND negative=false across all segments —
+      all demographic variables left at default with no adjustments, despite available data.
+    NOTE: cross-referencing demographics with conversion data to identify zero-conversion segments
+    requires manual analysis — flag this in the explanation.
+
 - Geo targeting precision:
-    From _source="campaign_criterion": find rows where criterion_type="LOCATION".
-    negative=false count: total positive location targets.
-    negative=true count: location exclusions.
-    If only 1 or 2 positive LOCATION targets (broad country-level) -> basic.
-    Multiple LOCATION targets (>10) suggesting city/region level -> advanced.
-    Also check for AD_SCHEDULE (dayparting) and DEVICE entries — presence indicates advanced setup.
+    From _source="geo_target_summary": read geo_target_type and campaign_count.
+    Pass: all enabled campaigns have geo_target_type = "LOCATION_OF_PRESENCE" (people physically
+      present in targeted locations — correct setting).
+    Fail: any campaigns have geo_target_type = "DONT_CARE" (default "Presence or Interest" —
+      bleeds spend on users merely interested in a location, including international clicks).
+    Warn: mix of LOCATION_OF_PRESENCE and AREA_OF_INTEREST across campaigns.
+    If geo_target_summary is empty (data unavailable), check LOCATION count in campaign_criterion
+    as a fallback: 0 LOCATION entries -> fail (no geo targeting configured at all).
+
 - Exclusion lists:
-    From _source="campaign_criterion": sum count where negative=true across all criterion types
-    (KEYWORD, LOCATION, USER_LIST, PLACEMENT, TOPIC, etc.).
-    Zero total negative count -> fail.
-    <100 -> warn;  >= 100 across multiple criterion_type values -> pass/advanced.
+    From _source="campaign_criterion": read rows where negative=true, grouped by criterion_type.
+    Pass: negative=true rows present for USER_LIST criterion_type (audience exclusions active) AND
+      at least one other negative criterion_type (KEYWORD, PLACEMENT, TOPIC, or LOCATION) — multi-layer
+      exclusions in place.
+    Fail: zero rows with negative=true across all criterion_types — no exclusion lists of any kind.
+    Warn: only one criterion_type has negative entries (e.g. only keyword negatives, no audience
+      exclusions).
+    B2C/Demand Gen note: if the account runs Demand Gen or Display campaigns, check for USER_LIST
+    negative=true entries specifically — absence means existing customers are being retargeted wastefully.
 
 CONVERSION KPI CATEGORY:
 - Conversion tracking setup:

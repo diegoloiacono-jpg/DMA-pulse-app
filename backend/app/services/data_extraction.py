@@ -175,9 +175,29 @@ def _audience_targeting(suffix: str, dataset: str | None = None) -> pd.DataFrame
     WHERE {_max_partition(t_age)}
     """
 
+    t_campaign = table("p_ads_Campaign", suffix, dataset)
+    geo_sql = f"""
+    SELECT
+        campaign_geo_target_type   AS geo_target_type,
+        COUNT(*)                   AS campaign_count
+    FROM {t_campaign}
+    WHERE campaign_status = 'ENABLED'
+      AND {_max_partition(t_campaign)}
+    GROUP BY campaign_geo_target_type
+    ORDER BY campaign_count DESC
+    """
+
     audiences = run_query(audiences_sql)
     criteria = run_query(criteria_sql)
     demographics = run_query(demo_sql)
+
+    try:
+        geo = run_query(geo_sql)
+        logger.warning("audience_targeting/geo_target: %d geo type rows", len(geo))
+        geo["_source"] = "geo_target_summary"
+    except Exception as exc:
+        logger.warning("audience_targeting/geo_target failed: %s", exc)
+        geo = pd.DataFrame()
 
     logger.warning(
         "audience_targeting: %d audiences, %d criteria types, %d demographics",
@@ -188,7 +208,7 @@ def _audience_targeting(suffix: str, dataset: str | None = None) -> pd.DataFrame
     criteria["_source"] = "campaign_criterion"
     demographics["_source"] = "demographics"
 
-    return pd.concat([audiences, criteria, demographics], ignore_index=True)
+    return pd.concat([audiences, criteria, demographics, geo], ignore_index=True)
 
 
 def _conversion_kpi(suffix: str, dataset: str | None = None) -> pd.DataFrame:
