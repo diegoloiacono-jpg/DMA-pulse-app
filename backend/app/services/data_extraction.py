@@ -318,42 +318,78 @@ def _feeds_catalogue(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     t_shopping = table("p_ads_ShoppingProductStats", suffix, dataset)
     t_groups = table("p_ads_ProductGroupStats", suffix, dataset)
 
+    # Aggregated performance + custom label usage signals per brand/channel.
     shopping_sql = f"""
     SELECT
         campaign_id,
-        segments_product_brand   AS product_brand,
-        segments_product_channel AS product_channel,
-        SUM(metrics_impressions) AS impressions,
-        SUM(metrics_clicks)      AS clicks,
-        SUM(metrics_cost_micros) AS cost_micros,
-        SUM(metrics_conversions) AS conversions
+        segments_product_brand              AS product_brand,
+        segments_product_channel            AS product_channel,
+        COUNTIF(segments_product_custom_attribute_0 IS NOT NULL
+                AND segments_product_custom_attribute_0 != '') AS rows_with_label_0,
+        COUNTIF(segments_product_custom_attribute_1 IS NOT NULL
+                AND segments_product_custom_attribute_1 != '') AS rows_with_label_1,
+        COUNTIF(segments_product_custom_attribute_2 IS NOT NULL
+                AND segments_product_custom_attribute_2 != '') AS rows_with_label_2,
+        COUNTIF(segments_product_custom_attribute_3 IS NOT NULL
+                AND segments_product_custom_attribute_3 != '') AS rows_with_label_3,
+        COUNTIF(segments_product_custom_attribute_4 IS NOT NULL
+                AND segments_product_custom_attribute_4 != '') AS rows_with_label_4,
+        SUM(metrics_impressions)            AS impressions,
+        SUM(metrics_clicks)                 AS clicks,
+        SUM(metrics_cost_micros)            AS cost_micros,
+        SUM(metrics_conversions)            AS conversions
     FROM {t_shopping}
     WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
     GROUP BY campaign_id, segments_product_brand, segments_product_channel
     """
 
+    # Sample of distinct product titles + custom labels for title quality evaluation.
+    title_sql = f"""
+    SELECT DISTINCT
+        segments_product_title              AS product_title,
+        segments_product_brand              AS product_brand,
+        segments_product_type_l1            AS product_type,
+        NULLIF(segments_product_custom_attribute_0, '') AS custom_label_0,
+        NULLIF(segments_product_custom_attribute_1, '') AS custom_label_1,
+        NULLIF(segments_product_custom_attribute_2, '') AS custom_label_2
+    FROM {t_shopping}
+    WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+      AND segments_product_title IS NOT NULL
+      AND segments_product_title != ''
+    LIMIT 50
+    """
+
+    # Product group count per ad group reveals partition depth (1 = catch-all, >1 = partitioned).
     product_group_sql = f"""
     SELECT
         campaign_id,
         ad_group_id,
-        ad_group_criterion_criterion_id AS product_group_criterion_id,
-        SUM(metrics_impressions)        AS impressions,
-        SUM(metrics_clicks)             AS clicks,
-        SUM(metrics_cost_micros)        AS cost_micros
+        COUNT(DISTINCT ad_group_criterion_criterion_id) AS product_group_count,
+        SUM(metrics_impressions)                        AS impressions,
+        SUM(metrics_clicks)                             AS clicks,
+        SUM(metrics_cost_micros)                        AS cost_micros
     FROM {t_groups}
     WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-    GROUP BY campaign_id, ad_group_id, ad_group_criterion_criterion_id
+    GROUP BY campaign_id, ad_group_id
     """
 
     shopping = run_query(shopping_sql)
     product_groups = run_query(product_group_sql)
+
+    try:
+        titles = run_query(title_sql)
+        logger.warning("feeds_catalogue/titles: %d sample rows", len(titles))
+        titles["_source"] = "product_title_sample"
+    except Exception as exc:
+        logger.warning("feeds_catalogue/titles failed: %s", exc)
+        titles = pd.DataFrame()
 
     logger.warning("feeds_catalogue: %d shopping rows, %d product group rows", len(shopping), len(product_groups))
 
     shopping["_source"] = "shopping_product_stats"
     product_groups["_source"] = "product_group_stats"
 
-    return pd.concat([shopping, product_groups], ignore_index=True)
+    return pd.concat([shopping, product_groups, titles], ignore_index=True)
 
 
 def _creative_content(suffix: str, dataset: str | None = None) -> pd.DataFrame:

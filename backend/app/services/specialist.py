@@ -327,19 +327,65 @@ campaign_conversion_stats rows (_source="campaign_conversion_stats") have: campa
     Warn: cross-device actions exist but show zero conversions (configured but not firing).
 
 FEEDS & CATALOGUE CATEGORY:
+shopping_product_stats rows (_source="shopping_product_stats") have: campaign_id, product_brand,
+  product_channel, rows_with_label_0 through rows_with_label_4 (count of rows where that custom
+  label is non-empty), impressions, clicks, cost_micros, conversions.
+product_title_sample rows (_source="product_title_sample") have: product_title, product_brand,
+  product_type, custom_label_0, custom_label_1, custom_label_2 (up to 50 distinct titles sampled).
+product_group_stats rows (_source="product_group_stats") have: campaign_id, ad_group_id,
+  product_group_count (distinct product groups per ad group), impressions, clicks, cost_micros.
+NOTE: Merchant Center diagnostic health data (approval rates, disapproval counts) is NOT available
+in the Google Ads BQ export — these criteria require manual verification in Merchant Center.
+
 - Product feed completeness:
-    % rows where product_title is null or empty.  >20% missing -> fail;  5-20% -> warn;  <5% -> pass.
+    From _source="shopping_product_stats": if rows exist with impressions > 0, the feed is live.
+    From _source="product_title_sample": check for null or blank product_title values.
+    Pass: shopping stats rows are present AND product_title_sample rows all have non-empty titles.
+    Fail: zero shopping_product_stats rows (no active feed or no Shopping campaigns), OR more than
+      10% of product_title_sample rows have a blank/null product_title.
+    Warn: titles present but product_type column is mostly null (incomplete categorization).
+    NOTE: exact Merchant Center approval rate (>95% threshold) requires manual verification in
+    the Merchant Center Diagnostics dashboard — flag this in the explanation.
+
 - Product title optimisation:
-    Average length of product_title strings.  <20 chars avg -> basic;  20-50 chars -> advanced;
-    >50 chars with apparent brand/category terms -> expert.
+    From _source="product_title_sample": inspect product_title values for quality signals.
+    B2C pass: titles follow [Brand] + [Product Type] + [Attributes] pattern — contain brand name,
+      a descriptive product type, and at least one attribute (size, color, material, model number).
+    B2B pass: titles follow [Solution/Software Type] + [Industry/Use-Case] + [Core Benefit] —
+      contain a descriptive solution category and a specific use-case or benefit phrase.
+    Fail (both models): titles are generic SKU codes (e.g. "SKU-12345", "Product 001"), warehouse
+      identifiers without descriptive terms, or shorter than 20 characters with no brand/attribute.
+    Warn: titles exist but lack vertical-specific attributes — present but under-optimised.
+    If product_title_sample is empty (no Shopping campaigns or B2B account), score as not applicable
+    and explain.
+
 - Feed segmentation:
-    Distinct product_brand or product_channel values.  Single brand/channel only -> basic;
-    multiple brands or channels -> advanced.
+    From _source="shopping_product_stats": sum rows_with_label_0 through rows_with_label_4 across
+    all rows. Total > 0 for any label = custom labels in use.
+    Pass: at least one custom label column (rows_with_label_0 through rows_with_label_4) has a
+      non-zero sum — inventory is segmented by strategic business value.
+    Fail: all five rows_with_label_X sums equal zero — custom labels are entirely blank, preventing
+      any product cluster separation in campaigns.
+    Warn: only one label used (single-dimension segmentation); advanced practice is 2+ labels
+      (e.g., margin tier + performance tier).
+
 - Shopping campaign structure:
-    Distinct campaign_id values in shopping data.  Single catch-all campaign -> basic;
-    campaigns segmented by brand/category/margin -> expert.
+    From _source="product_group_stats": read product_group_count per (campaign_id, ad_group_id).
+    Pass: the majority of ad groups have product_group_count > 1 — inventory is partitioned into
+      granular groups by brand, category, or custom label.
+    Fail: all ad groups have product_group_count = 1 — the entire catalog is in a single
+      "All Products" catch-all bucket with no structural partitioning.
+    Warn: some ad groups are partitioned but others remain as catch-all.
+
 - Dynamic remarketing feed:
-    product_channel = "ONLINE" with active click data -> pass.  No shopping data at all -> fail.
+    This criterion checks whether the dynamic remarketing tag passes matching unique identifiers
+    (e.g., item_id, page_id) back to the feed — this is a tag implementation check that requires
+    manual verification and is NOT visible in the Google Ads BQ export.
+    Score as warn and instruct: "Verify in Google Ads Tag Manager / Google Tag diagnostics that
+    the ecomm_prodid or dynx_itemid parameter matches the feed's item_id column exactly. A mismatch
+    prevents product-level remarketing from serving."
+    If product_channel = "ONLINE" exists in shopping_product_stats with active clicks, note that
+    Shopping is active but tag alignment still requires manual verification.
 
 CREATIVE CONTENT CATEGORY:
 Ad data is pre-aggregated: each row in _source="ad" has (type, status, ad_strength,
