@@ -102,7 +102,30 @@ def _campaign_setup(suffix: str, dataset: str | None = None) -> pd.DataFrame:
         logger.warning("campaign_setup/adschedule failed: %s", exc)
         adschedule = pd.DataFrame()
 
-    return pd.concat([campaigns, hourly, adschedule], ignore_index=True)
+    t_stats = table("p_ads_CampaignBasicStats", suffix, dataset)
+    perf_sql = f"""
+    SELECT
+        campaign_id,
+        campaign_bidding_strategy_type,
+        SUM(metrics_impressions)                                               AS impressions_30d,
+        SUM(CASE WHEN DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+                 THEN metrics_impressions ELSE 0 END)                          AS impressions_7d,
+        SUM(metrics_conversions)                                               AS conversions_30d,
+        SUM(metrics_cost_micros)                                               AS cost_micros_30d
+    FROM {t_stats}
+    WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    GROUP BY campaign_id, campaign_bidding_strategy_type
+    """
+
+    try:
+        perf = run_query(perf_sql)
+        logger.warning("campaign_setup/perf_30d: %d rows", len(perf))
+        perf["_source"] = "campaign_perf_30d"
+    except Exception as exc:
+        logger.warning("campaign_setup/perf_30d failed: %s", exc)
+        perf = pd.DataFrame()
+
+    return pd.concat([campaigns, hourly, adschedule, perf], ignore_index=True)
 
 
 def _audience_targeting(suffix: str, dataset: str | None = None) -> pd.DataFrame:

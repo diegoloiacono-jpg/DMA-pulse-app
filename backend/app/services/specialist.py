@@ -122,33 +122,67 @@ Level definitions:
 === PER-TOPIC EVALUATION CRITERIA ===
 
 CAMPAIGN SETUP CATEGORY:
+campaign rows (_source="campaign") have: campaign_id, campaign_name, status,
+campaign_advertising_channel_type, campaign_bidding_strategy_type, has_recommended_budget, budget_amount_micros.
+campaign_perf_30d rows (_source="campaign_perf_30d") have: campaign_id, campaign_bidding_strategy_type,
+impressions_30d, impressions_7d, conversions_30d, cost_micros_30d (raw micros — divide by 1e6 for USD).
+adschedule_summary row (_source="adschedule_summary") has: campaigns_with_adschedule, total_adschedule_entries.
+Smart bidding types: MAXIMIZE_CONVERSIONS, TARGET_CPA, TARGET_ROAS, MAXIMIZE_CONVERSION_VALUE.
+Manual/basic bidding types: MANUAL_CPC, ENHANCED_CPC, MAXIMIZE_CLICKS, TARGET_SPEND.
+
 - Campaign naming convention:
-    Look for a row where _summary is true; read _naming_convention_compliance_pct.
-    >= 85% -> pass / expert;  60-84% -> warn / advanced;  <60% -> fail / basic.
-    If that field is absent, evaluate qualitatively from campaign_name patterns.
+    Read _naming_convention_compliance_pct from the row where _summary=true.
+    100% -> pass / champion.
+    Any value < 100% -> fail / basic.
+    Also fail if any campaign_name in _source="campaign" rows contains default strings
+    such as "Campaign #", "Ad set #", or is blank.
+    If the _summary row is absent, evaluate qualitatively from raw campaign_name values.
+
 - Campaign status hygiene:
-    Count rows where status = "ENABLED" vs total active campaigns.
-    >= 90% ENABLED -> pass;  70-89% -> warn;  <70% -> fail.
-    Note paused campaigns with no recent activity.
+    Cross-reference _source="campaign" (status) with _source="campaign_perf_30d" (impressions_7d, impressions_30d)
+    by campaign_id.
+    Pass: every campaign where status="ENABLED" has impressions_7d > 0.
+    Fail: any campaign with status="ENABLED" AND impressions_30d = 0 (zero impressions in 30 days).
+    Warn: any campaign with status="ENABLED" AND impressions_7d = 0 but impressions_30d > 0
+          (was active in the period but stalled in the last 7 days).
+    Do not penalise PAUSED or REMOVED campaigns.
+
 - Bidding strategy:
-    MAXIMIZE_CONVERSIONS, TARGET_CPA, TARGET_ROAS, MAXIMIZE_CONVERSION_VALUE = smart bidding.
-    MANUAL_CPC, MANUAL_CPM = basic.
-    >= 80% campaigns using smart bidding -> expert/champion;  50-79% -> advanced;  <50% -> basic.
+    For each row in _source="campaign_perf_30d", read campaign_bidding_strategy_type and conversions_30d.
+    Pass: all campaigns use smart bidding types, OR any manual/basic campaign has conversions_30d < 30
+          (insufficient conversion volume to justify switching — acceptable for niche/B2B).
+    Fail: any campaign uses MANUAL_CPC or ENHANCED_CPC AND conversions_30d >= 30.
+    Warn: any campaign uses MAXIMIZE_CLICKS with conversions_30d >= 30.
+
 - Budget allocation:
-    Check has_recommended_budget. >= 30% of campaigns constrained -> warn;  >= 60% -> fail.
-    Wide disparity (top campaign > 10x median budget) -> warn about concentration risk.
+    Cross-reference _source="campaign" (has_recommended_budget, budget_amount_micros) with
+    _source="campaign_perf_30d" (cost_micros_30d, conversions_30d) by campaign_id.
+    Pass: no campaigns show has_recommended_budget=true, OR any constrained campaign has among the
+          lowest conversions_30d in the account (intentional fixed test budget cap).
+    Fail: one or more campaigns have has_recommended_budget=true AND high conversions_30d (among
+          the top performers), while other campaigns with low conversions_30d have
+          budget_amount_micros >> cost_micros_30d (significant idle budget sitting unused elsewhere).
+    Warn: has_recommended_budget=true on any campaign, without the full cross-condition above.
+
 - Campaign type mix:
-    Healthy mix includes Search, Shopping (if applicable), PMax or Display for retargeting.
-    Single type only -> basic;  2 types -> advanced;  3+ types including PMax or Display -> expert/champion.
+    Read campaign_advertising_channel_type from _source="campaign" rows where status="ENABLED".
+    Pass: 2 or more distinct campaign types are active simultaneously, appropriate to the business
+          objective (e.g. SEARCH + PERFORMANCE_MAX, SEARCH + DISPLAY, or SHOPPING + PERFORMANCE_MAX).
+    Fail: only a single campaign type is active (e.g. SEARCH only) despite the account having
+          multi-channel or e-commerce objectives. Note: single-type is acceptable for pure B2B
+          lead-gen — apply brand context business model before scoring.
+    Warn: multiple types present but one type accounts for >90% of active campaigns.
+
 - Scheduling & dayparting:
-    Check _source="adschedule_summary" first: read campaigns_with_adschedule and total_adschedule_entries.
-    campaigns_with_adschedule = 0 -> no dayparting configured at all -> basic.
-    campaigns_with_adschedule > 0 -> dayparting IS configured; use hourly_stats to assess quality.
-    Then from _source="hourly_stats": analyse cost_micros and conversions by hour and day_of_week.
-    If adschedule configured AND conversions concentrated in specific hours (top 3 hours > 60%)
-    AND cost distribution varies by hour to match those peaks -> expert (active, well-tuned dayparting).
-    If adschedule configured but cost is uniform across all hours -> warn (schedule exists but may not be optimised).
-    If no hourly_stats rows present -> basic regardless of adschedule.
+    Read _source="adschedule_summary": campaigns_with_adschedule, total_adschedule_entries.
+    Read majority bidding strategy type from _source="campaign_perf_30d".
+    Pass: smart-bidding campaigns run on default 24/7 schedules (campaigns_with_adschedule = 0),
+          OR any schedule entries are strict time exclusions (B2B overnight/weekend blocks) rather
+          than bid modifier adjustments.
+    Fail: manual bid modifier percentages (positive or negative %) are applied on top of
+          smart-bidding campaigns — infer when campaigns_with_adschedule > 0 AND the majority of
+          campaigns use smart bidding types. This throttles the algorithm's real-time auction signals.
+    Warn: ad schedules are configured but the bidding strategy mix is unclear or partially manual.
 
 AUDIENCE TARGETING CATEGORY:
 campaign_criterion data is pre-aggregated: each row in _source="campaign_criterion" has
