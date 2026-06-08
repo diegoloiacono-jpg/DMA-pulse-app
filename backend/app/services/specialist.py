@@ -257,24 +257,74 @@ the exported data — flag these topics for manual verification where noted.
     negative=true entries specifically — absence means existing customers are being retargeted wastefully.
 
 CONVERSION KPI CATEGORY:
+conversion_actions rows (_source="conversion_actions") have: id, name, status (ENABLED/HIDDEN),
+  type, category, primary_for_goal (bool), counting_type, attribution_model, include_in_conversions.
+  attribution_model values: DATA_DRIVEN, LAST_CLICK, FIRST_CLICK, LINEAR, TIME_DECAY, POSITION_BASED.
+  category values: PURCHASE, LEAD, SIGN_UP, PAGE_VIEW, DOWNLOAD, PHONE_CALL, IMPORTED, OTHER.
+campaign_targets rows (_source="campaign_targets") have: campaign_id, bidding_strategy, target_roas,
+  target_cpa_micros, actual_roas_30d, actual_cpa_30d, conversions_30d.
+campaign_basic_stats rows (_source="campaign_basic_stats") have: campaign_id, date, impressions,
+  clicks, cost_micros, conversions, conversions_value, roas, cpa.
+campaign_conversion_stats rows (_source="campaign_conversion_stats") have: campaign_id,
+  conversion_name, conversion_category, conversions, conversions_value.
+
 - Conversion tracking setup:
-    Any rows from campaign_conversion_stats with conversions > 0 -> tracking active.
-    Zero conversions across all campaigns and dates -> fail (tracking likely broken or absent).
+    From _source="conversion_actions": check status and include_in_conversions for ENABLED actions.
+    Pass: at least one conversion action has status="ENABLED" AND include_in_conversions=true AND
+      _source="campaign_conversion_stats" has rows with conversions > 0 in the last 30 days.
+    Fail: all ENABLED conversion actions show zero conversions across all dates in
+      campaign_conversion_stats despite active spend in campaign_basic_stats (tracking broken),
+      OR no ENABLED conversion actions exist at all.
+    Warn: conversion actions exist but conversions = 0 for only a short recent window (< 7 days) —
+      may be a temporary tag issue.
+    NOTE: tag firing within the last 24 hours cannot be verified from daily BQ exports — flag for
+    manual validation in Google Ads conversion tag diagnostics.
+
 - Conversion categories:
-    Count distinct conversion_category values.  Single category (e.g. PURCHASE only) -> warn.
-    Multiple meaningful categories (PURCHASE + LEAD + SIGNUP) -> pass.
+    From _source="conversion_actions": read the category field for ENABLED actions.
+    Pass: conversion actions are assigned to meaningful bottom-of-funnel categories (PURCHASE, LEAD,
+      SIGN_UP, PHONE_CALL) appropriate to the brand's business model.
+    Fail: all ENABLED conversion actions are set to PAGE_VIEW, DOWNLOAD, or OTHER, while the account
+      clearly has transactional or lead-gen objectives — soft engagement events are being treated as
+      primary KPIs.
+    Warn: mix of high-value and low-value categories but the primary goal (primary_for_goal=true)
+      is assigned to a soft category.
+
 - Primary vs secondary conversions:
-    If conversion_name contains micro/engagement terms alongside hard conversions -> expert.
-    Only one conversion action present -> basic.
+    From _source="conversion_actions": read primary_for_goal for each ENABLED action.
+    Pass: only bottom-of-funnel actions (PURCHASE, LEAD, SIGN_UP, PHONE_CALL) have primary_for_goal=true;
+      soft actions (PAGE_VIEW, DOWNLOAD, engagement) have primary_for_goal=false (Secondary).
+    Fail: any action with category PAGE_VIEW, DOWNLOAD, or OTHER has primary_for_goal=true — algorithms
+      are optimizing for low-value actions.
+    Warn: multiple high-value action types all set as Primary (may dilute optimization signal).
+
 - ROAS / CPA targets:
-    Campaigns with target_cpa_micros > 0 or target_roas > 0 -> targets are set.
-    No targets across any campaign -> fail;  partial coverage -> warn;  all smart-bidding
-    campaigns have targets -> pass.
+    From _source="campaign_targets": compare target_roas and target_cpa_micros against
+    actual_roas_30d and actual_cpa_30d for smart-bidding campaigns.
+    Pass: every smart-bidding campaign has a target set, AND the target is within ±20% of
+      actual_roas_30d or actual_cpa_30d (realistic, achievable target).
+    Fail: any smart-bidding campaign has a target set to an extreme value — target_roas more than
+      2× actual_roas_30d, OR target_cpa_micros less than 50% of actual_cpa_30d — causing delivery
+      to stall. Also fail if no targets are set at all on smart-bidding campaigns.
+    Warn: targets are set but outside the ±20% variance band, suggesting they may need recalibration.
+
 - Attribution model:
-    If structural_audit rows include attribution data, check for data-driven.
-    Last-click only -> basic;  linear/time-decay -> advanced;  data-driven -> expert/champion.
+    From _source="conversion_actions": read attribution_model for actions where primary_for_goal=true.
+    Pass: 100% of primary conversion actions use DATA_DRIVEN attribution (or for B2B accounts,
+      compliant offline CRM import models).
+    Fail: any primary conversion action uses LAST_CLICK attribution — fails to credit multi-touch
+      journeys and under-weights upper-funnel activity.
+    Warn: mix of attribution models across primary actions, or TIME_DECAY/LINEAR used instead of
+      DATA_DRIVEN.
+
 - Cross-device conversions:
-    Presence of cross-device conversion data -> advanced/expert.
+    From _source="conversion_actions": check if any action has type indicating cross-device
+    capability (STORE_VISIT, WEBPAGE with include_in_conversions=true across device types).
+    From _source="campaign_conversion_stats": if conversion_category includes STORE_VISIT or
+    cross-device action names, tracking is active.
+    Pass: cross-device or store-visit conversion actions are ENABLED and recording conversions.
+    Fail: no cross-device tracking configured — account is blind to cross-device user paths.
+    Warn: cross-device actions exist but show zero conversions (configured but not firing).
 
 FEEDS & CATALOGUE CATEGORY:
 - Product feed completeness:

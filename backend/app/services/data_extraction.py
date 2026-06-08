@@ -243,15 +243,75 @@ def _conversion_kpi(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
     """
 
+    t_conv_action = table("p_ads_ConversionAction", suffix, dataset)
+    conv_action_sql = f"""
+    SELECT
+        conversion_action_id                                                       AS id,
+        conversion_action_name                                                     AS name,
+        conversion_action_status                                                   AS status,
+        conversion_action_type                                                     AS type,
+        conversion_action_category                                                 AS category,
+        conversion_action_primary_for_goal                                         AS primary_for_goal,
+        conversion_action_counting_type                                            AS counting_type,
+        conversion_action_attribution_model_settings_attribution_model             AS attribution_model,
+        conversion_action_include_in_conversions_metric                            AS include_in_conversions
+    FROM {t_conv_action}
+    WHERE conversion_action_status != 'REMOVED'
+      AND {_max_partition(t_conv_action)}
+    """
+
+    t_campaign = table("p_ads_Campaign", suffix, dataset)
+    targets_sql = f"""
+    SELECT
+        c.campaign_id,
+        c.campaign_bidding_strategy_type                              AS bidding_strategy,
+        c.campaign_maximize_conversion_value_target_roas              AS target_roas,
+        c.campaign_target_cpa_cpa_micros                              AS target_cpa_micros,
+        ROUND(SAFE_DIVIDE(
+            SUM(s.metrics_conversions_value),
+            SAFE_DIVIDE(SUM(s.metrics_cost_micros), 1e6)
+        ), 2)                                                         AS actual_roas_30d,
+        ROUND(SAFE_DIVIDE(
+            SAFE_DIVIDE(SUM(s.metrics_cost_micros), 1e6),
+            NULLIF(SUM(s.metrics_conversions), 0)
+        ), 2)                                                         AS actual_cpa_30d,
+        SUM(s.metrics_conversions)                                    AS conversions_30d
+    FROM {t_campaign} c
+    LEFT JOIN {t_stats} s
+           ON c.campaign_id = s.campaign_id
+          AND DATE(s._PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    WHERE c.campaign_status = 'ENABLED'
+      AND {_max_partition(t_campaign)}
+    GROUP BY c.campaign_id, c.campaign_bidding_strategy_type,
+             c.campaign_maximize_conversion_value_target_roas,
+             c.campaign_target_cpa_cpa_micros
+    """
+
     stats = run_query(stats_sql)
     convs = run_query(conv_sql)
+
+    try:
+        conv_actions = run_query(conv_action_sql)
+        logger.warning("conversion_kpi/conv_actions: %d rows", len(conv_actions))
+        conv_actions["_source"] = "conversion_actions"
+    except Exception as exc:
+        logger.warning("conversion_kpi/conv_actions failed: %s", exc)
+        conv_actions = pd.DataFrame()
+
+    try:
+        targets = run_query(targets_sql)
+        logger.warning("conversion_kpi/targets: %d rows", len(targets))
+        targets["_source"] = "campaign_targets"
+    except Exception as exc:
+        logger.warning("conversion_kpi/targets failed: %s", exc)
+        targets = pd.DataFrame()
 
     logger.warning("conversion_kpi: %d stats rows, %d conversion rows", len(stats), len(convs))
 
     stats["_source"] = "campaign_basic_stats"
     convs["_source"] = "campaign_conversion_stats"
 
-    return pd.concat([stats, convs], ignore_index=True)
+    return pd.concat([stats, convs, conv_actions, targets], ignore_index=True)
 
 
 def _feeds_catalogue(suffix: str, dataset: str | None = None) -> pd.DataFrame:
