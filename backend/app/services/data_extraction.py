@@ -501,18 +501,46 @@ def _pmax_performance(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     t_ad = table("p_ads_Ad", suffix, dataset)
     t_audience = table("p_ads_CampaignAudience", suffix, dataset)
 
+    t_criteria = table("p_ads_CampaignCriterion", suffix, dataset)
+    t_campaign_shared_set = table("p_ads_CampaignSharedSet", suffix, dataset)
+
     # Aggregate PMax campaigns by status so Gemini sees total counts, not a 12-row sample.
     pmax_sql = f"""
     SELECT
-        campaign_status                                   AS status,
+        campaign_status                                                AS status,
         campaign_bidding_strategy_type,
-        COUNT(*)                                          AS campaign_count,
-        COUNTIF(campaign_maximize_conversion_value_target_roas > 0) AS with_target_roas
+        COUNT(*)                                                       AS campaign_count,
+        COUNTIF(campaign_maximize_conversion_value_target_roas > 0)   AS with_target_roas,
+        COUNTIF(campaign_target_cpa_cpa_micros > 0)                   AS with_target_cpa
     FROM {t_campaign}
     WHERE campaign_advertising_channel_type = 'PERFORMANCE_MAX'
       AND {_max_partition(t_campaign)}
     GROUP BY 1, 2
     ORDER BY campaign_count DESC
+    """
+
+    # Brand exclusion check: PMax campaigns with shared negative lists or campaign-level negatives.
+    brand_exclusion_sql = f"""
+    SELECT
+        COUNT(DISTINCT c.campaign_id)   AS total_enabled_pmax,
+        COUNT(DISTINCT css.campaign_id) AS pmax_with_shared_neg_lists,
+        COUNT(DISTINCT nc.campaign_id)  AS pmax_with_campaign_negatives,
+        TRUE                            AS _summary
+    FROM (
+        SELECT campaign_id
+        FROM {t_campaign}
+        WHERE campaign_advertising_channel_type = 'PERFORMANCE_MAX'
+          AND campaign_status = 'ENABLED'
+          AND {_max_partition(t_campaign)}
+    ) c
+    LEFT JOIN {t_campaign_shared_set} css
+           ON c.campaign_id = css.campaign_id
+    LEFT JOIN (
+        SELECT DISTINCT campaign_id
+        FROM {t_criteria}
+        WHERE campaign_criterion_negative = TRUE
+          AND {_max_partition(t_criteria)}
+    ) nc ON c.campaign_id = nc.campaign_id
     """
 
     all_campaigns_sql = f"""
@@ -591,12 +619,24 @@ def _pmax_performance(suffix: str, dataset: str | None = None) -> pd.DataFrame:
             logger.warning("pmax_performance/audiences failed both queries: %s", exc)
             audiences = pd.DataFrame()
 
+    try:
+        brand_exclusions = run_query(brand_exclusion_sql)
+        logger.warning(
+            "pmax_performance/brand_exclusions: %d/%d pmax have shared neg lists",
+            brand_exclusions["pmax_with_shared_neg_lists"].iloc[0] if not brand_exclusions.empty else 0,
+            brand_exclusions["total_enabled_pmax"].iloc[0] if not brand_exclusions.empty else 0,
+        )
+        brand_exclusions["_source"] = "pmax_brand_exclusions"
+    except Exception as exc:
+        logger.warning("pmax_performance/brand_exclusions failed: %s", exc)
+        brand_exclusions = pd.DataFrame()
+
     logger.warning(
         "pmax_performance: %d pmax status rows, %d with audience signals",
         len(pmax), len(audiences),
     )
 
-    return pd.concat([pmax, all_campaigns, assets, audiences], ignore_index=True)
+    return pd.concat([pmax, all_campaigns, assets, audiences, brand_exclusions], ignore_index=True)
 
 
 def _keyword_strategy(suffix: str, dataset: str | None = None) -> pd.DataFrame:

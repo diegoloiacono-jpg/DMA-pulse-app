@@ -542,43 +542,68 @@ shared_neg_summary row (_source="shared_neg_summary", _summary=true) has:
     Warn: DSA groups exist but are paused (check ad_group_type vs campaign status context).
 
 PMAX PERFORMANCE CATEGORY:
-all_campaigns data is pre-aggregated: each row in _source="all_campaigns" has
-(campaign_advertising_channel_type, status, campaign_count).
-pmax_campaign rows are individual PMax campaigns (one row each).
+pmax_campaign rows (_source="pmax_campaign") are aggregated by (status, bidding_strategy_type)
+  with campaign_count, with_target_roas, with_target_cpa. One row per status+strategy combination.
+all_campaigns rows (_source="all_campaigns") have: campaign_advertising_channel_type, status,
+  campaign_count. One row per type+status combination.
+pmax_asset rows (_source="pmax_asset") have: type, ad_strength, status, asset_count.
+pmax_audience_signals rows (_source="pmax_audience_signals") have: campaign_id,
+  audience_signal_count (and optionally asset_groups_with_signals).
+pmax_brand_exclusions row (_source="pmax_brand_exclusions", _summary=true) has:
+  total_enabled_pmax, pmax_with_shared_neg_lists, pmax_with_campaign_negatives.
 
 - PMax campaign adoption:
-    From _source="pmax_campaign": each row is a (status, bidding_strategy_type) group with campaign_count.
-    Sum campaign_count where status="ENABLED" -> total enabled PMax campaigns.
-    Sum campaign_count where status="PAUSED" -> paused PMax campaigns.
-    Zero total -> basic (not adopted).
-    1-10 enabled PMax -> advanced;  10+ enabled PMax -> expert.
-    From _source="all_campaigns": sum campaign_count where status="ENABLED" for total active campaigns.
-    Enabled PMax / total ENABLED >= 30% -> champion.
+    From _source="pmax_campaign": sum campaign_count where status="ENABLED".
+    Pass: at least one enabled PMax campaign exists — multi-channel conversion infrastructure
+      is deployed and running.
+    Fail: total enabled PMax campaign_count = 0 — no PMax active despite the account having
+      multi-channel retail or lead-generation objectives.
+    Apply brand context: if hasProductFeed=false, score as not applicable for retail PMax;
+    if B2B account with no e-commerce goals, absence of PMax is less severe (score as warn).
+
 - Asset group strength:
-    From _source="pmax_asset": each row has (type, ad_strength, status, asset_count).
-    All EXCELLENT or GOOD -> champion;  mix with AVERAGE -> advanced;  any POOR -> warn.
-    No pmax_asset rows -> note as not applicable if no PMax campaigns.
+    From _source="pmax_asset": compute across all rows with status="ENABLED":
+      good_excellent = SUM(asset_count where ad_strength IN ('GOOD', 'EXCELLENT'))
+      poor_average   = SUM(asset_count where ad_strength IN ('POOR', 'AVERAGE'))
+    Pass: poor_average = 0 — 100% of active PMax asset groups are rated Good or Excellent.
+    Fail: poor_average > 0 — one or more active asset groups sit at Poor or Average due to
+      incomplete asset uploads (missing images, short headlines, no video).
+    Warn: poor_average represents < 10% of total (minor gap, not systemic).
+    No pmax_asset rows → note as not applicable if no PMax campaigns.
+
 - Audience signal quality:
-    From _source="pmax_audience_signals": rows show audience_signal_count (and optionally
-    asset_groups_with_signals) per campaign_id.
-    If pmax_audience_signals rows are present:
-      Campaigns with audience_signal_count = 0 -> fail for those campaigns.
-      All campaigns with audience_signal_count >= 1 -> advanced.
-      Majority with audience_signal_count >= 3 -> expert/champion.
-    If no pmax_audience_signals rows at all (data unavailable from this dataset):
-      -> warn/basic, note that audience signal data could not be retrieved and manual
-         verification is recommended. Do NOT hard-fail solely on missing data.
-    If hasCrmData=false, do not penalise absence of customer match signals.
+    From _source="pmax_audience_signals": check audience_signal_count per campaign_id.
+    Pass: every campaign_id has audience_signal_count >= 1 — every asset group has at least
+      one audience signal guiding algorithmic expansion.
+    Fail: any campaign_id has audience_signal_count = 0 — asset groups launched with zero
+      audience signals, forcing completely unguided algorithmic search.
+    If no pmax_audience_signals rows at all: score as warn/basic and note data unavailable —
+      manual verification required in Google Ads > Asset Groups > Audience Signals.
+    NOTE: signal type quality (first-party customer match vs. interest-based) is not
+    distinguishable from this data — flag for manual review of signal composition.
+    If hasCrmData=false: do not penalise absence of customer match signals specifically.
+
 - Smart bidding configuration:
-    From _source="pmax_campaign": check target_roas field.
-    PMax campaigns with target_roas = 0 or null -> warn (VBB not configured).
-    All PMax campaigns with target_roas set -> expert/champion.
+    From _source="pmax_campaign": for rows where status="ENABLED", check with_target_roas
+    and with_target_cpa.
+    Pass: all enabled PMax campaign rows have with_target_roas > 0 OR with_target_cpa > 0 —
+      every PMax campaign is tied to a specific value-driven target constraint.
+    Fail: any enabled PMax campaign row has with_target_roas = 0 AND with_target_cpa = 0 —
+      campaigns running without target parameters, leading to volatile unconstrained pacing.
+    Warn: some PMax campaigns have targets set but others do not (partial coverage).
+
 - PMax vs standard campaign balance:
-    From _source="all_campaigns": sum campaign_count by campaign_advertising_channel_type.
-    From _source="pmax_campaign": count PMax.
-    Account with Search campaigns present AND PMax present -> expert (healthy mix).
-    PMax only, no Search -> warn (loss of keyword control).
-    No PMax at all -> basic.
+    From _source="pmax_brand_exclusions": read pmax_with_shared_neg_lists,
+    pmax_with_campaign_negatives, total_enabled_pmax.
+    Pass: pmax_with_shared_neg_lists = total_enabled_pmax OR pmax_with_campaign_negatives =
+      total_enabled_pmax — every enabled PMax campaign has brand exclusions protecting standard
+      exact match search campaigns from cannibalization.
+    Fail: pmax_with_shared_neg_lists = 0 AND pmax_with_campaign_negatives = 0 — no brand
+      exclusions of any kind on PMax campaigns; brand search traffic is being cannibalized.
+    Warn: partial coverage (some PMax campaigns have exclusions, others do not).
+    If pmax_brand_exclusions is empty (data unavailable): score as warn and flag for manual
+    verification: "Check each PMax campaign for attached Brand Exclusion Lists or shared
+    negative keyword lists in Campaign Settings."
 
 === CALIBRATION BY BRAND CONTEXT ===
 
