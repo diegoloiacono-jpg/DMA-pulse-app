@@ -643,9 +643,120 @@ def _keyword_strategy(suffix: str, dataset: str | None = None) -> pd.DataFrame:
       AND {_max_partition(t_adgroup)}
     """
 
+    t_kw_stats = table("p_ads_KeywordBasicStats", suffix, dataset)
+    t_shared_set = table("p_ads_SharedSet", suffix, dataset)
+
+    # Impression-weighted average quality score — more accurate than simple avg_quality_score.
+    impression_qs_sql = f"""
+    SELECT
+        ROUND(
+            SAFE_DIVIDE(
+                SUM(CAST(kw.ad_group_criterion_quality_info_quality_score AS FLOAT64)
+                    * s.impressions_30d),
+                SUM(s.impressions_30d)
+            ), 1
+        )                                AS impression_weighted_avg_qs,
+        COUNTIF(kw.ad_group_criterion_quality_info_quality_score >= 7) AS keywords_qs_7plus,
+        COUNTIF(kw.ad_group_criterion_quality_info_quality_score <= 4) AS keywords_qs_4minus,
+        COUNT(*)                         AS total_keywords_with_qs,
+        TRUE                             AS _summary
+    FROM {t_keyword} kw
+    INNER JOIN (
+        SELECT
+            ad_group_criterion_criterion_id,
+            SUM(metrics_impressions) AS impressions_30d
+        FROM {t_kw_stats}
+        WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+        GROUP BY 1
+    ) s ON kw.ad_group_criterion_criterion_id = s.ad_group_criterion_criterion_id
+    WHERE kw.ad_group_criterion_status = 'ENABLED'
+      AND kw.ad_group_criterion_negative = FALSE
+      AND NULLIF(kw.ad_group_criterion_quality_info_quality_score, 0) IS NOT NULL
+      AND {_max_partition(t_keyword)}
+    """
+
+    # System serving status breakdown — detects LOW_SEARCH_VOLUME, BELOW_FIRST_PAGE_BID, etc.
+    serving_status_sql = f"""
+    SELECT
+        ad_group_criterion_system_serving_status AS system_serving_status,
+        COUNT(*)                                 AS keyword_count
+    FROM {t_keyword}
+    WHERE ad_group_criterion_status = 'ENABLED'
+      AND ad_group_criterion_negative = FALSE
+      AND {_max_partition(t_keyword)}
+    GROUP BY ad_group_criterion_system_serving_status
+    ORDER BY keyword_count DESC
+    """
+
+    # Per-ad-group keyword count — detects bloated (50+) vs tight (≤15) ad groups.
+    adgroup_structure_sql = f"""
+    SELECT
+        COUNT(*)                             AS total_ad_groups,
+        COUNTIF(kw_count > 50)               AS ad_groups_50plus_kw,
+        COUNTIF(kw_count BETWEEN 16 AND 50)  AS ad_groups_16_to_50_kw,
+        COUNTIF(kw_count <= 15)              AS ad_groups_15minus_kw,
+        ROUND(AVG(kw_count), 1)              AS avg_kw_per_adgroup,
+        MAX(kw_count)                        AS max_kw_per_adgroup,
+        TRUE                                 AS _summary
+    FROM (
+        SELECT ad_group_id, COUNT(*) AS kw_count
+        FROM {t_keyword}
+        WHERE ad_group_criterion_status = 'ENABLED'
+          AND ad_group_criterion_negative = FALSE
+          AND {_max_partition(t_keyword)}
+        GROUP BY ad_group_id
+    )
+    """
+
+    # Shared negative keyword lists attached to the account.
+    shared_neg_sql = f"""
+    SELECT
+        COUNT(*) AS shared_negative_list_count,
+        TRUE     AS _summary
+    FROM {t_shared_set}
+    WHERE shared_set_type = 'NEGATIVE_KEYWORDS'
+      AND shared_set_status = 'ENABLED'
+      AND {_max_partition(t_shared_set)}
+    """
+
     keywords = run_query(keyword_sql)
     campaign_negs = run_query(campaign_neg_sql)
     dsa_groups = run_query(dsa_sql)
+
+    try:
+        impression_qs = run_query(impression_qs_sql)
+        logger.warning("keyword_strategy/impression_qs: weighted_avg_qs=%s",
+                       impression_qs["impression_weighted_avg_qs"].iloc[0] if not impression_qs.empty else "n/a")
+        impression_qs["_source"] = "impression_weighted_qs"
+    except Exception as exc:
+        logger.warning("keyword_strategy/impression_qs failed: %s", exc)
+        impression_qs = pd.DataFrame()
+
+    try:
+        serving_status = run_query(serving_status_sql)
+        logger.warning("keyword_strategy/serving_status: %d status types", len(serving_status))
+        serving_status["_source"] = "keyword_serving_status"
+    except Exception as exc:
+        logger.warning("keyword_strategy/serving_status failed: %s", exc)
+        serving_status = pd.DataFrame()
+
+    try:
+        adgroup_structure = run_query(adgroup_structure_sql)
+        logger.warning("keyword_strategy/adgroup_structure: %d total ad groups",
+                       adgroup_structure["total_ad_groups"].iloc[0] if not adgroup_structure.empty else 0)
+        adgroup_structure["_source"] = "adgroup_kw_structure"
+    except Exception as exc:
+        logger.warning("keyword_strategy/adgroup_structure failed: %s", exc)
+        adgroup_structure = pd.DataFrame()
+
+    try:
+        shared_negs = run_query(shared_neg_sql)
+        logger.warning("keyword_strategy/shared_negs: %d shared lists",
+                       shared_negs["shared_negative_list_count"].iloc[0] if not shared_negs.empty else 0)
+        shared_negs["_source"] = "shared_neg_summary"
+    except Exception as exc:
+        logger.warning("keyword_strategy/shared_negs failed: %s", exc)
+        shared_negs = pd.DataFrame()
 
     logger.warning(
         "keyword_strategy: %d keyword aggregate rows, %d campaign neg rows, %d DSA groups",
@@ -656,7 +767,10 @@ def _keyword_strategy(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     campaign_negs["_source"] = "campaign_negatives_summary"
     dsa_groups["_source"] = "dsa_ad_groups"
 
-    return pd.concat([keywords, campaign_negs, dsa_groups], ignore_index=True)
+    return pd.concat([
+        keywords, campaign_negs, dsa_groups,
+        impression_qs, serving_status, adgroup_structure, shared_negs,
+    ], ignore_index=True)
 
 
 def extract_audit_data(suffix: str, dataset: str | None = None) -> dict[str, pd.DataFrame]:

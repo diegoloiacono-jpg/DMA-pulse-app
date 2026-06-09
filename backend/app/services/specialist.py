@@ -458,39 +458,88 @@ requires qualitative inference from ad_group_name patterns.
     keyword intent of each ad group appears in the first 3 headline slots of its RSA."
 
 KEYWORD STRATEGY CATEGORY:
-Data is pre-aggregated: each row in _source="keyword" represents a combination of
-(is_negative, match_type, status, bidding_strategy_type) with keyword_count, avg_quality_score,
-and disapproved_count. Use these aggregated counts for all evaluations.
+keyword rows (_source="keyword") are aggregated by (is_negative, match_type, status,
+  bidding_strategy_type) with keyword_count, avg_quality_score, disapproved_count.
+  Smart bidding types: MAXIMIZE_CONVERSIONS, TARGET_CPA, TARGET_ROAS, MAXIMIZE_CONVERSION_VALUE.
+  Manual types: MANUAL_CPC, ENHANCED_CPC.
+campaign_negatives_summary row (_source="campaign_negatives_summary", _summary=true) has:
+  campaigns_with_negatives, total_campaign_negative_keywords.
+dsa_ad_groups rows (_source="dsa_ad_groups") have: campaign_id, ad_group_id, ad_group_type.
+impression_weighted_qs row (_source="impression_weighted_qs", _summary=true) has:
+  impression_weighted_avg_qs, keywords_qs_7plus, keywords_qs_4minus, total_keywords_with_qs.
+keyword_serving_status rows (_source="keyword_serving_status") have: system_serving_status,
+  keyword_count. Values include: ELIGIBLE, RARELY_SERVED, BELOW_FIRST_PAGE_BID,
+  LOW_SEARCH_VOLUME, PAUSED, REMOVED.
+adgroup_kw_structure row (_source="adgroup_kw_structure", _summary=true) has:
+  total_ad_groups, ad_groups_50plus_kw, ad_groups_16_to_50_kw, ad_groups_15minus_kw,
+  avg_kw_per_adgroup, max_kw_per_adgroup.
+shared_neg_summary row (_source="shared_neg_summary", _summary=true) has:
+  shared_negative_list_count.
 
 - Keyword match type distribution:
-    Sum keyword_count where is_negative=false across match_type values (BROAD, PHRASE, EXACT).
-    EXACT only (no PHRASE or BROAD) -> basic.  EXACT + PHRASE -> advanced.
-    BROAD present alongside smart bidding (bidding_strategy_type in MAXIMIZE_CONVERSIONS/
-    TARGET_CPA/TARGET_ROAS/MAXIMIZE_CONVERSION_VALUE) -> expert/champion.
-    BROAD with MANUAL_CPC only -> warn (risky without smart bidding signals).
+    From _source="keyword": filter is_negative=false, group by match_type and bidding_strategy_type.
+    Pass: BROAD match keywords exist AND all campaigns running BROAD use smart bidding types —
+      broad is only deployed where machine learning signals guide it.
+    Fail: any BROAD match keywords exist alongside MANUAL_CPC or ENHANCED_CPC bidding —
+      uncapped broad match running in legacy manual bidding, diluting budget.
+    Warn: BROAD present with a mix of smart and manual bidding campaigns.
+    If no BROAD keywords exist: EXACT + PHRASE only — acceptable, not a failure.
+
 - Negative keyword coverage:
-    Ad-group level negatives: sum keyword_count where is_negative=true from _source="keyword".
-    Campaign-level: from _source="campaign_negatives_summary"; read total_campaign_negative_keywords.
-    Total zero -> fail/basic.  <1000 total -> warn/basic;  1000–10000 -> advanced;
-    >10000 across both levels -> expert/champion.
+    From _source="shared_neg_summary": read shared_negative_list_count.
+    From _source="campaign_negatives_summary": read total_campaign_negative_keywords.
+    From _source="keyword": sum keyword_count where is_negative=true (ad-group level negatives).
+    Pass: shared_negative_list_count >= 1 (shared list attached) AND
+      total_campaign_negative_keywords > 0 (campaign-level negatives exist).
+    Fail: shared_negative_list_count = 0 AND total_campaign_negative_keywords = 0 AND
+      ad-group level negative keyword_count = 0 — no exclusions of any kind active.
+    Warn: negatives exist at campaign or ad-group level but shared_negative_list_count = 0
+      (no account-level shared list, increasing maintenance risk).
+    NOTE: recency of search term exclusions (14-day check) is not available in BQ exports —
+    flag for manual verification in Search Terms report.
+
 - Keyword quality scores:
-    From _source="keyword" where is_negative=false and status="ENABLED":
-    read avg_quality_score (already averaged; ignore nulls).
-    avg < 5 -> fail/basic;  5–6 -> warn/advanced;  7–8 -> pass/expert;  >= 9 -> champion.
-    If all avg_quality_score values are null -> warn (QS unavailable, likely smart bidding).
+    Primary: from _source="impression_weighted_qs": read impression_weighted_avg_qs.
+    Pass: impression_weighted_avg_qs >= 7.0 — impression-weighted average QS meets threshold.
+    Fail: impression_weighted_avg_qs < 5.0 — poor ad relevance or broken landing pages.
+    Warn: impression_weighted_avg_qs between 5.0 and 6.9.
+    Fallback (if impression_weighted_qs empty): from _source="keyword" where is_negative=false
+    and status="ENABLED", compute weighted avg from avg_quality_score × keyword_count;
+    apply same ≥7 / <5 thresholds.
+    If all quality scores are null: score as warn — QS likely unavailable for smart bidding
+    campaigns; note manual verification required.
+
 - Keyword status hygiene:
-    Sum keyword_count where is_negative=false by status (ENABLED vs PAUSED/REMOVED).
-    > 50% PAUSED or REMOVED -> warn;  zero ENABLED keywords -> fail.
-    Sum disapproved_count across all rows: any > 0 -> warn regardless of count.
+    From _source="keyword_serving_status": check for problematic system_serving_status values.
+    Pass: all keyword_count is in status ELIGIBLE — zero systemic delivery blocks.
+    Fail: keyword_serving_status rows exist for BELOW_FIRST_PAGE_BID or LOW_SEARCH_VOLUME
+      with significant keyword_count (> 10% of total ENABLED positive keywords) — campaigns
+      clogged with keywords that cannot serve competitively.
+    Warn: small proportion (< 10%) with BELOW_FIRST_PAGE_BID or LOW_SEARCH_VOLUME.
+    Also from _source="keyword": sum disapproved_count; any > 0 → add to warn.
+    If keyword_serving_status is empty (column unavailable): fall back to disapproved_count
+    check only and note that system status requires manual verification.
+
 - Ad group keyword structure:
-    Use total keyword_count where is_negative=false and status="ENABLED" divided by number of
-    ad groups (not available directly — estimate from dsa_ad_groups count and campaign scale).
-    If the account has large keyword_count across few match types -> likely large ad groups -> basic.
-    High EXACT count relative to ad group count suggests tightly themed groups -> expert/champion.
+    From _source="adgroup_kw_structure": read ad_groups_50plus_kw, ad_groups_15minus_kw,
+    avg_kw_per_adgroup, total_ad_groups.
+    Pass: ad_groups_15minus_kw / total_ad_groups >= 80% — majority of ad groups are tight
+      with ≤15 closely related keywords per group.
+    Fail: ad_groups_50plus_kw / total_ad_groups > 20%, OR max_kw_per_adgroup > 50 with
+      avg_kw_per_adgroup > 30 — significant share of ad groups are bloated keyword dumps
+      that fracture ad copy relevance.
+    Warn: avg_kw_per_adgroup between 15 and 30 — moderate oversizing, not critical.
+    If adgroup_kw_structure is empty: fall back to dividing total positive ENABLED keyword_count
+    from _source="keyword" by dsa_ad_groups count as a rough estimate.
+
 - DSA / dynamic ad groups:
-    Rows where _source="dsa_ad_groups".
-    Zero DSA groups -> basic.  1+ DSA groups -> advanced.
-    Multiple DSA groups (segmented by category/page feed) -> expert/champion.
+    From _source="dsa_ad_groups": count rows.
+    Pass: dsa_ad_groups rows exist (DSA ad groups active) OR from _source="all_campaigns" in
+      pmax_performance data there are enabled PMax campaigns — at least one automated
+      long-tail expansion mechanism is active.
+    Fail: zero dsa_ad_groups rows AND no PMax campaigns evident from keyword data — account
+      relies entirely on static manually entered keyword lists with zero automated expansion.
+    Warn: DSA groups exist but are paused (check ad_group_type vs campaign status context).
 
 PMAX PERFORMANCE CATEGORY:
 all_campaigns data is pre-aggregated: each row in _source="all_campaigns" has
