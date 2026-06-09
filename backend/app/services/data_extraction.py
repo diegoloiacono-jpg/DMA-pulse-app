@@ -422,15 +422,78 @@ def _creative_content(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     ORDER BY ad_count DESC
     """
 
+    # Per-ad-group RSA presence, strength, and policy status.
+    rsa_per_adgroup_sql = f"""
+    SELECT
+        ad_group_id,
+        campaign_id,
+        COUNTIF(ad_group_ad_ad_type = 'RESPONSIVE_SEARCH_AD'
+                AND ad_group_ad_status = 'ENABLED')                    AS enabled_rsa_count,
+        COUNTIF(ad_group_ad_status = 'ENABLED')                        AS total_enabled_ads,
+        COUNTIF(ad_group_ad_ad_type = 'RESPONSIVE_SEARCH_AD'
+                AND ad_group_ad_ad_strength IN ('GOOD', 'EXCELLENT')
+                AND ad_group_ad_status = 'ENABLED')                    AS good_excellent_rsa_count,
+        COUNTIF(ad_group_ad_ad_type = 'RESPONSIVE_SEARCH_AD'
+                AND ad_group_ad_ad_strength IN ('POOR', 'AVERAGE')
+                AND ad_group_ad_status = 'ENABLED')                    AS poor_average_rsa_count,
+        COUNTIF(ad_group_ad_policy_summary_approval_status IN ('DISAPPROVED', 'AREA_OF_INTEREST')
+                AND ad_group_ad_status = 'ENABLED')                    AS disapproved_count,
+        COUNTIF(ad_group_ad_ad_type IN (
+                'IMAGE_AD', 'RESPONSIVE_DISPLAY_AD', 'VIDEO_RESPONSIVE_AD',
+                'DEMAND_GEN_MULTI_ASSET_AD', 'VIDEO_AD'))               AS rich_media_count
+    FROM {t_ad}
+    WHERE {_max_partition(t_ad)}
+    GROUP BY ad_group_id, campaign_id
+    """
+
+    # Summary of RSA headline/description slot utilisation across the account.
+    # UNNEST on repeated RSA headline/description fields to count slots filled.
+    rsa_headline_sql = f"""
+    SELECT
+        COUNT(*)                                              AS total_rsa_ad_groups,
+        COUNTIF(headline_count >= 10)                        AS ad_groups_10plus_headlines,
+        COUNTIF(headline_count < 5)                          AS ad_groups_under_5_headlines,
+        COUNTIF(description_count >= 3)                      AS ad_groups_3plus_descriptions,
+        ROUND(AVG(headline_count), 1)                        AS avg_headline_count,
+        ROUND(AVG(description_count), 1)                     AS avg_description_count,
+        TRUE                                                 AS _summary
+    FROM (
+        SELECT
+            ad_group_id,
+            (SELECT COUNT(*) FROM UNNEST(ad_group_ad_ad_responsive_search_ad_headlines))    AS headline_count,
+            (SELECT COUNT(*) FROM UNNEST(ad_group_ad_ad_responsive_search_ad_descriptions)) AS description_count
+        FROM {t_ad}
+        WHERE ad_group_ad_ad_type = 'RESPONSIVE_SEARCH_AD'
+          AND ad_group_ad_status = 'ENABLED'
+          AND {_max_partition(t_ad)}
+    )
+    """
+
     ad_groups = run_query(ad_group_sql)
     ads = run_query(ad_sql)
+
+    try:
+        rsa_per_adgroup = run_query(rsa_per_adgroup_sql)
+        logger.warning("creative_content/rsa_per_adgroup: %d rows", len(rsa_per_adgroup))
+        rsa_per_adgroup["_source"] = "rsa_per_adgroup"
+    except Exception as exc:
+        logger.warning("creative_content/rsa_per_adgroup failed: %s", exc)
+        rsa_per_adgroup = pd.DataFrame()
+
+    try:
+        rsa_headlines = run_query(rsa_headline_sql)
+        logger.warning("creative_content/rsa_headlines: %d rows", len(rsa_headlines))
+        rsa_headlines["_source"] = "rsa_headline_summary"
+    except Exception as exc:
+        logger.warning("creative_content/rsa_headlines failed: %s", exc)
+        rsa_headlines = pd.DataFrame()
 
     logger.warning("creative_content: %d ad groups, %d ad type rows", len(ad_groups), len(ads))
 
     ad_groups["_source"] = "ad_group"
     ads["_source"] = "ad"
 
-    return pd.concat([ad_groups, ads], ignore_index=True)
+    return pd.concat([ad_groups, ads, rsa_per_adgroup, rsa_headlines], ignore_index=True)
 
 
 def _pmax_performance(suffix: str, dataset: str | None = None) -> pd.DataFrame:

@@ -388,32 +388,74 @@ in the Google Ads BQ export — these criteria require manual verification in Me
     Shopping is active but tag alignment still requires manual verification.
 
 CREATIVE CONTENT CATEGORY:
-Ad data is pre-aggregated: each row in _source="ad" has (type, status, ad_strength,
-policy_approval_status, ad_count). Use ad_count for all threshold checks.
+ad rows (_source="ad") are account-level aggregates: type, status, ad_strength,
+  policy_approval_status, ad_count.
+ad_group rows (_source="ad_group") have: ad_group_id, campaign_id, ad_group_name, status, ad_group_type.
+rsa_per_adgroup rows (_source="rsa_per_adgroup") have: ad_group_id, campaign_id,
+  enabled_rsa_count, total_enabled_ads, good_excellent_rsa_count, poor_average_rsa_count,
+  disapproved_count, rich_media_count. One row per ad group.
+rsa_headline_summary row (_source="rsa_headline_summary", _summary=true) has:
+  total_rsa_ad_groups, ad_groups_10plus_headlines, ad_groups_under_5_headlines,
+  ad_groups_3plus_descriptions, avg_headline_count, avg_description_count.
+NOTE: actual headline/description text is not extracted — ad copy keyword relevance
+requires qualitative inference from ad_group_name patterns.
 
 - Responsive search ad coverage:
-    From _source="ad": sum ad_count where type="RESPONSIVE_SEARCH_AD" and status="ENABLED".
-    Zero -> fail;  some present but < 50% of ENABLED ads -> warn;  dominant ad type -> pass.
-    Check ad_strength distribution for RSAs: all GOOD/EXCELLENT -> champion;
-    mix with AVERAGE -> advanced;  any POOR -> warn.
+    From _source="rsa_per_adgroup": count rows where enabled_rsa_count = 0.
+    Cross-reference with _source="ad_group" to confirm those rows are active Search ad groups
+    (status="ENABLED" and ad_group_type not PMax/Display).
+    Pass: every active Search ad group has enabled_rsa_count >= 1.
+    Fail: any active Search ad group has enabled_rsa_count = 0 — relying on legacy formats only.
+    Warn: enabled_rsa_count = 1 only (minimum coverage, no redundancy).
+
 - Asset group ad strength:
-    From _source="ad": read ad_strength values across all ad types.
-    All EXCELLENT or GOOD -> champion;  mix with AVERAGE -> advanced;
-    any POOR or PENDING with status=ENABLED -> warn.
+    From _source="rsa_per_adgroup": compute across all rows:
+      good_excellent_rate = SUM(good_excellent_rsa_count) / SUM(good_excellent_rsa_count + poor_average_rsa_count).
+    Also check _source="ad" for PMax asset types (RESPONSIVE_DISPLAY_AD, etc.) ad_strength.
+    Pass: good_excellent_rate >= 90% — at least 90% of active RSAs and asset groups are Good/Excellent.
+    Fail: more than 10% of active RSAs have poor_average_rsa_count > 0 in their ad group
+      (i.e., Poor or Average ratings dominate).
+    Warn: good_excellent_rate between 80–89%.
+
 - Headline / description variety:
-    Compare ENABLED ad count per ad type to total ad_groups count (from _source="ad_group").
-    If total ENABLED ads << total ad_groups -> many groups have only 1 ad -> basic.
-    Multiple ad types present per group suggests variety -> advanced/expert.
+    From _source="rsa_headline_summary": read ad_groups_10plus_headlines, ad_groups_under_5_headlines,
+    avg_headline_count, avg_description_count.
+    Pass: ad_groups_10plus_headlines / total_rsa_ad_groups >= 80% AND avg_description_count >= 3.0 —
+      most RSAs use 10+ distinct headlines and 3+ descriptions.
+    Fail: ad_groups_under_5_headlines / total_rsa_ad_groups > 20% OR avg_headline_count < 5 —
+      significant slot underutilization or repetitive copy.
+    Warn: avg_headline_count between 5–9 (acceptable but not optimised).
+    If rsa_headline_summary is empty (UNNEST query failed), fall back to comparing total ENABLED
+    ad count from _source="ad" against total ad groups from _source="ad_group".
+
 - Image & video assets:
-    From _source="ad": check for types beyond RESPONSIVE_SEARCH_AD and EXPANDED_TEXT_AD.
-    IMAGE_AD, RESPONSIVE_DISPLAY_AD, VIDEO_RESPONSIVE_AD, DEMAND_GEN_MULTI_ASSET_AD etc. present -> advanced/expert.
-    RSA + ETA only -> basic.
+    From _source="rsa_per_adgroup": sum rich_media_count across all rows.
+    Also from _source="ad": check for types IMAGE_AD, RESPONSIVE_DISPLAY_AD, VIDEO_RESPONSIVE_AD,
+    DEMAND_GEN_MULTI_ASSET_AD, VIDEO_AD with ad_count > 0.
+    Pass: rich_media_count sum > 0 OR rich media ad types present — campaigns include image/video
+      assets beyond text-only RSAs.
+    Fail: rich_media_count = 0 across all ad groups AND no rich media ad types in _source="ad" —
+      video slots empty and no image extensions, forcing automated low-quality slideshows.
+    Warn: only one rich media type present (e.g., display ads but no video).
+
 - Ad policy compliance:
-    From _source="ad": sum ad_count where policy_approval_status="DISAPPROVED" or "UNDER_REVIEW".
-    Compare to total ENABLED ad_count.
-    >10% affected -> fail;  1-10% -> warn;  zero -> pass.
+    From _source="rsa_per_adgroup": sum disapproved_count across all rows; sum total_enabled_ads.
+    Also from _source="ad": sum ad_count where policy_approval_status = "DISAPPROVED".
+    Pass: disapproved_count = 0 across all ad groups — 100% of active creatives are Approved.
+    Fail: any ad group has disapproved_count > 0, OR any row in _source="ad" shows
+      policy_approval_status = "DISAPPROVED" or "AREA_OF_INTEREST" (Approved Limited) with
+      ad_count that represents > 0% of ENABLED ads.
+    Warn: UNDER_REVIEW status present — pending approval, not yet a violation.
+
 - Ad copy relevance:
-    Evaluate qualitatively from ad_group_name (from _source="ad_group") versus campaign_name patterns.
+    Headline text is not available in the exported data — this criterion requires qualitative inference.
+    From _source="ad_group": review ad_group_name values for descriptive keyword themes.
+    Score as warn if ad_group_names are generic (e.g., "Ad Group 1", "Group A") with no
+    apparent keyword theme — suggests copy relevance has not been configured.
+    Score as pass if ad_group_names contain specific keyword terms or product/service categories
+    that would logically align with ad copy.
+    Always flag: "Headline-to-keyword relevance requires manual review — verify that the top
+    keyword intent of each ad group appears in the first 3 headline slots of its RSA."
 
 KEYWORD STRATEGY CATEGORY:
 Data is pre-aggregated: each row in _source="keyword" represents a combination of
