@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle, Loader2, TrendingUp, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +9,7 @@ interface Props {
   auditId: string;
   output: ScoringOutput;
   onComplete: (output: ScoringOutput) => void;
+  onBack?: () => void;
 }
 
 const MATURITY_COLORS: Record<string, string> = {
@@ -18,7 +19,7 @@ const MATURITY_COLORS: Record<string, string> = {
   Basic: "text-score-poor",
 };
 
-export default function ScoringReview({ auditId, output, onComplete }: Props) {
+export default function ScoringReview({ auditId, output, onComplete, onBack }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const handleApprove = async () => {
@@ -36,48 +37,34 @@ export default function ScoringReview({ auditId, output, onComplete }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Scoring Review</h2>
-        <Button onClick={handleApprove} disabled={submitting}>
-          {submitting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCircle className="mr-2 h-4 w-4" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="mr-1.5 h-4 w-4" /> Back
+            </Button>
           )}
-          Approve & Publish
-        </Button>
-      </div>
-
-      {/* Platform score hero */}
-      <div className="rounded-xl border bg-card p-6 flex flex-col items-center gap-2">
-        <span className="text-5xl font-bold tabular-nums">
-          {output.platform_score.toFixed(0)}
-        </span>
-        <span
-          className={`text-lg font-semibold ${MATURITY_COLORS[output.maturity_label] ?? ""}`}
-        >
-          {output.maturity_label}
-        </span>
-        <span className="text-xs text-muted-foreground">Platform Maturity Score</span>
-      </div>
-
-      {/* Category scores */}
-      <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" /> Category Breakdown
-        </h3>
-        {output.category_scores.map((cat) => (
-          <div key={cat.name} className="flex flex-col gap-1">
-            <div className="flex justify-between text-xs">
-              <span className="capitalize">{cat.name.replace(/_/g, " ")}</span>
-              <span className="tabular-nums font-medium">{cat.score.toFixed(0)}</span>
-            </div>
-            <Progress value={cat.score} className="h-2" />
+          <h2 className="text-lg font-semibold">Scoring Review</h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end">
+            <span className={`text-2xl font-bold tabular-nums ${MATURITY_COLORS[output.maturity_label] ?? ""}`}>
+              {output.platform_score.toFixed(0)}
+            </span>
+            <span className="text-[10px] text-muted-foreground leading-tight">{output.maturity_label}</span>
           </div>
-        ))}
+          <Button onClick={handleApprove} disabled={submitting}>
+            {submitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle className="mr-2 h-4 w-4" />
+            )}
+            Approve & Publish
+          </Button>
+        </div>
       </div>
 
-      {/* Quick wins */}
+      {/* Quick wins — surfaced first */}
       {output.quick_wins.length > 0 && (
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -103,7 +90,7 @@ export default function ScoringReview({ auditId, output, onComplete }: Props) {
                     <td className="px-3 py-2 text-right tabular-nums">
                       <Badge variant="secondary">{win.priority_score.toFixed(1)}</Badge>
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground max-w-xs truncate">
+                    <td className="px-3 py-2 text-muted-foreground max-w-xs">
                       {win.action}
                     </td>
                   </tr>
@@ -113,6 +100,24 @@ export default function ScoringReview({ auditId, output, onComplete }: Props) {
           </div>
         </div>
       )}
+
+      {/* Category scores — compact card grid */}
+      <div className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" /> Category Breakdown
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {output.category_scores.map((cat) => (
+            <div key={cat.name} className="rounded-lg border bg-card p-3 flex flex-col gap-1.5">
+              <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground truncate">
+                {cat.name.replace(/_/g, " ")}
+              </span>
+              <span className="text-xl font-bold tabular-nums">{cat.score.toFixed(0)}</span>
+              <Progress value={cat.score} className="h-1" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

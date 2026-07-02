@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiClient, AuditState, AuditStatus, BrandContextPayload } from "@/lib/apiClient";
 import { BrandContext } from "@/utils/brandContext";
-import { listSavedContexts, SavedContext } from "@/utils/savedContexts";
+import { SavedContext } from "@/utils/savedContexts";
 
 interface Props {
   brandContext: BrandContextPayload;
+  savedContexts: SavedContext[];
   onSpecialistReady: (auditId: string, state: AuditState) => void;
   onLoadContext?: (ctx: BrandContext) => void;
 }
@@ -30,21 +31,19 @@ const POLLING_STATUSES: AuditStatus[] = [
   "scoring_running",
 ];
 
-export default function AuditRunner({ brandContext, onSpecialistReady, onLoadContext }: Props) {
+export default function AuditRunner({ brandContext, savedContexts, onSpecialistReady, onLoadContext }: Props) {
   const [auditId, setAuditId] = useState<string | null>(null);
   const [status, setStatus] = useState<AuditStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [savedContexts, setSavedContexts] = useState<SavedContext[]>([]);
   const [selectedContextId, setSelectedContextId] = useState<string>("");
   const [dataset, setDataset] = useState<string>("");
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(true);
 
   useEffect(() => {
-    setSavedContexts(listSavedContexts());
     apiClient.listDatasets()
       .then(r => setAvailableDatasets(r.datasets))
       .catch(() => {})

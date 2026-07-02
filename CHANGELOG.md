@@ -4,6 +4,66 @@ All notable changes to this project are documented here.
 
 ---
 
+## [0.9.0] — 2026-06-09
+
+### BWJ account validation — BigQuery schema fixes and specialist accuracy pass
+
+End-to-end validation of all 7 audit categories against the BWJ Google Ads account (BQ dataset `bwj_google_ads`, suffix `6600502562`). Each category was validated by running the extraction queries directly in BigQuery, comparing raw values against the pass/fail criteria, and confirming the UI verdict is correct. Multiple silent failures were uncovered and fixed.
+
+#### `data_extraction.py` — column and table fixes
+
+- **`_creative_content` — RSA headline/description query**: Replaced `(SELECT COUNT(*) FROM UNNEST(column))` with `ARRAY_LENGTH(JSON_EXTRACT_ARRAY(column))` for both headline and description fields. In this BQ export these columns are stored as JSON strings, not native ARRAY types; UNNEST was silently failing and returning empty data, causing `rsa_headline_summary` to be absent and all headline-dependent topics to score as warn by default.
+
+- **`_campaign_setup` — perf query column removal**: Removed `campaign_bidding_strategy_type` from the `CampaignBasicStats` SELECT (column does not exist in that table). Silent failure was returning an empty performance DataFrame.
+
+- **`_campaign_setup` — `campaign_type_summary` sub-query added**: New aggregation over `p_ads_Campaign` groups by `campaign_advertising_channel_type` with `campaign_count`. Fixes a sampling bias where the existing LIMIT 50 on the campaign query returned only DEMAND_GEN rows (alphabetically first), causing the campaign type mix topic to always score as fail despite 5 distinct channel types in the account.
+
+- **`_conversion_kpi` — replaced non-existent table**: `p_ads_ConversionAction` does not exist in this BQ export. Replaced with a grouped `CampaignConversionStats` proxy (`name, category, conversions_30d, value_30d, campaigns_tracking`). All 6 conversion topics were previously failing due to empty data.
+
+- **`_conversion_kpi` — removed non-existent column**: `campaign_target_cpa_cpa_micros` does not exist in `p_ads_Campaign`. Removed from the targets sub-query; only `campaign_maximize_conversion_value_target_roas` is used.
+
+- **`_conversion_kpi` — cross-device conversions added**: New sub-query against `p_ads_CampaignCrossDeviceConversionStats` (labeled `cross_device_conversions`).
+
+- **`_feeds_catalogue` — custom attribute column names**: Fixed `segments_product_custom_attribute_0` → `segments_product_custom_attribute0` (no underscore before digit) for all 5 label columns. Entire `shopping_sql` was silently failing.
+
+- **`_feeds_catalogue` — product title replacement**: `segments_product_title` does not exist in this BQ export. Replaced with a grouped `product_type_l1` + `product_brand` + `custom_label_0/1/2` summary (labeled `product_title_sample`).
+
+- **`_pmax_performance` — `campaign_target_cpa_cpa_micros`**: Removed from `pmax_sql` (column does not exist). Was causing the entire `_pmax_performance()` function to fail, returning an empty DataFrame for the whole category.
+
+- **`_pmax_performance` — `brand_exclusion_sql` removed `p_ads_CampaignSharedSet` JOIN**: Table does not exist in this BQ export. Removed the LEFT JOIN; `pmax_with_shared_neg_lists` is always `0` (data gap); `pmax_with_campaign_negatives` is still computed correctly from `p_ads_CampaignCriterion`.
+
+- **`_keyword_strategy` — `qs_status_computed` field**: After running the impression-weighted QS query, a `qs_status_computed` column (`"pass"` / `"warn"` / `"fail"`) is now pre-computed in Python using the threshold (≥7.0 = pass, 5.5–6.9 = warn, <5.5 = fail) and injected into the `impression_weighted_qs` summary row. This prevents the LLM from overriding the verdict by averaging in the higher keyword-aggregate QS values.
+
+#### `specialist.py` — data availability notes and criteria updates
+
+- **`campaign_setup`**: Added `campaign_type_summary` source description; updated campaign type mix criteria to read from the aggregated source rather than raw campaign rows.
+
+- **`conversion_kpi`**: Added DATA AVAILABILITY NOTE (no `p_ads_ConversionAction`, no `campaign_target_cpa_cpa_micros`); updated all 6 topic criteria to match the actual available columns (`name/category/conversions_30d/value_30d` proxy; `target_roas` only; `cross_device_conversions` source description).
+
+- **`feeds_catalogue`**: Added DATA AVAILABILITY NOTE (no `segments_product_title`); updated `product_title_sample` source description to use `product_type_l1`; product title optimisation now scores as warn + manual flag.
+
+- **`keyword_strategy`**:
+  - Added DATA AVAILABILITY NOTE: `p_ads_SharedSet` absent → `shared_neg_summary` will be empty (treat as data gap, not zero shared lists).
+  - Negative keyword coverage: updated Fail condition (only fails if campaign AND ad-group negatives are both 0); added Warn (b) path for absent shared list data.
+  - Keyword status hygiene: added RARELY_SERVED as a Warn (b) condition when >15% of enabled keywords (below first page bid and low search volume remain the Fail trigger).
+  - Keyword quality scores: updated to read `qs_status_computed` directly; fallback to keyword aggregate only when the `impression_weighted_qs` row is completely absent.
+
+- **`pmax_performance`**: Added DATA AVAILABILITY NOTES block covering four missing tables/columns (`campaign_target_cpa_cpa_micros`, `p_ads_CampaignSharedSet`, `p_ads_AssetGroup`, `p_ads_AssetGroupAudienceView`). Updated smart bidding, brand exclusion, and asset group strength criteria to evaluate correctly with the available data only.
+
+#### Validation results — all 7 categories confirmed correct for BWJ
+
+| Category | Topics | Key finding |
+|---|---|---|
+| Campaign setup | 6 | Campaign type mix was false-fail due to LIMIT 50 sampling; fixed via `campaign_type_summary` aggregation |
+| Audience targeting | 5 | Geo precision scoring as warn (column unavailable, correct data-gap behaviour) |
+| Conversion KPI | 6 | All 6 topics were failing due to missing `p_ads_ConversionAction`; fixed with proxy |
+| Feeds & catalogue | 6 | All topics were failing due to wrong custom attribute column names; fixed |
+| Creative content | 6 | Headline/description variety was failing due to UNNEST on JSON strings; fixed |
+| Keyword strategy | 6 | QS verdict pre-computed in Python to prevent LLM fallback override; impression-weighted QS = 8.7 (PASS, correct — 0-QS no-data keywords excluded) |
+| PMax performance | 5 | Whole category was failing due to `campaign_target_cpa_cpa_micros`; fixed |
+
+---
+
 ## [0.8.0] — 2026-05-22
 
 ### Meta Ads → BigQuery extractor (Cloud Function)

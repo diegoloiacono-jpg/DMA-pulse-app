@@ -64,6 +64,7 @@ export default function Index() {
   const [editingContextId, setEditingContextId] = useState<string | null>(null);
   const [manualScores, setManualScores] = useState<ManualScoreMap>({});
   const [showGapsFlyout, setShowGapsFlyout] = useState(false);
+  const [contextSaved, setContextSaved] = useState(false);
 
   // BigQuery audit flow
   const [auditId, setAuditId] = useState<string | null>(null);
@@ -424,8 +425,8 @@ export default function Index() {
         </main>
       ) : (
         <>
-          {/* Platform Tabs */}
-          <div className="border-b border-border bg-card/50">
+          {/* Platform Tabs — hidden until an audit has been started */}
+          {apiAuditState !== null && <div className="border-b border-border bg-card/50">
             <div className="w-[90%] mx-auto px-6">
               <div className="flex items-center gap-0.5 overflow-x-auto py-1.5 -mb-px scrollbar-none">
                 <button
@@ -452,16 +453,20 @@ export default function Index() {
                   const platformHasReal = hasData || hasPlatformManual;
                   const liveScore = getPlatformLiveScore(p);
                   const isActive = selectedPlatformId === p.id;
+                  const isLocked = p.id !== "sea-google";
                   return (
                     <button
                       key={p.id}
-                      onClick={() => setSelectedPlatformId(p.id)}
+                      onClick={isLocked ? undefined : () => setSelectedPlatformId(p.id)}
+                      disabled={isLocked}
                       className={`
                         group relative flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg
                         transition-all duration-200 whitespace-nowrap
-                        ${isActive
-                          ? "bg-foreground text-background shadow-sm"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        ${isLocked
+                          ? "opacity-40 cursor-not-allowed"
+                          : isActive
+                            ? "bg-foreground text-background shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         }
                       `}
                     >
@@ -483,7 +488,7 @@ export default function Index() {
                 })}
               </div>
             </div>
-          </div>
+          </div>}
 
           <main className="w-[90%] mx-auto px-6 py-2 space-y-2">
             {/* Breadcrumb navigation */}
@@ -506,7 +511,12 @@ export default function Index() {
                 <SpecialistReview
                   auditId={auditId}
                   results={apiAuditState.specialist_results}
-                  onScoringStarted={async () => {
+                  skipValidation={!!apiAuditState.scoring_output}
+                  onScoringStarted={() => {
+                    if (apiAuditState?.scoring_output) {
+                      setApiAuditState(prev => prev ? { ...prev, status: "scoring_review" } : prev);
+                      return;
+                    }
                     const poll = setInterval(async () => {
                       const s = await apiClient.getAudit(auditId);
                       setApiAuditState(s);
@@ -524,6 +534,7 @@ export default function Index() {
                     setApiScoringOutput(output);
                     setApiAuditState(prev => prev ? { ...prev, status: "complete" } : prev);
                   }}
+                  onBack={() => setApiAuditState(prev => prev ? { ...prev, status: "specialist_review" } : prev)}
                 />
               </div>
             ) : showMissingData ? (
@@ -538,140 +549,169 @@ export default function Index() {
               <>
                 {/* Executive Row */}
                 {!selectedPlatformId ? (
-                  /* ── OVERVIEW: 66% Radar | 33% Vertical Stack ── */
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {/* Left: Full-width Radar */}
-                    <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                          Platform Maturity Radar
-                        </span>
-                        <div className="group relative">
-                          <button className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                            <Info className="w-3 h-3" />
-                            Methodology
-                          </button>
-                          <div className="absolute top-full right-0 mt-1 w-64 p-3 rounded-lg bg-popover border border-border shadow-lg text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
-                            <p className="font-semibold text-foreground mb-1">Benchmark Methodology</p>
-                            <p>Benchmarks are derived from Artefact's 2025 Digital Maturity Framework — the 'Golden Standard' for your business model.</p>
-                            <p className="mt-1.5">Effective benchmark: <strong className="text-foreground">{effectiveBenchmark}%</strong>.</p>
-                          </div>
+                  /* ── OVERVIEW: Brand Context Form | AuditRunner ── */
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+                    {/* Left: Inline brand context form (Google Ads only) */}
+                    <div className="bg-card rounded-xl border border-border shadow-sm p-5 space-y-4">
+                      <div>
+                        <h3 className="text-sm font-semibold">Brand Context</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Google Ads — configure before running the audit</p>
+                      </div>
+
+                      {/* Brand Name */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-foreground">Brand Name</label>
+                        <input
+                          type="text"
+                          value={brandContext.brandName}
+                          onChange={e => setBrandContext(c => ({ ...c, brandName: e.target.value }))}
+                          placeholder="e.g. Artefact"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+
+                      {/* Business Model */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-foreground">Business Model</label>
+                        <div className="flex gap-2">
+                          {(["B2B", "B2C", "D2C"] as const).map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => setBrandContext(c => ({ ...c, model: c.model === opt ? "" : opt }))}
+                              className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-all duration-150 active:scale-[0.97] ${
+                                brandContext.model === opt
+                                  ? "border-primary bg-primary text-primary-foreground shadow-md"
+                                  : "border-input bg-background text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-muted/50"
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      {hasRealData ? (
-                        <MastercardDashboard
-                          platform={null}
-                          uploadedPlatforms={readyFiles.map(f => f.platform)}
-                          dashboardState={dashboardState}
-                          getPlatformLiveScore={getPlatformLiveScore}
-                          manualScores={manualScores}
-                          allRows={allUploadedRows}
-                          businessModel={brandContext.model}
-                          compact
-                          radarOnly
-                          benchmarkScore={effectiveBenchmark}
-                        />
-                      ) : (
-                        <div className="flex flex-col gap-4 py-2">
-                          <p className="text-xs text-muted-foreground text-center">
-                            Connect BigQuery to run an AI-powered audit, or upload CSV exports manually.
-                          </p>
-                          <AuditRunner
-                            brandContext={{
-                              brandName: brandContext.brandName,
-                              model: (brandContext.model || "B2B") as "B2B" | "B2C" | "D2C",
-                              namingConvention: brandContext.namingConvention,
-                              demographics: brandContext.demographics ?? "",
-                              markets: [],
-                              selectedPlatforms: brandContext.selectedPlatforms ?? ["sea-google"],
-                              industry: brandContext.industry ?? "",
-                              hasCrmData: brandContext.hasCrmData ?? false,
-                              hasProductFeed: brandContext.hasProductFeed ?? false,
-                            }}
-                            onSpecialistReady={(id, state) => {
-                              setAuditId(id);
-                              setApiAuditState(state);
-                            }}
-                            onLoadContext={setBrandContext}
-                          />
-                          <button
-                            onClick={() => setShowSettings(true)}
-                            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors self-center"
-                          >
-                            Upload CSV / XLSX instead
-                          </button>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Right: Vertical Stack */}
-                    <div className="flex flex-col gap-3">
-                      {/* Maturity + Data Gaps row */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-card rounded-xl p-3 shadow-sm border border-border">
-                          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                            Omnichannel Maturity
-                          </span>
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className={`tabular-nums font-mono text-3xl font-bold ${hasRealData ? `score-text-${(() => {
-                              const s = liveMaturity;
-                              return s >= 75 ? "excellent" : s >= 55 ? "good" : s >= 35 ? "warning" : s >= 20 ? "poor" : "critical";
-                            })()}` : "text-muted-foreground/40"}`}>
-                              {hasRealData ? `${liveMaturity}%` : "—"}
-                            </span>
-                            <div className="flex-1">
-                              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                                {hasRealData && (
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-700 ${
-                                      liveMaturity >= 75 ? "bg-score-excellent" : liveMaturity >= 55 ? "bg-score-good" : liveMaturity >= 35 ? "bg-score-warning" : "bg-score-poor"
-                                    }`}
-                                    style={{ width: `${liveMaturity}%` }}
-                                  />
-                                )}
+                      {/* Naming Convention */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-foreground">Naming Convention</label>
+                        <textarea
+                          value={brandContext.namingConvention}
+                          onChange={e => setBrandContext(c => ({ ...c, namingConvention: e.target.value }))}
+                          placeholder={"e.g. [Market]_[Funnel]_[Objective]_[Audience]_[Creative]\nFR_TOF_Prospecting_LAL_VID"}
+                          rows={3}
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                        />
+                        {(() => {
+                          const preview = getNamingGhostPreview(brandContext.namingConvention);
+                          if (!preview) return null;
+                          return (
+                            <div className="mt-2 p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ghost Preview</p>
+                              <div className="flex items-center gap-2">
+                                <Check className="w-3.5 h-3.5 text-score-excellent shrink-0" />
+                                <code className="text-xs text-score-excellent font-mono">{preview.perfect}</code>
+                                <span className="text-[9px] text-muted-foreground">— Perfect</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <XCircle className="w-3.5 h-3.5 text-score-poor shrink-0" />
+                                <code className="text-xs text-score-poor font-mono">{preview.failing}</code>
+                                <span className="text-[9px] text-muted-foreground">— Failing</span>
                               </div>
                             </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setShowGapsFlyout(true)}
-                          disabled={!hasRealData}
-                          className="bg-card rounded-xl p-3 shadow-sm border border-border text-left hover:border-primary/30 hover:bg-muted/30 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
-                        >
-                          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                            Data Gaps
-                            <Info className="w-2.5 h-2.5 text-muted-foreground" />
-                          </span>
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className={`tabular-nums font-mono text-3xl font-bold ${hasRealData ? "text-foreground" : "text-muted-foreground/40"}`}>
-                              {hasRealData ? dataGapItems.length : "—"}
-                            </span>
-                            <span className="text-xs text-muted-foreground flex-1">
-                              {!hasRealData ? "Upload data to detect gaps" : dataGapItems.length === 0 ? "All inputs covered" : "Click to review missing inputs"}
-                            </span>
-                          </div>
-                        </button>
+                          );
+                        })()}
                       </div>
 
-                      {/* Quick Wins */}
-                      <div className="bg-card rounded-xl p-3 shadow-sm border border-border flex-1">
-                        <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                          Top quick wins per channel
-                        </span>
-                        <div className="mt-2">
-                          {hasRealData ? (
-                            <StrategicWins
-                              model={brandContext.model}
-                              manualScores={manualScores}
-                              selectedPlatformId={selectedPlatformId}
-                            />
-                          ) : (
-                            <p className="text-xs text-muted-foreground py-4 text-center">
-                              Upload data or load Demo to surface quick wins.
-                            </p>
-                          )}
-                        </div>
+                      {/* Audience Targeting Demographics */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-foreground">Audience Targeting Demographics</label>
+                        <textarea
+                          value={brandContext.demographics ?? ""}
+                          onChange={e => setBrandContext(c => ({ ...c, demographics: e.target.value }))}
+                          placeholder={"e.g. Women 25-54, interest in luxury fashion, primary markets: FR, NL, BE\nSecondary: DE, UK — enterprise decision makers for B2B"}
+                          rows={3}
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                        />
                       </div>
+
+                      {/* Industry */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-foreground">Industry</label>
+                        <input
+                          type="text"
+                          value={brandContext.industry ?? ""}
+                          onChange={e => setBrandContext(c => ({ ...c, industry: e.target.value }))}
+                          placeholder="e.g. Finance, Retail, Insurance, Travel"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+
+                      {/* CRM + Feed */}
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={brandContext.hasCrmData ?? false}
+                            onChange={e => setBrandContext(c => ({ ...c, hasCrmData: e.target.checked }))}
+                            className="w-4 h-4 rounded border-input accent-primary"
+                          />
+                          <span className="text-xs font-medium text-foreground">CRM data available</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={brandContext.hasProductFeed ?? false}
+                            onChange={e => setBrandContext(c => ({ ...c, hasProductFeed: e.target.checked }))}
+                            className="w-4 h-4 rounded border-input accent-primary"
+                          />
+                          <span className="text-xs font-medium text-foreground">Product feed available</span>
+                        </label>
+                      </div>
+
+                      {/* Save button */}
+                      <button
+                        onClick={() => {
+                          const ctx = { ...brandContext, selectedPlatforms: ["sea-google" as PlatformKey] };
+                          const newId = saveContext(ctx.brandName || "Unnamed", ctx, editingContextId);
+                          setEditingContextId(newId);
+                          setSavedContexts(listSavedContexts());
+                          setContextSaved(true);
+                          setTimeout(() => setContextSaved(false), 2000);
+                        }}
+                        disabled={!brandContext.brandName.trim()}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {contextSaved ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Saved
+                          </>
+                        ) : (
+                          "Save Context"
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Right: AuditRunner */}
+                    <div>
+                      <AuditRunner
+                        brandContext={{
+                          brandName: brandContext.brandName,
+                          model: (brandContext.model || "B2B") as "B2B" | "B2C" | "D2C",
+                          namingConvention: brandContext.namingConvention,
+                          demographics: brandContext.demographics ?? "",
+                          markets: [],
+                          selectedPlatforms: ["sea-google"],
+                          industry: brandContext.industry ?? "",
+                          hasCrmData: brandContext.hasCrmData ?? false,
+                          hasProductFeed: brandContext.hasProductFeed ?? false,
+                        }}
+                        savedContexts={savedContexts}
+                        onSpecialistReady={(id, state) => {
+                          setAuditId(id);
+                          setApiAuditState(state);
+                        }}
+                        onLoadContext={setBrandContext}
+                      />
                     </div>
                   </div>
                 ) : (

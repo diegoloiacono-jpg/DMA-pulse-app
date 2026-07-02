@@ -106,7 +106,6 @@ def _campaign_setup(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     perf_sql = f"""
     SELECT
         campaign_id,
-        campaign_bidding_strategy_type,
         SUM(metrics_impressions)                                               AS impressions_30d,
         SUM(CASE WHEN DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
                  THEN metrics_impressions ELSE 0 END)                          AS impressions_7d,
@@ -114,7 +113,7 @@ def _campaign_setup(suffix: str, dataset: str | None = None) -> pd.DataFrame:
         SUM(metrics_cost_micros)                                               AS cost_micros_30d
     FROM {t_stats}
     WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-    GROUP BY campaign_id, campaign_bidding_strategy_type
+    GROUP BY campaign_id
     """
 
     try:
@@ -125,7 +124,28 @@ def _campaign_setup(suffix: str, dataset: str | None = None) -> pd.DataFrame:
         logger.warning("campaign_setup/perf_30d failed: %s", exc)
         perf = pd.DataFrame()
 
-    return pd.concat([campaigns, hourly, adschedule, perf], ignore_index=True)
+    t_campaign2 = table("p_ads_Campaign", suffix, dataset)
+    type_summary_sql = f"""
+    SELECT
+        campaign_advertising_channel_type,
+        COUNT(*) AS campaign_count,
+        TRUE     AS _summary
+    FROM {t_campaign2}
+    WHERE campaign_status = 'ENABLED'
+      AND {_max_partition(t_campaign2)}
+    GROUP BY campaign_advertising_channel_type
+    ORDER BY campaign_count DESC
+    """
+
+    try:
+        type_summary = run_query(type_summary_sql)
+        logger.warning("campaign_setup/type_summary: %d rows", len(type_summary))
+        type_summary["_source"] = "campaign_type_summary"
+    except Exception as exc:
+        logger.warning("campaign_setup/type_summary failed: %s", exc)
+        type_summary = pd.DataFrame()
+
+    return pd.concat([campaigns, hourly, adschedule, perf, type_summary], ignore_index=True)
 
 
 def _audience_targeting(suffix: str, dataset: str | None = None) -> pd.DataFrame:
@@ -243,21 +263,19 @@ def _conversion_kpi(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
     """
 
-    t_conv_action = table("p_ads_ConversionAction", suffix, dataset)
+    # p_ads_ConversionAction does not exist in this BQ export — derive a proxy
+    # from CampaignConversionStats grouped by action name and category.
     conv_action_sql = f"""
     SELECT
-        conversion_action_id                                                       AS id,
-        conversion_action_name                                                     AS name,
-        conversion_action_status                                                   AS status,
-        conversion_action_type                                                     AS type,
-        conversion_action_category                                                 AS category,
-        conversion_action_primary_for_goal                                         AS primary_for_goal,
-        conversion_action_counting_type                                            AS counting_type,
-        conversion_action_attribution_model_settings_attribution_model             AS attribution_model,
-        conversion_action_include_in_conversions_metric                            AS include_in_conversions
-    FROM {t_conv_action}
-    WHERE conversion_action_status != 'REMOVED'
-      AND {_max_partition(t_conv_action)}
+        segments_conversion_action_name     AS name,
+        segments_conversion_action_category AS category,
+        ROUND(SUM(metrics_conversions), 1)  AS conversions_30d,
+        ROUND(SUM(metrics_conversions_value), 0) AS value_30d,
+        COUNT(DISTINCT campaign_id)         AS campaigns_tracking
+    FROM {t_conv}
+    WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    GROUP BY name, category
+    ORDER BY conversions_30d DESC
     """
 
     t_campaign = table("p_ads_Campaign", suffix, dataset)
@@ -266,7 +284,6 @@ def _conversion_kpi(suffix: str, dataset: str | None = None) -> pd.DataFrame:
         c.campaign_id,
         c.campaign_bidding_strategy_type                              AS bidding_strategy,
         c.campaign_maximize_conversion_value_target_roas              AS target_roas,
-        c.campaign_target_cpa_cpa_micros                              AS target_cpa_micros,
         ROUND(SAFE_DIVIDE(
             SUM(s.metrics_conversions_value),
             SAFE_DIVIDE(SUM(s.metrics_cost_micros), 1e6)
@@ -283,8 +300,7 @@ def _conversion_kpi(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     WHERE c.campaign_status = 'ENABLED'
       AND {_max_partition(t_campaign)}
     GROUP BY c.campaign_id, c.campaign_bidding_strategy_type,
-             c.campaign_maximize_conversion_value_target_roas,
-             c.campaign_target_cpa_cpa_micros
+             c.campaign_maximize_conversion_value_target_roas
     """
 
     stats = run_query(stats_sql)
@@ -306,12 +322,35 @@ def _conversion_kpi(suffix: str, dataset: str | None = None) -> pd.DataFrame:
         logger.warning("conversion_kpi/targets failed: %s", exc)
         targets = pd.DataFrame()
 
+    t_xdevice = table("p_ads_CampaignCrossDeviceConversionStats", suffix, dataset)
+    xdevice_sql = f"""
+    SELECT
+        segments_conversion_action_name     AS name,
+        segments_conversion_action_category AS category,
+        ROUND(SUM(metrics_cross_device_conversions), 1)       AS cross_device_conversions_30d,
+        COUNT(DISTINCT campaign_id)         AS campaigns_with_xdevice,
+        TRUE                               AS _summary
+    FROM {t_xdevice}
+    WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    GROUP BY name, category
+    ORDER BY cross_device_conversions_30d DESC
+    LIMIT 10
+    """
+
+    try:
+        xdevice = run_query(xdevice_sql)
+        logger.warning("conversion_kpi/xdevice: %d rows", len(xdevice))
+        xdevice["_source"] = "cross_device_conversions"
+    except Exception as exc:
+        logger.warning("conversion_kpi/xdevice failed: %s", exc)
+        xdevice = pd.DataFrame()
+
     logger.warning("conversion_kpi: %d stats rows, %d conversion rows", len(stats), len(convs))
 
     stats["_source"] = "campaign_basic_stats"
     convs["_source"] = "campaign_conversion_stats"
 
-    return pd.concat([stats, convs, conv_actions, targets], ignore_index=True)
+    return pd.concat([stats, convs, conv_actions, targets, xdevice], ignore_index=True)
 
 
 def _feeds_catalogue(suffix: str, dataset: str | None = None) -> pd.DataFrame:
@@ -319,21 +358,22 @@ def _feeds_catalogue(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     t_groups = table("p_ads_ProductGroupStats", suffix, dataset)
 
     # Aggregated performance + custom label usage signals per brand/channel.
+    # NOTE: correct BQ column names have no underscore before the digit (attribute0 not attribute_0).
     shopping_sql = f"""
     SELECT
         campaign_id,
         segments_product_brand              AS product_brand,
         segments_product_channel            AS product_channel,
-        COUNTIF(segments_product_custom_attribute_0 IS NOT NULL
-                AND segments_product_custom_attribute_0 != '') AS rows_with_label_0,
-        COUNTIF(segments_product_custom_attribute_1 IS NOT NULL
-                AND segments_product_custom_attribute_1 != '') AS rows_with_label_1,
-        COUNTIF(segments_product_custom_attribute_2 IS NOT NULL
-                AND segments_product_custom_attribute_2 != '') AS rows_with_label_2,
-        COUNTIF(segments_product_custom_attribute_3 IS NOT NULL
-                AND segments_product_custom_attribute_3 != '') AS rows_with_label_3,
-        COUNTIF(segments_product_custom_attribute_4 IS NOT NULL
-                AND segments_product_custom_attribute_4 != '') AS rows_with_label_4,
+        COUNTIF(segments_product_custom_attribute0 IS NOT NULL
+                AND segments_product_custom_attribute0 != '') AS rows_with_label_0,
+        COUNTIF(segments_product_custom_attribute1 IS NOT NULL
+                AND segments_product_custom_attribute1 != '') AS rows_with_label_1,
+        COUNTIF(segments_product_custom_attribute2 IS NOT NULL
+                AND segments_product_custom_attribute2 != '') AS rows_with_label_2,
+        COUNTIF(segments_product_custom_attribute3 IS NOT NULL
+                AND segments_product_custom_attribute3 != '') AS rows_with_label_3,
+        COUNTIF(segments_product_custom_attribute4 IS NOT NULL
+                AND segments_product_custom_attribute4 != '') AS rows_with_label_4,
         SUM(metrics_impressions)            AS impressions,
         SUM(metrics_clicks)                 AS clicks,
         SUM(metrics_cost_micros)            AS cost_micros,
@@ -343,19 +383,22 @@ def _feeds_catalogue(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     GROUP BY campaign_id, segments_product_brand, segments_product_channel
     """
 
-    # Sample of distinct product titles + custom labels for title quality evaluation.
+    # segments_product_title does not exist in this BQ export — use product_type_l1 + brand
+    # as a proxy for feed structure quality.
     title_sql = f"""
-    SELECT DISTINCT
-        segments_product_title              AS product_title,
-        segments_product_brand              AS product_brand,
+    SELECT
         segments_product_type_l1            AS product_type,
-        NULLIF(segments_product_custom_attribute_0, '') AS custom_label_0,
-        NULLIF(segments_product_custom_attribute_1, '') AS custom_label_1,
-        NULLIF(segments_product_custom_attribute_2, '') AS custom_label_2
+        segments_product_brand              AS product_brand,
+        NULLIF(segments_product_custom_attribute0, '') AS custom_label_0,
+        NULLIF(segments_product_custom_attribute1, '') AS custom_label_1,
+        NULLIF(segments_product_custom_attribute2, '') AS custom_label_2,
+        SUM(metrics_impressions)            AS impressions,
+        SUM(metrics_conversions)            AS conversions
     FROM {t_shopping}
     WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
-      AND segments_product_title IS NOT NULL
-      AND segments_product_title != ''
+      AND segments_product_type_l1 IS NOT NULL
+    GROUP BY product_type, product_brand, custom_label_0, custom_label_1, custom_label_2
+    ORDER BY impressions DESC
     LIMIT 50
     """
 
@@ -447,7 +490,8 @@ def _creative_content(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     """
 
     # Summary of RSA headline/description slot utilisation across the account.
-    # UNNEST on repeated RSA headline/description fields to count slots filled.
+    # Headlines/descriptions are stored as JSON strings in this BQ export — use
+    # JSON_EXTRACT_ARRAY instead of UNNEST to count filled slots.
     rsa_headline_sql = f"""
     SELECT
         COUNT(*)                                              AS total_rsa_ad_groups,
@@ -460,8 +504,8 @@ def _creative_content(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     FROM (
         SELECT
             ad_group_id,
-            (SELECT COUNT(*) FROM UNNEST(ad_group_ad_ad_responsive_search_ad_headlines))    AS headline_count,
-            (SELECT COUNT(*) FROM UNNEST(ad_group_ad_ad_responsive_search_ad_descriptions)) AS description_count
+            ARRAY_LENGTH(JSON_EXTRACT_ARRAY(ad_group_ad_ad_responsive_search_ad_headlines))    AS headline_count,
+            ARRAY_LENGTH(JSON_EXTRACT_ARRAY(ad_group_ad_ad_responsive_search_ad_descriptions)) AS description_count
         FROM {t_ad}
         WHERE ad_group_ad_ad_type = 'RESPONSIVE_SEARCH_AD'
           AND ad_group_ad_status = 'ENABLED'
@@ -511,7 +555,7 @@ def _pmax_performance(suffix: str, dataset: str | None = None) -> pd.DataFrame:
         campaign_bidding_strategy_type,
         COUNT(*)                                                       AS campaign_count,
         COUNTIF(campaign_maximize_conversion_value_target_roas > 0)   AS with_target_roas,
-        COUNTIF(campaign_target_cpa_cpa_micros > 0)                   AS with_target_cpa
+        0                                                              AS with_target_cpa
     FROM {t_campaign}
     WHERE campaign_advertising_channel_type = 'PERFORMANCE_MAX'
       AND {_max_partition(t_campaign)}
@@ -520,10 +564,11 @@ def _pmax_performance(suffix: str, dataset: str | None = None) -> pd.DataFrame:
     """
 
     # Brand exclusion check: PMax campaigns with shared negative lists or campaign-level negatives.
+    # p_ads_CampaignSharedSet is not available in this BQ export — always 0 for shared lists.
     brand_exclusion_sql = f"""
     SELECT
         COUNT(DISTINCT c.campaign_id)   AS total_enabled_pmax,
-        COUNT(DISTINCT css.campaign_id) AS pmax_with_shared_neg_lists,
+        0                               AS pmax_with_shared_neg_lists,
         COUNT(DISTINCT nc.campaign_id)  AS pmax_with_campaign_negatives,
         TRUE                            AS _summary
     FROM (
@@ -533,8 +578,6 @@ def _pmax_performance(suffix: str, dataset: str | None = None) -> pd.DataFrame:
           AND campaign_status = 'ENABLED'
           AND {_max_partition(t_campaign)}
     ) c
-    LEFT JOIN {t_campaign_shared_set} css
-           ON c.campaign_id = css.campaign_id
     LEFT JOIN (
         SELECT DISTINCT campaign_id
         FROM {t_criteria}
@@ -765,8 +808,12 @@ def _keyword_strategy(suffix: str, dataset: str | None = None) -> pd.DataFrame:
 
     try:
         impression_qs = run_query(impression_qs_sql)
-        logger.warning("keyword_strategy/impression_qs: weighted_avg_qs=%s",
-                       impression_qs["impression_weighted_avg_qs"].iloc[0] if not impression_qs.empty else "n/a")
+        qs_val = impression_qs["impression_weighted_avg_qs"].iloc[0] if not impression_qs.empty else None
+        logger.warning("keyword_strategy/impression_qs: weighted_avg_qs=%s", qs_val)
+        if qs_val is not None:
+            impression_qs["qs_status_computed"] = (
+                "fail" if qs_val < 5.5 else "warn" if qs_val < 7.0 else "pass"
+            )
         impression_qs["_source"] = "impression_weighted_qs"
     except Exception as exc:
         logger.warning("keyword_strategy/impression_qs failed: %s", exc)
@@ -826,7 +873,7 @@ def extract_audit_data(suffix: str, dataset: str | None = None) -> dict[str, pd.
         "conversion_kpi": _conversion_kpi,
         "feeds_catalogue": _feeds_catalogue,
         "creative_content": _creative_content,
-        "pmax_performance": _pmax_performance,
+        "ai_readiness": _pmax_performance,
     }
 
     results: dict[str, pd.DataFrame] = {}

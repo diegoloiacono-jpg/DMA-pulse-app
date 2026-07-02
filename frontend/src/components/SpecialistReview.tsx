@@ -15,6 +15,7 @@ interface Props {
   auditId: string;
   results: SpecialistResult[];
   onScoringStarted: () => void;
+  skipValidation?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -25,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const LEVEL_ORDER = ["basic", "advanced", "expert", "champion"] as const;
 
-export default function SpecialistReview({ auditId, results, onScoringStarted }: Props) {
+export default function SpecialistReview({ auditId, results, onScoringStarted, skipValidation }: Props) {
   const [edited, setEdited] = useState<Record<string, SpecialistResult>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +39,10 @@ export default function SpecialistReview({ auditId, results, onScoringStarted }:
   };
 
   const handleApprove = async () => {
+    if (skipValidation) {
+      onScoringStarted();
+      return;
+    }
     setSubmitting(true);
     try {
       const overrides = Object.values(edited);
@@ -80,6 +85,7 @@ export default function SpecialistReview({ auditId, results, onScoringStarted }:
                   <th className="px-3 py-2 text-left font-medium">Status</th>
                   <th className="px-3 py-2 text-left font-medium">Level</th>
                   <th className="px-3 py-2 text-left font-medium">Action</th>
+                  <th className="px-3 py-2 text-left font-medium">Explanation</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -138,8 +144,11 @@ export default function SpecialistReview({ auditId, results, onScoringStarted }:
                           </Select>
                         </td>
 
-                        <td className="px-3 py-2 text-muted-foreground max-w-xs truncate">
+                        <td className="px-3 py-2 text-muted-foreground max-w-xs text-xs">
                           {cur.action === "None" ? "—" : cur.action}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground max-w-xs text-xs">
+                          {cur.explanation || "—"}
                         </td>
                       </tr>
                     );
