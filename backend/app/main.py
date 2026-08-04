@@ -1,7 +1,9 @@
 import logging
 import os
 
-from fastapi import FastAPI, Request
+import re
+
+from fastapi import FastAPI, HTTPException, Request
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +13,7 @@ from google.oauth2 import id_token
 
 from app.routers import audit, validation
 from app.config import GCP_PROJECT, bq_client
+from app.services.bigquery import run_query
 
 app = FastAPI(title="DMA Pulse API", version="0.1.0")
 
@@ -73,3 +76,18 @@ def health() -> dict:
 def list_datasets() -> dict:
     datasets = [d.dataset_id for d in bq_client.list_datasets(project=GCP_PROJECT)]
     return {"datasets": sorted(datasets)}
+
+
+_DATASET_ID_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+
+@app.get("/api/datasets/{dataset}/accounts")
+def list_accounts(dataset: str) -> dict:
+    """List distinct Google Ads accounts blended in a dataset's campaign table."""
+    if not _DATASET_ID_RE.match(dataset):
+        raise HTTPException(status_code=400, detail="Invalid dataset name")
+    df = run_query(
+        f"SELECT DISTINCT ACCOUNT_ID, ACCOUNT_NAME "
+        f"FROM `{GCP_PROJECT}.{dataset}.GOOGLEADS_CAMPAIGN` ORDER BY ACCOUNT_NAME"
+    )
+    return {"accounts": df.rename(columns=str.lower).to_dict(orient="records")}

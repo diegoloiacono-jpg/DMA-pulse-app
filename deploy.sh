@@ -4,7 +4,7 @@
 # Usage with auth: GOOGLE_CLIENT_ID=xxx ./deploy.sh
 set -euo pipefail
 
-PROJECT="coi-innovation-testing-8166"
+PROJECT="paid-media-2a86"
 REGION="europe-west1"
 REPO="europe-west1-docker.pkg.dev/${PROJECT}/dma-pulse"
 BACKEND_IMAGE="${REPO}/backend:latest"
@@ -14,9 +14,20 @@ SA_EMAIL="${SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
 
 # Google OAuth Client ID — restricts login to @artefact.com accounts
 # Not a secret: this value is embedded in the public frontend JS bundle.
-GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-841637323524-llh1v81uh35r40mgo77je0e6npfpnb7t.apps.googleusercontent.com}"
+# Left empty by default: OAuth client IDs are project-scoped, so the old
+# project's client ID must NOT be reused here. Pass GOOGLE_CLIENT_ID=xxx
+# once a client has been created under this project's OAuth consent screen.
+GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
 
 command -v gcloud >/dev/null 2>&1 || { echo "ERROR: gcloud not found — https://cloud.google.com/sdk/docs/install"; exit 1; }
+
+# This org disables the default Compute Engine service account
+# (constraints/iam.automaticIamGrantsForDefaultServiceAccounts), so Cloud
+# Build must be told explicitly to build as a user-managed SA instead — the
+# auto-generated cloudbuild.gserviceaccount.com is itself a default/Google-
+# managed account and gcloud rejects it for --service-account. Reuse the
+# backend SA (granted roles/cloudbuild.builds.builder below) for builds.
+CLOUDBUILD_SA="projects/${PROJECT}/serviceAccounts/${SA_EMAIL}"
 
 gcloud config set project "${PROJECT}" --quiet
 
@@ -56,8 +67,11 @@ if gcloud projects add-iam-policy-binding "${PROJECT}" \
      --role="roles/bigquery.user" --quiet 2>/dev/null && \
    gcloud projects add-iam-policy-binding "${PROJECT}" \
      --member="serviceAccount:${SA_EMAIL}" \
-     --role="roles/bigquery.dataViewer" --quiet 2>/dev/null; then
-  echo "    BigQuery roles granted."
+     --role="roles/bigquery.dataViewer" --quiet 2>/dev/null && \
+   gcloud projects add-iam-policy-binding "${PROJECT}" \
+     --member="serviceAccount:${SA_EMAIL}" \
+     --role="roles/cloudbuild.builds.builder" --quiet 2>/dev/null; then
+  echo "    BigQuery + Cloud Build roles granted."
 else
   echo ""
   echo "  ⚠️  Could not set IAM bindings (insufficient permissions)."
@@ -71,7 +85,11 @@ else
   echo "       --member=serviceAccount:${SA_EMAIL} \\"
   echo "       --role=roles/bigquery.dataViewer"
   echo ""
-  echo "  Continuing deployment — backend will deploy but BigQuery calls will fail until roles are granted."
+  echo "     gcloud projects add-iam-policy-binding ${PROJECT} \\"
+  echo "       --member=serviceAccount:${SA_EMAIL} \\"
+  echo "       --role=roles/cloudbuild.builds.builder"
+  echo ""
+  echo "  Continuing deployment — backend will deploy but BigQuery calls / builds will fail until roles are granted."
 fi
 
 # ── Step 4: Build + push backend ──────────────────────────────────────────
@@ -80,6 +98,7 @@ echo "==> [4/7] Building backend image..."
 if ! gcloud builds submit backend \
        --config=backend/cloudbuild.yaml \
        --substitutions="_IMAGE=${BACKEND_IMAGE}" \
+       --service-account="${CLOUDBUILD_SA}" \
        --project="${PROJECT}"; then
   echo ""
   echo "  ❌ Cloud Build failed. Two things to try:"
@@ -97,7 +116,7 @@ fi
 # ── Step 5: Deploy backend Cloud Run ──────────────────────────────────────
 echo ""
 echo "==> [5/7] Deploying backend..."
-BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=bwj_google_ads,ACCOUNT_SUFFIX=6600502562,MODEL_DATASET=google_ads_audit"
+BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=google_ads,DEFAULT_ACCOUNT_ID=3676622146,MODEL_DATASET=google_ads_audit"
 if [[ -n "${GOOGLE_CLIENT_ID}" ]]; then
   BACKEND_ENV="${BACKEND_ENV},GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
 fi
@@ -129,6 +148,7 @@ echo "==> [6/7] Building frontend image..."
 gcloud builds submit frontend \
   --config=frontend/cloudbuild.yaml \
   --substitutions="_IMAGE=${FRONTEND_IMAGE},_API_URL=${BACKEND_URL},_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" \
+  --service-account="${CLOUDBUILD_SA}" \
   --project="${PROJECT}"
 
 # ── Step 7: Deploy frontend Cloud Run ─────────────────────────────────────

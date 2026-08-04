@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Play, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { apiClient, AuditState, AuditStatus, BrandContextPayload } from "@/lib/apiClient";
+import { AccountInfo, apiClient, AuditState, AuditStatus, BrandContextPayload } from "@/lib/apiClient";
 import { BrandContext } from "@/utils/brandContext";
 import { SavedContext } from "@/utils/savedContexts";
 
@@ -43,12 +43,35 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(true);
 
+  const [accountId, setAccountId] = useState<string>("");
+  const [availableAccounts, setAvailableAccounts] = useState<AccountInfo[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+
+  // Data may only span a few days if the BigQuery connector was just set up —
+  // default the displayed lookback low so a fresh audit isn't run against an
+  // empty 30-day window; the backend still defaults to 30 if this is unset.
+  const [lookbackDays, setLookbackDays] = useState<number>(7);
+
   useEffect(() => {
     apiClient.listDatasets()
       .then(r => setAvailableDatasets(r.datasets))
       .catch(() => {})
       .finally(() => setDatasetsLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!dataset) {
+      setAvailableAccounts([]);
+      setAccountId("");
+      return;
+    }
+    setAccountsLoading(true);
+    setAccountId("");
+    apiClient.listAccounts(dataset)
+      .then(r => setAvailableAccounts(r.accounts))
+      .catch(() => setAvailableAccounts([]))
+      .finally(() => setAccountsLoading(false));
+  }, [dataset]);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -99,8 +122,9 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
       };
       const { audit_id } = await apiClient.runAudit(
         payload,
-        undefined,
+        accountId || undefined,
         dataset.trim() || undefined,
+        lookbackDays || undefined,
       );
       setAuditId(audit_id);
       pollRef.current = setInterval(() => poll(audit_id), 3000);
@@ -160,6 +184,41 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Account</label>
+        <select
+          value={accountId}
+          onChange={e => setAccountId(e.target.value)}
+          disabled={!!isActive || !dataset || accountsLoading}
+          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+        >
+          <option value="">
+            {!dataset ? "— pick a dataset first —" : accountsLoading ? "Loading…" : "— server default —"}
+          </option>
+          {availableAccounts.map(a => (
+            <option key={a.account_id} value={a.account_id}>
+              {a.account_name} ({a.account_id})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Lookback window (days)</label>
+        <input
+          type="number"
+          min={1}
+          max={365}
+          value={lookbackDays}
+          onChange={e => setLookbackDays(Math.max(1, Number(e.target.value) || 1))}
+          disabled={!!isActive}
+          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Kept short by default — the BigQuery connector may only have a few days of history so far.
+        </p>
       </div>
 
       {error && (

@@ -6,7 +6,7 @@
 # The function can also accept these as POST body params at call time.
 set -euo pipefail
 
-PROJECT="coi-innovation-testing-8166"
+PROJECT="paid-media-2a86"
 REGION="europe-west1"
 FUNCTION_NAME="meta-extractor"
 META_DATASET="${META_DATASET:-meta_data}"

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from app.config import ACCOUNT_SUFFIX
+from app.config import DEFAULT_ACCOUNT_ID
 from app.models.audit import (
     AuditRunRequest,
     AuditState,
@@ -25,7 +25,7 @@ def _now() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-def _run_pipeline(audit_id: str, suffix: str, dataset: str | None = None) -> None:
+def _run_pipeline(audit_id: str, account_id: str, dataset: str | None = None, lookback_days: int = 30) -> None:
     """Background task: extract data then run the specialist agent."""
     state = audit_sessions[audit_id]
 
@@ -33,7 +33,7 @@ def _run_pipeline(audit_id: str, suffix: str, dataset: str | None = None) -> Non
         # --- Extraction ---
         state.status = AuditStatus.EXTRACTING
         state.updated_at = _now()
-        audit_data = extract_audit_data(suffix, dataset=dataset)
+        audit_data = extract_audit_data(account_id, dataset=dataset, lookback_days=lookback_days)
 
         # --- Specialist ---
         state.status = AuditStatus.SPECIALIST_RUNNING
@@ -53,8 +53,9 @@ def _run_pipeline(audit_id: str, suffix: str, dataset: str | None = None) -> Non
 def run_audit(payload: AuditRunRequest, background_tasks: BackgroundTasks) -> dict:
     """Kick off a new audit and immediately return the audit_id."""
     audit_id = str(uuid.uuid4())
-    suffix = payload.account_id or ACCOUNT_SUFFIX
+    account_id = payload.account_id or DEFAULT_ACCOUNT_ID
     dataset = payload.dataset or None
+    lookback_days = payload.lookback_days
     now = _now()
 
     audit_sessions[audit_id] = AuditState(
@@ -65,7 +66,7 @@ def run_audit(payload: AuditRunRequest, background_tasks: BackgroundTasks) -> di
         updated_at=now,
     )
 
-    background_tasks.add_task(_run_pipeline, audit_id, suffix, dataset)
+    background_tasks.add_task(_run_pipeline, audit_id, account_id, dataset, lookback_days)
     return {"audit_id": audit_id, "status": AuditStatus.PENDING}
 
 

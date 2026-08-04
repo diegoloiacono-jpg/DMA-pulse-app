@@ -125,16 +125,44 @@ Level definitions:
   expert    = feature follows most best practices at scale
   champion  = feature is fully optimised and industry-leading
 
+DATA AVAILABILITY — GENERAL RULE:
+The Google Ads data now arrives via a Supermetrics BigQuery export, which is flatter and less
+granular than the previous native Google Ads BigQuery Data Transfer export. If the data you
+receive for a category is exactly `{"_empty": true}`, that category has no BigQuery signal at
+all in the current data source. In that case, return one entry per listed topic with:
+  status = "warn", level = "basic", source = "no_data_source",
+  action = "Verify manually — no BigQuery signal available for this category in the current
+    data source (Supermetrics export does not include this data)",
+  explanation = one sentence naming what table/field would be needed.
+Apply this same "no_data_source" treatment to any individual topic below whose criteria say
+its data has been dropped from the export, even when other topics in the same category still
+have real data to evaluate.
+
 === PER-TOPIC EVALUATION CRITERIA ===
 
 CAMPAIGN SETUP CATEGORY:
 campaign rows (_source="campaign") have: campaign_id, campaign_name, status,
-campaign_advertising_channel_type, campaign_bidding_strategy_type, has_recommended_budget, budget_amount_micros.
-campaign_perf_30d rows (_source="campaign_perf_30d") have: campaign_id, campaign_bidding_strategy_type,
-impressions_30d, impressions_7d, conversions_30d, cost_micros_30d (raw micros — divide by 1e6 for USD).
-adschedule_summary row (_source="adschedule_summary") has: campaigns_with_adschedule, total_adschedule_entries.
-Smart bidding types: MAXIMIZE_CONVERSIONS, TARGET_CPA, TARGET_ROAS, MAXIMIZE_CONVERSION_VALUE.
-Manual/basic bidding types: MANUAL_CPC, ENHANCED_CPC, MAXIMIZE_CLICKS, TARGET_SPEND.
+campaign_advertising_channel_type, campaign_advertising_channel_sub_type,
+campaign_bidding_strategy_type, daily_budget (already in account currency, not micros).
+campaign_perf rows (_source="campaign_perf") have: campaign_id, impressions_period,
+impressions_recent, conversions_period, cost_period — aggregated over the audit's configurable
+lookback window (impressions_period/conversions_period/cost_period cover the full window;
+impressions_recent covers a shorter recent sub-window, typically the last 7 days or the full
+window if shorter). Treat "period"/"recent" as relative to whatever window was actually used —
+do not assume a fixed 30 days.
+campaign_type_summary rows (_source="campaign_type_summary") have: campaign_advertising_channel_type,
+campaign_count, _summary=true.
+campaign_bidding_strategy_type values are human-readable strings from Supermetrics, not
+  SCREAMING_SNAKE_CASE enums — e.g. "Maximize Conversion Value", "Target ROAS", "cpc". Match
+  semantically rather than expecting exact old-style tokens.
+Smart bidding types (any casing/spacing): Maximize Conversions, Target CPA, Target ROAS,
+  Maximize Conversion Value.
+Manual/basic bidding types (any casing/spacing): cpc, Manual CPC, Enhanced CPC, Maximize Clicks,
+  Target Spend.
+DATA AVAILABILITY NOTE: has_recommended_budget, budget target-vs-actual flags, and campaign
+  start/end dates are NOT available in this export (regression vs. the previous schema, which
+  had has_recommended_budget). Budget allocation below is evaluated from daily_budget vs. actual
+  spend only.
 
 - Campaign naming convention:
     Read _naming_convention_compliance_pct from the row where _summary=true.
@@ -145,30 +173,37 @@ Manual/basic bidding types: MANUAL_CPC, ENHANCED_CPC, MAXIMIZE_CLICKS, TARGET_SP
     If the _summary row is absent, evaluate qualitatively from raw campaign_name values.
 
 - Campaign status hygiene:
-    Cross-reference _source="campaign" (status) with _source="campaign_perf_30d" (impressions_7d, impressions_30d)
-    by campaign_id.
-    Pass: every campaign where status="ENABLED" has impressions_7d > 0.
-    Fail: any campaign with status="ENABLED" AND impressions_30d = 0 (zero impressions in 30 days).
-    Warn: any campaign with status="ENABLED" AND impressions_7d = 0 but impressions_30d > 0
-          (was active in the period but stalled in the last 7 days).
+    Cross-reference _source="campaign" (status) with _source="campaign_perf" (impressions_recent,
+    impressions_period) by campaign_id.
+    Pass: every campaign where status="ENABLED" has impressions_recent > 0.
+    Fail: any campaign with status="ENABLED" AND impressions_period = 0 (zero impressions across
+          the whole lookback window).
+    Warn: any campaign with status="ENABLED" AND impressions_recent = 0 but impressions_period > 0
+          (was active earlier in the window but stalled recently).
     Do not penalise PAUSED or REMOVED campaigns.
 
 - Bidding strategy:
-    For each row in _source="campaign_perf_30d", read campaign_bidding_strategy_type and conversions_30d.
-    Pass: all campaigns use smart bidding types, OR any manual/basic campaign has conversions_30d < 30
-          (insufficient conversion volume to justify switching — acceptable for niche/B2B).
-    Fail: any campaign uses MANUAL_CPC or ENHANCED_CPC AND conversions_30d >= 30.
-    Warn: any campaign uses MAXIMIZE_CLICKS with conversions_30d >= 30.
+    For each row in _source="campaign_perf" joined to _source="campaign" by campaign_id, read
+    campaign_bidding_strategy_type and conversions_period.
+    Pass: all campaigns use smart bidding types, OR any manual/basic campaign has conversions_period
+          below roughly 30 (insufficient conversion volume to justify switching — acceptable for
+          niche/B2B, and expected while the lookback window is still short/data is sparse).
+    Fail: any campaign uses MANUAL_CPC or ENHANCED_CPC AND conversions_period is clearly high
+          relative to the window (ample signal, no reason to stay manual).
+    Warn: any campaign uses MAXIMIZE_CLICKS with meaningful conversions_period.
 
 - Budget allocation:
-    Cross-reference _source="campaign" (has_recommended_budget, budget_amount_micros) with
-    _source="campaign_perf_30d" (cost_micros_30d, conversions_30d) by campaign_id.
-    Pass: no campaigns show has_recommended_budget=true, OR any constrained campaign has among the
-          lowest conversions_30d in the account (intentional fixed test budget cap).
-    Fail: one or more campaigns have has_recommended_budget=true AND high conversions_30d (among
-          the top performers), while other campaigns with low conversions_30d have
-          budget_amount_micros >> cost_micros_30d (significant idle budget sitting unused elsewhere).
-    Warn: has_recommended_budget=true on any campaign, without the full cross-condition above.
+    DATA AVAILABILITY NOTE: has_recommended_budget and budget_amount_micros are NOT available in
+    this export — evaluate using daily_budget (from _source="campaign") against actual spend
+    (cost_period from _source="campaign_perf") only.
+    Pass: campaigns with the highest cost_period are not obviously budget-capped (daily_budget
+      comfortably exceeds average daily spend implied by cost_period over the window).
+    Fail: a top-performing campaign (high conversions_period) shows cost_period tracking very
+      close to daily_budget × window days (likely budget-constrained), while other
+      lower-performing campaigns show cost_period well below their daily_budget × window days
+      (idle budget sitting unused elsewhere).
+    Warn: some campaigns show spend tracking close to their daily_budget cap, without the full
+      cross-condition above.
 
 - Campaign type mix:
     Read _source="campaign_type_summary": each row has campaign_advertising_channel_type and
@@ -182,136 +217,85 @@ Manual/basic bidding types: MANUAL_CPC, ENHANCED_CPC, MAXIMIZE_CLICKS, TARGET_SP
     Warn: multiple types present but one type's campaign_count accounts for >90% of the total.
 
 - Scheduling & dayparting:
-    Read _source="adschedule_summary": campaigns_with_adschedule, total_adschedule_entries.
-    Read majority bidding strategy type from _source="campaign_perf_30d".
-    Pass: smart-bidding campaigns run on default 24/7 schedules (campaigns_with_adschedule = 0),
-          OR any schedule entries are strict time exclusions (B2B overnight/weekend blocks) rather
-          than bid modifier adjustments.
-    Fail: manual bid modifier percentages (positive or negative %) are applied on top of
-          smart-bidding campaigns — infer when campaigns_with_adschedule > 0 AND the majority of
-          campaigns use smart bidding types. This throttles the algorithm's real-time auction signals.
-    Warn: ad schedules are configured but the bidding strategy mix is unclear or partially manual.
+    DATA AVAILABILITY NOTE: hourly/day-of-week stats and ad-schedule criteria have no equivalent
+    table in the current Supermetrics export. Apply the general "no_data_source" rule: score as
+    warn/basic, source="no_data_source", and instruct: "Verify dayparting and AD_SCHEDULE
+    configuration directly in Google Ads UI — not available from the current BigQuery export."
 
 - Data density:
-    From _source="campaign_perf_30d": for each smart-bidding campaign, read conversions_30d.
-    Smart bidding requires sufficient conversion volume to learn effectively (Google recommends
-    ≥30 conversions per campaign per 30-day window for most smart bidding strategies).
-    Pass: the majority (>60%) of ENABLED smart-bidding campaigns have conversions_30d >= 30 —
-      the account provides sufficient data for the bidding algorithm to optimise.
-    Fail: the majority of smart-bidding campaigns have conversions_30d < 15 — the account is
-      running smart bidding without enough conversion signal, leading to suboptimal learning.
-    Warn: borderline — most campaigns have 15–29 conversions/30d (partial data density; algorithm
-      can learn but performance may be constrained).
+    From _source="campaign_perf": for each smart-bidding campaign (join to _source="campaign" for
+    campaign_bidding_strategy_type), read conversions_period. Smart bidding requires sufficient
+    conversion volume to learn effectively (Google recommends ~30 conversions per campaign per
+    30-day window for most smart bidding strategies — scale this expectation down proportionally
+    if the lookback window is shorter than 30 days, since the export may only have a few days
+    of history so far).
+    Pass: the majority (>60%) of ENABLED smart-bidding campaigns are on pace for that volume
+      given the window length — the account provides sufficient data for the bidding algorithm
+      to optimise.
+    Fail: the majority of smart-bidding campaigns are clearly far off pace — running smart
+      bidding without enough conversion signal, leading to suboptimal learning.
+    Warn: borderline — partial data density; algorithm can learn but performance may be
+      constrained. If the lookback window is very short (a few days), lean toward warn rather
+      than fail and note that the assessment will sharpen as more history accumulates.
     If no smart-bidding campaigns exist, score as warn: data density is not applicable but
     note the account relies on manual bidding without conversion learning.
 
 AUDIENCE TARGETING CATEGORY:
-campaign_audience rows (_source="campaign_audience") have: campaign_id, audience_id, bid_modifier.
-campaign_criterion rows (_source="campaign_criterion") are pre-aggregated: criterion_type, negative, count.
-demographics rows (_source="demographics") have: campaign_id, demographic_type, bid_modifier, negative, demo_category (gender or age_range).
-geo_target_summary rows (_source="geo_target_summary") have: geo_target_type, campaign_count.
-  geo_target_type values: DONT_CARE (default, broad), AREA_OF_INTEREST, LOCATION_OF_PRESENCE (correct).
-NOTE: audience membership sizes and targeting mode (Observation vs Targeting) are not available in
-the exported data — flag these topics for manual verification where noted.
-
-- Audience segmentation:
-    The Observation vs Targeting mode flag is NOT available in the exported data; manual verification
-    is required to confirm it.
-    Use _source="campaign_audience" and _source="campaign_criterion" as proxies:
-    B2C pass signal: USER_LIST entries exist in campaign_criterion (count > 0, negative=false) AND
-      campaign_audience rows are present — suggests audiences are attached (mode requires manual check).
-    B2C fail signal: Zero campaign_audience rows AND zero USER_LIST in campaign_criterion — no audiences
-      attached at all; reach restriction or absence of data signals are both failures.
-    B2B: evaluate whether attached audiences (audience_id values in campaign_audience) are consistent
-      with the audience strategy described in brand context. If brand context has no audience strategy,
-      score as warn and note manual verification is required.
-    In the explanation, always flag that Observation vs Targeting mode requires manual verification
-    in the Google Ads UI under Audiences > Targeting setting.
-
-- Remarketing lists:
-    From _source="campaign_criterion": find USER_LIST rows where negative=false.
-    Pass: USER_LIST count > 0 (remarketing lists are attached) AND campaign_audience rows are present
-      with differentiated bid_modifier values (not all = 1.0) — active remarketing.
-    Fail: USER_LIST count = 0 AND zero campaign_audience rows — no remarketing lists attached at all.
-    Warn: USER_LIST present in criteria but all campaign_audience bid_modifier = 1.0 — lists attached
-      but not actively optimized.
-    NOTE: member size validation (>1,000 active users threshold) requires manual verification in
-    Audience Manager — flag this in the explanation.
-
-- Similar audiences / lookalikes:
-    From _source="campaign_criterion": look for USER_LIST entries with negative=false and count > 0.
-    Pass: USER_LIST rows present — indicates first-party audience lists are attached and guiding
-      algorithmic expansion.
-    Fail: Zero USER_LIST entries with negative=false — no first-party lists supplied; platform
-      targeting is completely unguided.
-    NOTE: Customer Match list type and API upload freshness (30-day requirement) cannot be verified
-    from exported data — flag for manual verification in Audience Manager.
-
-- Demographic targeting:
-    From _source="demographics": review bid_modifier and negative per demographic_type.
-    Pass: at least one demographic segment has bid_modifier != 1.0 (positive adjustment) OR
-      negative=true (explicit exclusion) — historical data is being acted on.
-    Fail: all demographic bid_modifier values = 0 or 1.0 AND negative=false across all segments —
-      all demographic variables left at default with no adjustments, despite available data.
-    NOTE: cross-referencing demographics with conversion data to identify zero-conversion segments
-    requires manual analysis — flag this in the explanation.
-
-- Geo targeting precision:
-    From _source="geo_target_summary": read geo_target_type and campaign_count.
-    Pass: all enabled campaigns have geo_target_type = "LOCATION_OF_PRESENCE" (people physically
-      present in targeted locations — correct setting).
-    Fail: any campaigns have geo_target_type = "DONT_CARE" (default "Presence or Interest" —
-      bleeds spend on users merely interested in a location, including international clicks).
-    Warn: mix of LOCATION_OF_PRESENCE and AREA_OF_INTEREST across campaigns.
-    If geo_target_summary is empty (data unavailable), check LOCATION count in campaign_criterion
-    as a fallback: 0 LOCATION entries -> fail (no geo targeting configured at all).
-
-- Exclusion lists:
-    From _source="campaign_criterion": read rows where negative=true, grouped by criterion_type.
-    Pass: negative=true rows present for USER_LIST criterion_type (audience exclusions active) AND
-      at least one other negative criterion_type (KEYWORD, PLACEMENT, TOPIC, or LOCATION) — multi-layer
-      exclusions in place.
-    Fail: zero rows with negative=true across all criterion_types — no exclusion lists of any kind.
-    Warn: only one criterion_type has negative entries (e.g. only keyword negatives, no audience
-      exclusions).
-    B2C/Demand Gen note: if the account runs Demand Gen or Display campaigns, check for USER_LIST
-    negative=true entries specifically — absence means existing customers are being retargeted wastefully.
+DATA AVAILABILITY NOTE: none of CampaignAudience, CampaignCriterion, Gender, or AgeRange have an
+  equivalent table in the current Supermetrics export. This category's data will always be
+  `{"_empty": true}` under the current data source — apply the general "no_data_source" rule to
+  every topic below (Audience segmentation, Remarketing lists, Similar audiences / lookalikes,
+  Demographic targeting, Geo targeting precision, Exclusion lists). For each, instruct the user
+  to verify directly in Google Ads UI under Audiences / Demographics / Locations, and name the
+  specific screen (e.g. "Audiences > Targeting setting" for segmentation mode, "Audience Manager"
+  for remarketing lists, "Campaigns > Locations" for geo targeting, "Audiences > Exclusions" for
+  exclusion lists).
 
 CONVERSION KPI CATEGORY:
-DATA AVAILABILITY NOTE: p_ads_ConversionAction does not exist in this BQ export. The
-  conversion_actions source is derived from CampaignConversionStats (30-day window). Available
-  columns: name, category, conversions_30d, value_30d, campaigns_tracking. NOT available from BQ:
-  status, primary_for_goal, attribution_model, include_in_conversions, counting_type — these
-  require manual verification in the Google Ads UI.
-conversion_actions rows (_source="conversion_actions") have: name, category, conversions_30d,
-  value_30d, campaigns_tracking. category values seen: PURCHASE, LEAD, SIGN_UP, PAGE_VIEW, OTHER.
+DATA AVAILABILITY NOTE: there is no ConversionAction-equivalent table in this export either
+  (same gap as before). The conversion_actions source is derived from GOOGLEADS_CONVERSION over
+  the audit's lookback window. Available columns: name, category, conversions_period, value_period,
+  campaigns_tracking. NOT available: status, primary_for_goal, attribution_model,
+  include_in_conversions, counting_type — these require manual verification in the Google Ads UI.
+  target_roas/target_cpa are NOT available at all anymore (a new regression — the previous export
+  at least had target_roas); campaign_targets below is actual-performance-only, no target
+  comparison is possible.
+conversion_actions rows (_source="conversion_actions") have: name, category, conversions_period,
+  value_period, campaigns_tracking. category is Supermetrics' free-text CONVERSION_CATEGORY label
+  (e.g. "Purchase/Sale", "Add to cart", "Lead", "Sign-up", "Page view") — not a fixed enum. Judge
+  bottom-of-funnel vs. soft-event intent semantically from the label text rather than expecting
+  exact PURCHASE/LEAD/PAGE_VIEW tokens.
 campaign_targets rows (_source="campaign_targets") have: campaign_id, bidding_strategy,
-  target_roas (FLOAT — 0 means no target set), actual_roas_30d, actual_cpa_30d, conversions_30d.
-  NOTE: CPA targets are not available in this export — only target_roas.
+  actual_roas_period, actual_cpa_period, conversions_period. No target_roas/target_cpa column exists.
 campaign_basic_stats rows (_source="campaign_basic_stats") have: campaign_id, date, impressions,
-  clicks, cost_micros, conversions, conversions_value, roas, cpa.
+  clicks, cost, conversions, conversions_value, roas, cpa (cost is already in account currency).
 campaign_conversion_stats rows (_source="campaign_conversion_stats") have: campaign_id,
   conversion_name, conversion_category, conversions, conversions_value.
 cross_device_conversions rows (_source="cross_device_conversions") have: name, category,
-  cross_device_conversions_30d, campaigns_with_xdevice, _summary=true.
+  cross_device_conversions_period, campaigns_with_xdevice, _summary=true. (This is actually simpler
+  and more reliable than before — cross-device figures come straight off the conversion export,
+  no join required.)
 
 - Conversion tracking setup:
-    From _source="conversion_actions": check conversions_30d > 0 for any action.
+    From _source="conversion_actions": check conversions_period > 0 for any action.
     From _source="campaign_basic_stats": verify active spend exists.
-    Pass: conversion_actions has at least one row with conversions_30d > 0 AND campaign_basic_stats
-      shows active spend — tracking is firing and recording conversions.
+    Pass: conversion_actions has at least one row with conversions_period > 0 AND
+      campaign_basic_stats shows active spend — tracking is firing and recording conversions.
     Fail: campaign_basic_stats shows spend but conversion_actions has zero conversions across all
       actions — tracking is broken or no conversion actions are configured.
-    Warn: very few conversions relative to spend (possible partial tag breakage).
+    Warn: very few conversions relative to spend (possible partial tag breakage), or the lookback
+      window is short enough that absence of conversions isn't yet conclusive — note this caveat.
     NOTE: tag firing recency (within 24h), include_in_conversions, and action status cannot be
     verified from BQ daily batches — flag for manual validation in Google Ads tag diagnostics.
 
 - Conversion categories:
     From _source="conversion_actions": read category for each tracked action.
-    Pass: at least one action has category = PURCHASE, LEAD, SIGN_UP, or PHONE_CALL with
-      conversions_30d > 0 — bottom-of-funnel events are being tracked and firing.
-    Fail: all actions recording conversions have category = PAGE_VIEW, DOWNLOAD, or OTHER —
-      account is optimizing for soft micro-events instead of revenue or lead objectives.
+    Pass: at least one action has a category label that reads as bottom-of-funnel (e.g.
+      "Purchase/Sale", "Add to cart" for e-commerce; "Lead", "Sign-up", "Phone call" for lead-gen)
+      with conversions_period > 0 — bottom-of-funnel events are being tracked and firing.
+    Fail: all actions recording conversions have category labels that read as soft micro-events
+      (e.g. "Page view", "Download", "Newsletter signup" with no purchase/lead action present) —
+      account is optimizing for soft engagement instead of revenue or lead objectives.
     Warn: mix of high-value and low-value categories both recording conversions.
     NOTE: which category is set as Primary (primary_for_goal) is not available from BQ —
     flag for manual verification: confirm that the PURCHASE/LEAD action is set as Primary Goal.
@@ -324,79 +308,72 @@ cross_device_conversions rows (_source="cross_device_conversions") have: name, c
     be Secondary only."
 
 - ROAS / CPA targets:
-    From _source="campaign_targets": for smart-bidding ENABLED campaigns, check target_roas.
-    NOTE: CPA targets are not available in this BQ export — only ROAS targets.
-    Pass: all campaigns with conversions_30d >= 30 have target_roas > 0, AND actual_roas_30d
-      is within ±20% of target_roas (targets are realistic and being achieved).
-    Fail: any campaign with conversions_30d >= 30 has target_roas = 0 (unconstrained smart
-      bidding), OR target_roas is more than 2× actual_roas_30d (unachievable target causing
-      delivery throttle).
-    Warn: targets set but actual_roas_30d is outside ±20% of target_roas on majority of
-      campaigns — targets need recalibration.
+    DATA AVAILABILITY NOTE: target_roas and target_cpa are NOT available anywhere in this export
+    (both gone — a new regression). This topic cannot be evaluated automatically. Score as warn,
+    source="no_data_source", and instruct: "Verify tROAS/tCPA targets directly in Google Ads UI
+    for each smart-bidding campaign; compare against actual_roas_period/actual_cpa_period from
+    campaign_targets (available in this export) to judge whether targets look realistic."
 
 - Target stability:
-    From _source="campaign_targets": compare target_roas against actual_roas_30d for each
-    smart-bidding campaign.
-    Pass: majority of campaigns with target_roas > 0 have actual_roas_30d within ±30% of
-      target_roas — targets are calibrated and achievable, indicating stable bidding.
-    Fail: majority of campaigns have actual_roas_30d deviating more than ±50% from
-      target_roas — targets are unrealistic, causing budget throttle or overspend cycles.
-    Warn: targets are set but actual_roas_30d is outside ±30% on most campaigns — targets
-      need recalibration to stabilise bidding.
-    If campaign_targets is empty or no target_roas > 0 exists: score as warn — no target
-    constraints means bidding stability cannot be assessed. Recommend setting tROAS.
-    NOTE: Historical target change history is not available in the 30-day BQ window — flag
-    that target revision frequency requires manual review in Google Ads change history.
+    DATA AVAILABILITY NOTE: same gap as ROAS/CPA targets above — no target_roas/target_cpa column
+    exists to compare against actual performance. Score as warn, source="no_data_source", and
+    instruct: "Verify target revision frequency and target-vs-actual variance directly in Google
+    Ads UI change history; actual_roas_period/actual_cpa_period from this export can inform the
+    conversation but cannot substitute for the target values themselves."
 
 - Attribution model:
-    attribution_model is NOT available in this BQ export (p_ads_ConversionAction missing).
-    Score as warn and flag for manual verification:
-    "Verify in Google Ads > Tools > Conversions that all primary conversion actions use
-    Data-Driven attribution. Last-Click attribution under-credits upper-funnel activity
+    attribution_model is NOT available in this BQ export. Score as warn and flag for manual
+    verification: "Verify in Google Ads > Tools > Conversions that all primary conversion actions
+    use Data-Driven attribution. Last-Click attribution under-credits upper-funnel activity
     and distorts smart bidding signals."
 
 - Cross-device conversions:
-    From _source="cross_device_conversions": check cross_device_conversions_30d.
-    Pass: at least one row exists with cross_device_conversions_30d > 0 — cross-device
+    From _source="cross_device_conversions": check cross_device_conversions_period.
+    Pass: at least one row exists with cross_device_conversions_period > 0 — cross-device
       paths are being tracked and contributing to conversion counts.
-    Fail: source is empty or all cross_device_conversions_30d = 0 — account is blind to
+    Fail: source is empty or all cross_device_conversions_period = 0 — account is blind to
       users who switch devices between click and conversion.
     Warn: cross-device conversions present but very low relative to total conversions
       (possible under-attribution).
 
 FEEDS & CATALOGUE CATEGORY:
-DATA AVAILABILITY NOTE: segments_product_title does not exist in this BQ export. The
-  product_title_sample source uses product_type_l1 + brand + custom_label as a structural proxy.
-  Actual product title text quality requires manual verification in Merchant Center.
+DATA AVAILABILITY NOTE: PRODUCT_TITLE actually exists directly in this export (an upgrade over the
+  previous schema, which was missing it entirely) — "Product title optimisation" below now has a
+  real automated check instead of a permanent stub. Conversely, this export has NO conversions
+  column on the Shopping report at all (a new regression), and NO product-group / ad-group-level
+  partitioning data — "Shopping campaign structure" below has no automated signal anymore.
 shopping_product_stats rows (_source="shopping_product_stats") have: campaign_id, product_brand,
-  product_channel, rows_with_label_0 through rows_with_label_4 (count of rows where that custom
-  label is non-empty), impressions, clicks, cost_micros, conversions.
-product_title_sample rows (_source="product_title_sample") have: product_type, product_brand,
-  custom_label_0, custom_label_1, custom_label_2, impressions, conversions.
-  NOTE: product_title is NOT available in this export — use product_type + brand as feed structure proxy.
-product_group_stats rows (_source="product_group_stats") have: campaign_id, ad_group_id,
-  product_group_count (distinct product groups per ad group), impressions, clicks, cost_micros.
+  rows_with_label_0 through rows_with_label_4 (count of rows where that custom label is non-empty),
+  impressions, clicks, cost. No conversions or product_channel column exists.
+product_title_sample rows (_source="product_title_sample") have: product_title, product_type,
+  product_brand, custom_label_0, custom_label_1, custom_label_2, impressions. product_title is a
+  real title string now — evaluate it directly rather than as a structural proxy.
 NOTE: Merchant Center diagnostic health data (approval rates, disapproval counts) is NOT available
 in the Google Ads BQ export — these criteria require manual verification in Merchant Center.
 
 - Product feed completeness:
     From _source="shopping_product_stats": if rows exist with impressions > 0, the feed is live.
-    From _source="product_title_sample": check product_type and product_brand for null values.
+    From _source="product_title_sample": check product_title, product_type, and product_brand for
+    null values.
     Pass: shopping_product_stats rows present with impressions > 0 AND product_title_sample shows
-      non-null product_type and product_brand on most rows — feed is active and categorised.
+      non-null product_title/product_type/product_brand on most rows — feed is active and
+      categorised.
     Fail: zero shopping_product_stats rows (no active feed or no Shopping campaigns).
-    Warn: shopping stats present but product_type_l1 is mostly null — incomplete categorization.
-    NOTE: product title text quality and Merchant Center approval rate (>95% threshold) cannot be
-    verified from BQ — flag for manual review in Merchant Center Diagnostics.
+    Warn: shopping stats present but product_title or product_type is mostly null — incomplete feed.
+    NOTE: Merchant Center approval rate (>95% threshold) cannot be verified from BQ — flag for
+    manual review in Merchant Center Diagnostics.
 
 - Product title optimisation:
-    product_title text is NOT available in this BQ export. Score as warn and flag for manual
-    verification: "Verify in Merchant Center that product titles follow [Brand] + [Product Type]
-    + [Key Attributes] format (e.g. material, color, size, compatibility). Titles under 70
-    characters or missing brand/attribute terms reduce Shopping ad relevance scores."
-    Use product_type and custom_label_0 from product_title_sample as structural proxies —
-    if product_type_l1 rows are present and descriptive (not null or generic codes), note
-    the feed appears structurally organised but title quality needs manual confirmation.
+    From _source="product_title_sample": read product_title, product_brand directly (this is real
+    title text now, not a proxy).
+    Pass: the majority of sampled titles are reasonably descriptive (contain more than just a
+      generic code), include the product_brand token, and are not empty/placeholder strings.
+    Fail: most sampled titles are blank, purely numeric/SKU-like, or do not contain product_brand
+      at all — titles are not structured for Shopping ad relevance.
+    Warn: titles are present and non-empty but inconsistent — some descriptive, some generic —
+      or brand inclusion is partial across the catalogue.
+    Always add: "Full title-length and keyword-placement review (target 70+ characters, key
+    attributes near the front) still requires manual confirmation in Merchant Center."
 
 - Feed segmentation:
     From _source="shopping_product_stats": sum rows_with_label_0 through rows_with_label_4 across
@@ -409,12 +386,11 @@ in the Google Ads BQ export — these criteria require manual verification in Me
       (e.g., margin tier + performance tier).
 
 - Shopping campaign structure:
-    From _source="product_group_stats": read product_group_count per (campaign_id, ad_group_id).
-    Pass: the majority of ad groups have product_group_count > 1 — inventory is partitioned into
-      granular groups by brand, category, or custom label.
-    Fail: all ad groups have product_group_count = 1 — the entire catalog is in a single
-      "All Products" catch-all bucket with no structural partitioning.
-    Warn: some ad groups are partitioned but others remain as catch-all.
+    DATA AVAILABILITY NOTE: there is no ad_group_id or product-group-count concept anywhere in
+    this export (a new regression — the previous schema had ProductGroupStats). This topic cannot
+    be evaluated automatically. Score as warn, source="no_data_source", and instruct: "Verify
+    Shopping ad group / listing group partitioning directly in Google Ads UI — confirm the catalog
+    is split by brand, category, or custom label rather than left in a single catch-all group."
 
 - Dynamic remarketing feed:
     This criterion checks whether the dynamic remarketing tag passes matching unique identifiers
@@ -441,45 +417,61 @@ in the Google Ads BQ export — these criteria require manual verification in Me
     If hasProductFeed=false: mark as not applicable.
 
 CREATIVE CONTENT CATEGORY:
-ad rows (_source="ad") are account-level aggregates: type, status, ad_strength,
-  policy_approval_status, ad_count.
-ad_group rows (_source="ad_group") have: ad_group_id, campaign_id, ad_group_name, status, ad_group_type.
+ad rows (_source="ad") are account-level aggregates: type, status, policy_approval_status,
+  ad_count. NOTE: ad_strength is NOT available anywhere in this export (a new regression — the
+  previous schema at least had it as a weak proxy).
+ad_group rows (_source="ad_group") have: ad_group_id, campaign_id, ad_group_name, status.
+  NOTE: ad_group_type is NOT available (no way to detect PMax/Display ad-group type from this
+  table alone — cross-reference campaign type via campaign_id where needed).
 rsa_per_adgroup rows (_source="rsa_per_adgroup") have: ad_group_id, campaign_id,
-  enabled_rsa_count, total_enabled_ads, good_excellent_rsa_count, poor_average_rsa_count,
-  disapproved_count, rich_media_count. One row per ad group.
+  enabled_rsa_count, total_enabled_ads, disapproved_count, rich_media_count. One row per ad group.
+  NOTE: good_excellent_rsa_count/poor_average_rsa_count are gone (ad_strength unavailable).
 rsa_headline_summary row (_source="rsa_headline_summary", _summary=true) has:
-  total_rsa_ad_groups, ad_groups_10plus_headlines, ad_groups_under_5_headlines,
-  ad_groups_3plus_descriptions, avg_headline_count, avg_description_count.
-NOTE: actual headline/description text is not extracted — ad copy keyword relevance
-requires qualitative inference from ad_group_name patterns.
+  total_rsa_ads, ads_5plus_headlines, ads_under_3_headlines, ads_2plus_descriptions,
+  avg_headline_count, avg_description_count.
+  NOTE: headline/description text is now derived from flat scalar columns (HEADLINE,
+  HEADLINE_PART_1/2/3, LONG_HEADLINE, SHORT_HEADLINE = max 6 slots; DESCRIPTION, DESCRIPTION_1/2 =
+  max 3 slots) rather than a JSON array of up to 15/4 slots. Thresholds below are recalibrated
+  for this lower ceiling — do not apply the old "10+ headlines" bar, it is unreachable here.
+  Actual headline/description TEXT is available on the raw ad rows if needed for qualitative
+  review, even though this summary only reports counts.
 
 - Responsive search ad coverage:
     From _source="rsa_per_adgroup": count rows where enabled_rsa_count = 0.
-    Cross-reference with _source="ad_group" to confirm those rows are active Search ad groups
-    (status="ENABLED" and ad_group_type not PMax/Display).
-    Pass: every active Search ad group has enabled_rsa_count >= 1.
-    Fail: any active Search ad group has enabled_rsa_count = 0 — relying on legacy formats only.
+    Cross-reference with _source="ad_group" to confirm those rows are active ad groups
+    (status="ENABLED").
+    Pass: every active ad group has enabled_rsa_count >= 1.
+    Fail: any active ad group has enabled_rsa_count = 0 — relying on legacy formats only.
     Warn: enabled_rsa_count = 1 only (minimum coverage, no redundancy).
 
 - Asset group ad strength:
-    From _source="rsa_per_adgroup": compute across all rows:
-      good_excellent_rate = SUM(good_excellent_rsa_count) / SUM(good_excellent_rsa_count + poor_average_rsa_count).
-    Also check _source="ad" for PMax asset types (RESPONSIVE_DISPLAY_AD, etc.) ad_strength.
-    Pass: good_excellent_rate >= 90% — at least 90% of active RSAs and asset groups are Good/Excellent.
-    Fail: more than 10% of active RSAs have poor_average_rsa_count > 0 in their ad group
-      (i.e., Poor or Average ratings dominate).
-    Warn: good_excellent_rate between 80–89%.
+    DATA AVAILABILITY NOTE: ad_strength is NOT available anywhere in this export (regression —
+    the previous schema at least had it as a weak proxy on p_ads_Ad). This topic cannot be
+    evaluated automatically. Score as warn, source="no_data_source", and instruct: "Verify RSA
+    and asset group ad-strength ratings directly in Google Ads UI — not available from the
+    current BigQuery export."
 
 - Headline / description variety:
-    From _source="rsa_headline_summary": read ad_groups_10plus_headlines, ad_groups_under_5_headlines,
-    avg_headline_count, avg_description_count.
-    Pass: ad_groups_10plus_headlines / total_rsa_ad_groups >= 80% AND avg_description_count >= 3.0 —
-      most RSAs use 10+ distinct headlines and 3+ descriptions.
-    Fail: ad_groups_under_5_headlines / total_rsa_ad_groups > 20% OR avg_headline_count < 5 —
+    From _source="rsa_headline_summary": read ads_5plus_headlines, ads_under_3_headlines,
+    ads_2plus_descriptions, avg_headline_count, avg_description_count, total_rsa_ads.
+    Remember the ceiling here is 6 headline slots / 3 description slots (not 15/4).
+    DATA AVAILABILITY CAVEAT: for some accounts the underlying headline/description text
+    columns come back completely empty from Supermetrics even though RSA ads exist (a report
+    configuration gap, not a copy quality issue). If avg_headline_count = 0 AND
+    avg_description_count = 0 while total_rsa_ads > 0, treat this as UNAVAILABLE data —
+    score as warn, source="no_data_source", and instruct: "Headline/description text is not
+    populated for RSAs in the current BigQuery export — verify headline and description slot
+    usage directly in Google Ads UI." Do NOT score this as fail; a genuine zero-slot finding
+    and a data gap look identical in the aggregate numbers, and only the data-gap explanation
+    is safe to assume by default.
+    Otherwise (some real values present):
+    Pass: ads_5plus_headlines / total_rsa_ads >= 80% AND avg_description_count >= 2.0 —
+      most RSAs use 5+ of the 6 observable headline slots and 2+ of the 3 description slots.
+    Fail: ads_under_3_headlines / total_rsa_ads > 20% OR avg_headline_count < 3 —
       significant slot underutilization or repetitive copy.
-    Warn: avg_headline_count between 5–9 (acceptable but not optimised).
-    If rsa_headline_summary is empty (UNNEST query failed), fall back to comparing total ENABLED
-    ad count from _source="ad" against total ad groups from _source="ad_group".
+    Warn: avg_headline_count between 3–4 (acceptable but not optimised).
+    If rsa_headline_summary is empty entirely, fall back to comparing total ENABLED ad count
+    from _source="ad" against total ad groups from _source="ad_group".
 
 - Image & video assets:
     From _source="rsa_per_adgroup": sum rich_media_count across all rows.
@@ -496,13 +488,14 @@ requires qualitative inference from ad_group_name patterns.
     Also from _source="ad": sum ad_count where policy_approval_status = "DISAPPROVED".
     Pass: disapproved_count = 0 across all ad groups — 100% of active creatives are Approved.
     Fail: any ad group has disapproved_count > 0, OR any row in _source="ad" shows
-      policy_approval_status = "DISAPPROVED" or "AREA_OF_INTEREST" (Approved Limited) with
-      ad_count that represents > 0% of ENABLED ads.
+      policy_approval_status = "DISAPPROVED" with ad_count that represents > 0% of ENABLED ads.
     Warn: UNDER_REVIEW status present — pending approval, not yet a violation.
 
 - Ad copy relevance:
-    Headline text is not available in the exported data — this criterion requires qualitative inference.
-    From _source="ad_group": review ad_group_name values for descriptive keyword themes.
+    From _source="ad_group": review ad_group_name values for descriptive keyword themes. Note:
+    the raw ad rows have HEADLINE/HEADLINE_PART_1-3/DESCRIPTION/DESCRIPTION_1-2 columns, but for
+    some accounts Supermetrics leaves them entirely empty (see the headline/description variety
+    data-availability caveat above) — do not assume headline text is reliably present.
     Score as warn if ad_group_names are generic (e.g., "Ad Group 1", "Group A") with no
     apparent keyword theme — suggests copy relevance has not been configured.
     Score as pass if ad_group_names contain specific keyword terms or product/service categories
@@ -511,51 +504,43 @@ requires qualitative inference from ad_group_name patterns.
     keyword intent of each ad group appears in the first 3 headline slots of its RSA."
 
 KEYWORD STRATEGY CATEGORY:
-keyword rows (_source="keyword") are aggregated by (is_negative, match_type, status,
-  bidding_strategy_type) with keyword_count, avg_quality_score, disapproved_count.
-  Smart bidding types: MAXIMIZE_CONVERSIONS, TARGET_CPA, TARGET_ROAS, MAXIMIZE_CONVERSION_VALUE.
-  Manual types: MANUAL_CPC, ENHANCED_CPC.
-campaign_negatives_summary row (_source="campaign_negatives_summary", _summary=true) has:
-  campaigns_with_negatives, total_campaign_negative_keywords.
-dsa_ad_groups rows (_source="dsa_ad_groups") have: campaign_id, ad_group_id, ad_group_type.
+DATA AVAILABILITY NOTE: the keyword report in this export contains only positive/active keywords
+  — there is no is_negative flag at all (Supermetrics convention), and no campaign-level negative
+  criteria, DSA ad-group type, system-serving-status breakdown, or shared negative list table
+  exist anywhere in this dataset. "Negative keyword coverage" below has lost all three of its old
+  signals and is now a full manual-verification stub. "Keyword status hygiene" and "DSA / dynamic
+  ad groups" are weaker than before but still partially automated.
+keyword rows (_source="keyword") are aggregated by (match_type, status, bidding_strategy_type)
+  with keyword_count, avg_quality_score (bidding_strategy_type comes from a join to the campaign
+  table by name, so it may be null if no match was found).
+  bidding_strategy_type values are human-readable strings (e.g. "Maximize Conversion Value",
+  "Target ROAS", "cpc"), not SCREAMING_SNAKE_CASE enums — match semantically.
 impression_weighted_qs row (_source="impression_weighted_qs", _summary=true) has:
-  impression_weighted_avg_qs, keywords_qs_7plus, keywords_qs_4minus, total_keywords_with_qs.
-keyword_serving_status rows (_source="keyword_serving_status") have: system_serving_status,
-  keyword_count. Values include: ELIGIBLE, RARELY_SERVED, BELOW_FIRST_PAGE_BID,
-  LOW_SEARCH_VOLUME, PAUSED, REMOVED.
+  impression_weighted_avg_qs, keywords_qs_7plus, keywords_qs_4minus, total_keywords_with_qs,
+  qs_status_computed (already computed in Python — see below).
 adgroup_kw_structure row (_source="adgroup_kw_structure", _summary=true) has:
   total_ad_groups, ad_groups_50plus_kw, ad_groups_16_to_50_kw, ad_groups_15minus_kw,
   avg_kw_per_adgroup, max_kw_per_adgroup.
-shared_neg_summary row (_source="shared_neg_summary", _summary=true) has:
-  shared_negative_list_count.
-  DATA AVAILABILITY NOTE: p_ads_SharedSet may not be present in this BQ export. If
-  _source="shared_neg_summary" is absent from the data, treat shared_negative_list_count as
-  UNAVAILABLE (data gap) — do not assume it equals 0.
 
 - Keyword match type distribution:
-    From _source="keyword": filter is_negative=false, group by match_type and bidding_strategy_type.
+    From _source="keyword": group by match_type and bidding_strategy_type (keyword_count only —
+    remember this table has no negative keywords to filter out, all rows are positive).
     Pass: BROAD match keywords exist AND all campaigns running BROAD use smart bidding types —
       broad is only deployed where machine learning signals guide it.
     Fail: any BROAD match keywords exist alongside MANUAL_CPC or ENHANCED_CPC bidding —
       uncapped broad match running in legacy manual bidding, diluting budget.
-    Warn: BROAD present with a mix of smart and manual bidding campaigns.
+    Warn: BROAD present with a mix of smart and manual bidding campaigns, or bidding_strategy_type
+      is null for a meaningful share of BROAD keywords (the campaign-name join didn't resolve —
+      note this as a data-quality caveat rather than a hard fail).
     If no BROAD keywords exist: EXACT + PHRASE only — acceptable, not a failure.
 
 - Negative keyword coverage:
-    From _source="shared_neg_summary": read shared_negative_list_count (may be UNAVAILABLE — see note above).
-    From _source="campaign_negatives_summary": read total_campaign_negative_keywords.
-    From _source="keyword": sum keyword_count where is_negative=true (ad-group level negatives).
-    Pass: shared_negative_list_count >= 1 (shared list attached) AND
-      total_campaign_negative_keywords > 0 (campaign-level negatives exist).
-    Fail: total_campaign_negative_keywords = 0 AND ad-group level negative keyword_count = 0 —
-      no exclusions of any kind active (regardless of shared list availability).
-    Warn (a): negatives exist at campaign or ad-group level but shared_negative_list_count = 0
-      (no account-level shared list, increasing maintenance risk).
-    Warn (b): shared_neg_summary is UNAVAILABLE (data gap) but campaign/ad-group level negatives
-      are present — score as warn + flag "Shared negative list availability requires manual
-      verification in Google Ads UI."
-    NOTE: recency of search term exclusions (14-day check) is not available in BQ exports —
-    flag for manual verification in Search Terms report.
+    DATA AVAILABILITY NOTE: this export has no negative-keyword signal of any kind — no
+    is_negative flag on the keyword report, no campaign-level negative criteria table, and no
+    shared negative list table. This topic cannot be evaluated automatically. Score as warn,
+    source="no_data_source", and instruct: "Verify negative keyword coverage (ad-group level,
+    campaign level, and shared negative lists) directly in Google Ads UI — not available from
+    the current BigQuery export."
 
 - Keyword quality scores:
     From _source="impression_weighted_qs": read qs_status_computed directly — this field
@@ -565,23 +550,21 @@ shared_neg_summary row (_source="shared_neg_summary", _summary=true) has:
       qs_status_computed = "fail" → score fail
     Do NOT use _source="keyword" avg_quality_score to override this verdict.
     If the impression_weighted_qs row is absent: fall back to avg_quality_score × keyword_count
-    weighted average from _source="keyword" where is_negative=false, status="ENABLED";
+    weighted average from _source="keyword" where status="ENABLED";
     apply pass ≥7.0, warn 5.5–6.9, fail <5.5.
     If all quality scores are null: score as warn — manual verification required.
 
 - Keyword status hygiene:
-    From _source="keyword_serving_status": check for problematic system_serving_status values.
-    Pass: all keyword_count is in status ELIGIBLE — zero systemic delivery blocks.
-    Fail: keyword_serving_status rows exist for BELOW_FIRST_PAGE_BID or LOW_SEARCH_VOLUME
-      with significant keyword_count (> 10% of total ENABLED positive keywords) — campaigns
-      clogged with keywords that cannot serve competitively.
-    Warn (a): small proportion (< 10%) with BELOW_FIRST_PAGE_BID or LOW_SEARCH_VOLUME.
-    Warn (b): RARELY_SERVED keyword_count > 15% of total enabled positive keywords — large
-      share of the keyword list rarely matches, inflating the list without contributing traffic;
-      flag for pruning review but do not fail (RARELY_SERVED keywords still serve occasionally).
-    Also from _source="keyword": sum disapproved_count; any > 0 → add to warn.
-    If keyword_serving_status is empty (column unavailable): fall back to disapproved_count
-    check only and note that system status requires manual verification.
+    DATA AVAILABILITY NOTE: system_serving_status (ELIGIBLE/RARELY_SERVED/BELOW_FIRST_PAGE_BID/
+    LOW_SEARCH_VOLUME) and disapproved_count are NOT available in this export — only the basic
+    KEYWORD_STATUS enum (ENABLED/PAUSED/REMOVED) remains, via the `status` field on _source="keyword".
+    Pass: the large majority of keyword_count is in status ENABLED with none in a clearly stale
+      state — basic hygiene looks fine from what's visible.
+    Warn (default): treat this as a thinner signal than before — score warn if PAUSED/REMOVED
+      keyword_count is unusually high relative to ENABLED, and always add: "Delivery-limiting
+      statuses (BELOW_FIRST_PAGE_BID, LOW_SEARCH_VOLUME, RARELY_SERVED) are not visible in the
+      current BigQuery export — verify directly in Google Ads UI."
+    Fail: PAUSED/REMOVED keyword_count dominates ENABLED — most of the keyword list is inactive.
 
 - Ad group keyword structure:
     From _source="adgroup_kw_structure": read ad_groups_50plus_kw, ad_groups_15minus_kw,
@@ -592,39 +575,39 @@ shared_neg_summary row (_source="shared_neg_summary", _summary=true) has:
       avg_kw_per_adgroup > 30 — significant share of ad groups are bloated keyword dumps
       that fracture ad copy relevance.
     Warn: avg_kw_per_adgroup between 15 and 30 — moderate oversizing, not critical.
-    If adgroup_kw_structure is empty: fall back to dividing total positive ENABLED keyword_count
-    from _source="keyword" by dsa_ad_groups count as a rough estimate.
+    If adgroup_kw_structure is empty: score as warn — data unavailable.
 
 - DSA / dynamic ad groups:
-    From _source="dsa_ad_groups": count rows.
-    Pass: dsa_ad_groups rows exist (DSA ad groups active) OR from _source="all_campaigns" in
-      ai_readiness data there are enabled PMax campaigns — at least one automated
-      long-tail expansion mechanism is active.
-    Fail: zero dsa_ad_groups rows AND no PMax campaigns evident from keyword data — account
-      relies entirely on static manually entered keyword lists with zero automated expansion.
-    Warn: DSA groups exist but are paused (check ad_group_type vs campaign status context).
+    DATA AVAILABILITY NOTE: there is no ad_group_type column anywhere in this export, so DSA ad
+    groups cannot be directly identified (a regression vs. the previous schema). The only
+    remaining automated signal is PMax adoption from the ai_readiness data.
+    Pass: from _source="all_campaigns" in the ai_readiness data, enabled PMax campaigns exist —
+      at least one automated long-tail expansion mechanism is active.
+    Warn: no PMax campaigns evident either — always add: "Dynamic Search Ads ad-group presence
+      cannot be confirmed from the current BigQuery export — verify directly in Google Ads UI."
+    Do not score fail here given the reduced visibility — use warn as the ceiling when no
+    automated expansion mechanism is evident.
 
 AI READINESS CATEGORY:
-DATA AVAILABILITY NOTES:
-- with_target_cpa is always 0 in pmax_campaign rows — campaign_target_cpa_cpa_micros does not
-  exist in this BQ export. Only with_target_roas is a meaningful target constraint signal.
-- pmax_with_shared_neg_lists is always 0 in pmax_brand_exclusions — p_ads_CampaignSharedSet
-  does not exist in this BQ export. Only pmax_with_campaign_negatives is meaningful.
-- pmax_asset rows come from p_ads_Ad filtered to display/shopping ad types; this is NOT the
-  same as PMax asset group strength (p_ads_AssetGroup is unavailable). Treat pmax_asset data
-  as a proxy only — UNSPECIFIED ad_strength rows indicate no strength data, not poor strength.
-- pmax_audience_signals will be empty if p_ads_AssetGroupAudienceView is unavailable and PMax
-  campaigns have no rows in p_ads_CampaignAudience. Empty = data gap, not zero signals.
+DATA AVAILABILITY NOTES — this category has degraded significantly under the current export:
+- with_target_roas AND with_target_cpa are now BOTH always 0 in pmax_campaign rows (previously
+  only with_target_cpa was a placeholder; target_roas is now gone from the whole dataset too).
+  "Smart bidding configuration" below can no longer be evaluated automatically at all.
+- There is no CampaignCriterion-equivalent table, so brand-exclusion / campaign-negative checks
+  have no data source — "PMax vs. standard campaign balance" cannot be evaluated automatically.
+- There is no Ad.ad_strength column at all anymore (not even as a weak proxy) — "Asset group
+  strength" cannot be evaluated automatically.
+- There is no AssetGroupAudienceView or CampaignAudience equivalent — "Audience signal quality"
+  cannot be evaluated automatically.
+- Only "PMax campaign adoption" remains genuinely automated in this category; the other four
+  topics below are manual-verification stubs under the general "no_data_source" rule. If
+  Supermetrics adds a richer PMax/asset-group report later, these can become real checks again.
 
 pmax_campaign rows (_source="pmax_campaign") are aggregated by (status, bidding_strategy_type)
-  with campaign_count, with_target_roas, with_target_cpa. One row per status+strategy combination.
+  with campaign_count, with_target_roas (always 0), with_target_cpa (always 0). One row per
+  status+strategy combination.
 all_campaigns rows (_source="all_campaigns") have: campaign_advertising_channel_type, status,
   campaign_count. One row per type+status combination.
-pmax_asset rows (_source="pmax_asset") have: type, ad_strength, status, asset_count.
-pmax_audience_signals rows (_source="pmax_audience_signals") have: campaign_id,
-  audience_signal_count (and optionally asset_groups_with_signals).
-pmax_brand_exclusions row (_source="pmax_brand_exclusions", _summary=true) has:
-  total_enabled_pmax, pmax_with_shared_neg_lists, pmax_with_campaign_negatives.
 
 - PMax campaign adoption:
     From _source="pmax_campaign": sum campaign_count where status="ENABLED".
@@ -636,56 +619,33 @@ pmax_brand_exclusions row (_source="pmax_brand_exclusions", _summary=true) has:
     if B2B account with no e-commerce goals, absence of PMax is less severe (score as warn).
 
 - Asset group strength:
-    Note: pmax_asset rows are a proxy from p_ads_Ad (not actual PMax asset groups from
-    p_ads_AssetGroup which is unavailable — see DATA AVAILABILITY NOTES). UNSPECIFIED
-    ad_strength means no strength signal available, not poor quality — do not penalise it.
-    From _source="pmax_asset": compute across all rows with status="ENABLED":
-      good_excellent = SUM(asset_count where ad_strength IN ('GOOD', 'EXCELLENT'))
-      poor_average   = SUM(asset_count where ad_strength IN ('POOR', 'AVERAGE'))
-      unspecified    = SUM(asset_count where ad_strength = 'UNSPECIFIED' or NULL)
-    Pass: poor_average = 0 AND good_excellent > 0 — no POOR/AVERAGE assets, some rated.
-    Fail: poor_average > good_excellent — majority of assessable assets are poor quality.
-    Warn: poor_average > 0 but < good_excellent, OR unspecified dominates (data gap).
-    Always flag: "PMax asset group strength (p_ads_AssetGroup) is unavailable in BQ export —
-    verify asset group strength directly in Google Ads UI."
+    DATA AVAILABILITY NOTE: no ad_strength column exists anywhere in this export (a new
+    regression — the previous schema at least had a weak proxy). This topic cannot be evaluated
+    automatically. Score as warn, source="no_data_source", and instruct: "Verify PMax asset
+    group strength directly in Google Ads UI > Performance Max > Asset groups — not available
+    from the current BigQuery export."
 
 - Audience signal quality:
-    From _source="pmax_audience_signals": check audience_signal_count per campaign_id.
-    Pass: every campaign_id has audience_signal_count >= 1 — every asset group has at least
-      one audience signal guiding algorithmic expansion.
-    Fail: any campaign_id has audience_signal_count = 0 — asset groups launched with zero
-      audience signals, forcing completely unguided algorithmic search.
-    If no pmax_audience_signals rows at all: score as warn/basic and note data unavailable —
-      manual verification required in Google Ads > Asset Groups > Audience Signals.
-    NOTE: signal type quality (first-party customer match vs. interest-based) is not
-    distinguishable from this data — flag for manual review of signal composition.
-    If hasCrmData=false: do not penalise absence of customer match signals specifically.
+    DATA AVAILABILITY NOTE: no audience-signal table (AssetGroupAudienceView or CampaignAudience)
+    exists in this export. This topic cannot be evaluated automatically. Score as warn,
+    source="no_data_source", and instruct: "Verify audience signal coverage directly in Google
+    Ads UI > Asset Groups > Audience Signals — not available from the current BigQuery export."
+    If hasCrmData=false: still note this data gap, but do not additionally penalise absence of
+    customer match signals specifically.
 
 - Smart bidding configuration:
-    From _source="pmax_campaign": for rows where status="ENABLED", check with_target_roas only
-    (with_target_cpa is always 0 — data gap; see DATA AVAILABILITY NOTES).
-    Pass: all enabled PMax campaign rows have with_target_roas = campaign_count — every active
-      PMax campaign has a target ROAS constraint.
-    Fail: sum(with_target_roas) = 0 across all enabled rows — no PMax campaign has any target
-      constraint set, completely unconstrained pacing.
-    Warn: some enabled PMax campaign rows have with_target_roas < campaign_count — partial
-      coverage (some campaigns constrained, others not).
+    DATA AVAILABILITY NOTE: with_target_roas and with_target_cpa are both hardcoded 0 in this
+    export (target_roas is gone from the dataset entirely — a new regression). This topic cannot
+    be evaluated automatically. Score as warn, source="no_data_source", and instruct: "Verify
+    target ROAS/CPA configuration for each enabled PMax campaign directly in Google Ads UI —
+    not available from the current BigQuery export."
 
 - PMax vs. standard campaign balance:
-    From _source="pmax_brand_exclusions": read pmax_with_campaign_negatives, total_enabled_pmax.
-    Note: pmax_with_shared_neg_lists is always 0 (data gap — see DATA AVAILABILITY NOTES);
-    evaluate exclusion coverage using pmax_with_campaign_negatives only.
-    Pass: Brand Exclusion Lists or shared negative brand lists are actively attached to PMax
-      campaigns — pmax_with_campaign_negatives = total_enabled_pmax (every enabled PMax has
-      campaign-level negatives protecting standard Exact Match search priority).
-    Fail: PMax campaigns fully cannibalize standard brand search due to a total lack of brand
-      exclusions — pmax_with_campaign_negatives = 0.
-    Warn: pmax_with_campaign_negatives > 0 but < total_enabled_pmax — partial coverage;
-      some PMax campaigns lack exclusions.
-    Always add action item: "Verify shared negative keyword lists (Brand Exclusion Lists) in
-    Google Ads UI — shared list coverage cannot be confirmed from BQ export data."
-    If pmax_brand_exclusions is empty (data unavailable): score as warn and flag for manual
-    verification.
+    DATA AVAILABILITY NOTE: no CampaignCriterion-equivalent table exists in this export, so
+    brand-exclusion coverage on PMax campaigns cannot be measured. This topic cannot be
+    evaluated automatically. Score as warn, source="no_data_source", and instruct: "Verify
+    Brand Exclusion Lists / campaign-level negative keywords on PMax campaigns directly in
+    Google Ads UI — not available from the current BigQuery export."
 
 - AI Max:
     AI Max (formerly Search Max) is a campaign feature that enables AI-powered keyword expansion
@@ -719,8 +679,8 @@ pmax_brand_exclusions row (_source="pmax_brand_exclusions", _summary=true) has:
       asset groups utilize AI-generated visual variations or custom-prompted asset scaling.
     Fail: Automatically Created Assets and URL expansions are entirely disabled while asset groups
       have a low volume of manually uploaded creatives, preventing AI from testing variations.
-    From _source="pmax_asset": if asset_count is very low (e.g. < 3 per status group) it may
-    indicate minimal creative supply — note this as a signal but flag for manual verification.
+    No creative-supply-volume signal is available in the current export (no asset-group-level
+    table exists) to inform this qualitatively — treat it as fully unavailable.
     Score as warn and instruct:
     "Verify in Google Ads > Performance Max > Settings whether Automatically Created Assets
     and Final URL Expansion are enabled. With a limited creative library, enabling ACA allows

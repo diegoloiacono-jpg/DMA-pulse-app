@@ -102,14 +102,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface AccountInfo {
+  account_id: string;
+  account_name: string;
+}
+
 export const apiClient = {
-  runAudit(brandContext: BrandContextPayload, accountId?: string, dataset?: string) {
+  runAudit(brandContext: BrandContextPayload, accountId?: string, dataset?: string, lookbackDays?: number) {
     return request<{ audit_id: string; status: AuditStatus }>("/api/audit/run", {
       method: "POST",
       body: JSON.stringify({
         brand_context: brandContext,
         account_id: accountId || undefined,
         dataset: dataset || undefined,
+        lookback_days: lookbackDays ?? undefined,
       }),
     });
   },
@@ -138,5 +144,9 @@ export const apiClient = {
 
   listDatasets() {
     return request<{ datasets: string[] }>("/api/datasets");
+  },
+
+  listAccounts(dataset: string) {
+    return request<{ accounts: AccountInfo[] }>(`/api/datasets/${encodeURIComponent(dataset)}/accounts`);
   },
 };

@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(gcloud logging *)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(gcloud iam *)",
+      "Bash(gcloud projects *)",
+      "Bash(gcloud resource-manager *)",
+      "Bash(./deploy.sh)",
+      "Bash(tee \"/c/Users/DIEGOL~1/AppData/Local/Temp/claude/C--Users-DiegoLoiacono-Documents-DMA-Pulse/2949c4d3-bda2-4df9-b30f-dc84721aae9c/scratchpad/deploy_log2.txt\")"
     ]
   }
 }

@@ -61,8 +61,9 @@ class ScoringOutput(BaseModel):
 
 class AuditRunRequest(BaseModel):
     brand_context: BrandContext
-    account_id: str | None = None   # overrides ACCOUNT_SUFFIX from env if provided
+    account_id: str | None = None   # ACCOUNT_ID row filter; overrides DEFAULT_ACCOUNT_ID from env if provided
     dataset: str | None = None      # overrides BQ_DATASET env var if provided
+    lookback_days: int = 30         # stats window; shorten while the Supermetrics connector backfills
 
 
 class AuditState(BaseModel):
