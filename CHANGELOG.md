@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ---
 
+## [0.10.0] — 2026-09-29
+
+### Dev Cloud Run environment + auto-deploy on push to master
+
+Added a second, parallel deployment ("dev") alongside production, so changes can be tested on a live Cloud Run URL before reaching the real app — and wired GitHub Actions to deploy to it automatically on every push to `master`, keeping production a deliberate manual step.
+
+- **`deploy.sh` parameterized**: `./deploy.sh [prod|dev]` (defaults to `prod`, unchanged from before). A single script remains the one source of truth for the 7-step deploy sequence, rather than duplicating it — this codebase already had a bug from config drifting between duplicated setups (a missing `aiplatform.user` role fixed in one place but not another).
+- **Dev resources** (prod untouched): Cloud Run services `dma-pulse-backend-dev` / `dma-pulse-frontend-dev`, images tagged `:dev`, context bucket `paid-media-2a86-dma-pulse-contexts-dev`. Both environments share the same GCP project, region, Artifact Registry repo, `dma-pulse-backend` service account, BigQuery data, and OAuth client — only the deployed app code and its Cloud Run services differ per environment.
+- **`.github/workflows/deploy-dev.yml`**: triggers on push to `master` touching `frontend/**`, `backend/**`, `deploy.sh`, or the workflow itself; authenticates to GCP via Workload Identity Federation (keyless — no service-account key ever stored in GitHub), then runs `./deploy.sh dev`.
+- **New `dma-pulse-ci` service account**: least-privilege, used only by GitHub Actions via WIF (restricted to this one repo). Its Cloud Run deploy role (`roles/run.developer`) is bound with an IAM condition scoped to only the two `-dev` services — CI is structurally unable to deploy to production even if the workflow file were ever modified.
+
+---
+
 ## [0.9.0] — 2026-06-09
 
 ### BWJ account validation — BigQuery schema fixes and specialist accuracy pass

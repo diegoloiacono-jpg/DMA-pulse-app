@@ -1,0 +1,38 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'deploy.sh'
+      - '.github/workflows/deploy-dev.yml'
+
+permissions:
+  contents: read
+  id-token: write   # required for Workload Identity Federation
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy dev environment
+        env:
+          GOOGLE_CLIENT_ID: "760978126914-u855ofu6knpllcmq6rg7dfnm4qrl9dj3.apps.googleusercontent.com"
+        run: |
+          chmod +x ./deploy.sh
+          ./deploy.sh dev

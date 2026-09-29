@@ -1,16 +1,35 @@
 #!/usr/bin/env bash
 # DMA Pulse — deploy to GCP Cloud Run
-# Usage: ./deploy.sh
-# Usage with auth: GOOGLE_CLIENT_ID=xxx ./deploy.sh
+# Usage: ./deploy.sh [prod|dev]     (defaults to prod)
+# Usage with auth: GOOGLE_CLIENT_ID=xxx ./deploy.sh [prod|dev]
 set -euo pipefail
+
+ENV="${1:-prod}"
+case "${ENV}" in
+  prod) SUFFIX="" ;;
+  dev)  SUFFIX="-dev" ;;
+  *) echo "ERROR: unknown environment '${ENV}' (expected 'prod' or 'dev')"; exit 1 ;;
+esac
+echo "Deploying environment: ${ENV}"
 
 PROJECT="paid-media-2a86"
 REGION="europe-west1"
 REPO="europe-west1-docker.pkg.dev/${PROJECT}/dma-pulse"
-BACKEND_IMAGE="${REPO}/backend:latest"
-FRONTEND_IMAGE="${REPO}/frontend:latest"
+# prod keeps the :latest tag for backward compatibility; dev gets its own tag
+# so the two environments never share an image.
+if [[ "${ENV}" == "prod" ]]; then
+  BACKEND_IMAGE="${REPO}/backend:latest"
+  FRONTEND_IMAGE="${REPO}/frontend:latest"
+else
+  BACKEND_IMAGE="${REPO}/backend:${ENV}"
+  FRONTEND_IMAGE="${REPO}/frontend:${ENV}"
+fi
 SA_NAME="dma-pulse-backend"
 SA_EMAIL="${SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
+# Durable store for saved brand contexts (one JSON object per context).
+CONTEXT_BUCKET="${PROJECT}-dma-pulse-contexts${SUFFIX}"
+BACKEND_SERVICE="dma-pulse-backend${SUFFIX}"
+FRONTEND_SERVICE="dma-pulse-frontend${SUFFIX}"
 
 # Google OAuth Client ID — restricts login to @artefact.com accounts
 # Not a secret: this value is embedded in the public frontend JS bundle.
@@ -39,6 +58,7 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
   bigquery.googleapis.com \
+  aiplatform.googleapis.com \
   --project="${PROJECT}" --quiet
 
 # ── Step 2: Artifact Registry repo ────────────────────────────────────────
@@ -53,6 +73,28 @@ else
     --location="${REGION}" \
     --project="${PROJECT}" --quiet
 fi
+
+# ── Step 2b: Brand-context bucket ─────────────────────────────────────────
+echo ""
+echo "==> [2b] Creating brand-context bucket (if needed)..."
+if gcloud storage buckets describe "gs://${CONTEXT_BUCKET}" --project="${PROJECT}" --quiet >/dev/null 2>&1; then
+  echo "    Bucket gs://${CONTEXT_BUCKET} already exists."
+else
+  gcloud storage buckets create "gs://${CONTEXT_BUCKET}" \
+    --location="${REGION}" \
+    --project="${PROJECT}" --quiet
+fi
+
+# Applied unconditionally, not just on create: a bucket that already exists may
+# predate these settings (or have been created by something else), and skipping
+# the update would leave saved contexts world-readable or unversioned.
+# Versioning makes an accidental overwrite of a saved context recoverable.
+gcloud storage buckets update "gs://${CONTEXT_BUCKET}" \
+  --versioning \
+  --uniform-bucket-level-access \
+  --public-access-prevention \
+  --project="${PROJECT}" --quiet >/dev/null 2>&1 \
+  || echo "    ⚠️  Could not apply bucket hardening (versioning / uniform access / public-access prevention)."
 
 # ── Step 3: Service account + BigQuery access ──────────────────────────────
 echo ""
@@ -70,8 +112,17 @@ if gcloud projects add-iam-policy-binding "${PROJECT}" \
      --role="roles/bigquery.dataViewer" --quiet 2>/dev/null && \
    gcloud projects add-iam-policy-binding "${PROJECT}" \
      --member="serviceAccount:${SA_EMAIL}" \
-     --role="roles/cloudbuild.builds.builder" --quiet 2>/dev/null; then
-  echo "    BigQuery + Cloud Build roles granted."
+     --role="roles/cloudbuild.builds.builder" --quiet 2>/dev/null && \
+   gcloud projects add-iam-policy-binding "${PROJECT}" \
+     --member="serviceAccount:${SA_EMAIL}" \
+     --role="roles/aiplatform.user" --quiet 2>/dev/null; then
+  # Scoped to the one bucket rather than project-wide storage access.
+  gcloud storage buckets add-iam-policy-binding "gs://${CONTEXT_BUCKET}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/storage.objectAdmin" \
+    --project="${PROJECT}" --quiet >/dev/null 2>&1 \
+    || echo "    ⚠️  Could not grant bucket access — saved contexts will not persist."
+  echo "    BigQuery + Vertex AI + Cloud Build + context-bucket roles granted."
 else
   echo ""
   echo "  ⚠️  Could not set IAM bindings (insufficient permissions)."
@@ -89,7 +140,11 @@ else
   echo "       --member=serviceAccount:${SA_EMAIL} \\"
   echo "       --role=roles/cloudbuild.builds.builder"
   echo ""
-  echo "  Continuing deployment — backend will deploy but BigQuery calls / builds will fail until roles are granted."
+  echo "     gcloud projects add-iam-policy-binding ${PROJECT} \\"
+  echo "       --member=serviceAccount:${SA_EMAIL} \\"
+  echo "       --role=roles/aiplatform.user"
+  echo ""
+  echo "  Continuing deployment — backend will deploy but BigQuery/Vertex AI calls / builds will fail until roles are granted."
 fi
 
 # ── Step 4: Build + push backend ──────────────────────────────────────────
@@ -116,12 +171,12 @@ fi
 # ── Step 5: Deploy backend Cloud Run ──────────────────────────────────────
 echo ""
 echo "==> [5/7] Deploying backend..."
-BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=google_ads,DEFAULT_ACCOUNT_ID=3676622146,MODEL_DATASET=google_ads_audit"
+BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=google_ads,DEFAULT_ACCOUNT_ID=3676622146,MODEL_DATASET=google_ads_audit,CONTEXT_BUCKET=${CONTEXT_BUCKET}"
 if [[ -n "${GOOGLE_CLIENT_ID}" ]]; then
   BACKEND_ENV="${BACKEND_ENV},GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
 fi
 
-gcloud run deploy dma-pulse-backend \
+gcloud run deploy "${BACKEND_SERVICE}" \
   --image="${BACKEND_IMAGE}" \
   --region="${REGION}" \
   --platform=managed \
@@ -132,13 +187,13 @@ gcloud run deploy dma-pulse-backend \
   --cpu=1 \
   --project="${PROJECT}" --quiet
 
-BACKEND_URL=$(gcloud run services describe dma-pulse-backend \
+BACKEND_URL=$(gcloud run services describe "${BACKEND_SERVICE}" \
   --region="${REGION}" --project="${PROJECT}" \
   --format="value(status.url)")
 echo "    Backend URL: ${BACKEND_URL}"
 
 # Update CORS to backend URL (allows frontend *.run.app by regex in code)
-gcloud run services update dma-pulse-backend \
+gcloud run services update "${BACKEND_SERVICE}" \
   --region="${REGION}" --project="${PROJECT}" --quiet \
   --update-env-vars="ALLOWED_ORIGINS=${BACKEND_URL}"
 
@@ -154,7 +209,7 @@ gcloud builds submit frontend \
 # ── Step 7: Deploy frontend Cloud Run ─────────────────────────────────────
 echo ""
 echo "==> [7/7] Deploying frontend..."
-gcloud run deploy dma-pulse-frontend \
+gcloud run deploy "${FRONTEND_SERVICE}" \
   --image="${FRONTEND_IMAGE}" \
   --region="${REGION}" \
   --platform=managed \
@@ -163,12 +218,12 @@ gcloud run deploy dma-pulse-frontend \
   --cpu=1 \
   --project="${PROJECT}" --quiet
 
-FRONTEND_URL=$(gcloud run services describe dma-pulse-frontend \
+FRONTEND_URL=$(gcloud run services describe "${FRONTEND_SERVICE}" \
   --region="${REGION}" --project="${PROJECT}" \
   --format="value(status.url)")
 
 # Lock backend CORS to the actual frontend URL
-gcloud run services update dma-pulse-backend \
+gcloud run services update "${BACKEND_SERVICE}" \
   --region="${REGION}" --project="${PROJECT}" --quiet \
   --update-env-vars="ALLOWED_ORIGINS=${FRONTEND_URL}"
 
