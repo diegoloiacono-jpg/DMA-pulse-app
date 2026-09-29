@@ -28,6 +28,15 @@ SA_NAME="dma-pulse-backend"
 SA_EMAIL="${SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
 # Durable store for saved brand contexts (one JSON object per context).
 CONTEXT_BUCKET="${PROJECT}-dma-pulse-contexts${SUFFIX}"
+# Cloud Build source-upload staging. Deliberately NOT the auto-managed
+# per-project `${PROJECT}_cloudbuild` bucket: that bucket only grants access
+# via legacy project-level ACLs (Editor/Owner/Viewer), so a plain IAM role
+# binding for a non-primitive-role caller (e.g. a scoped CI service account)
+# can still 403 on source upload even with Storage Admin granted. A bucket we
+# create ourselves, with uniform bucket-level access, is IAM-only and doesn't
+# have this gotcha. Shared across environments — it only ever holds
+# short-lived source tarballs, nothing environment-specific.
+BUILD_STAGING_BUCKET="${PROJECT}-dma-pulse-build-staging"
 BACKEND_SERVICE="dma-pulse-backend${SUFFIX}"
 FRONTEND_SERVICE="dma-pulse-frontend${SUFFIX}"
 
@@ -96,6 +105,18 @@ gcloud storage buckets update "gs://${CONTEXT_BUCKET}" \
   --project="${PROJECT}" --quiet >/dev/null 2>&1 \
   || echo "    ⚠️  Could not apply bucket hardening (versioning / uniform access / public-access prevention)."
 
+# ── Step 2c: Cloud Build staging bucket ───────────────────────────────────
+echo ""
+echo "==> [2c] Creating Cloud Build staging bucket (if needed)..."
+if gcloud storage buckets describe "gs://${BUILD_STAGING_BUCKET}" --project="${PROJECT}" --quiet >/dev/null 2>&1; then
+  echo "    Bucket gs://${BUILD_STAGING_BUCKET} already exists."
+else
+  gcloud storage buckets create "gs://${BUILD_STAGING_BUCKET}" \
+    --location="${REGION}" \
+    --uniform-bucket-level-access \
+    --project="${PROJECT}" --quiet
+fi
+
 # ── Step 3: Service account + BigQuery access ──────────────────────────────
 echo ""
 echo "==> [3/7] Setting up backend service account..."
@@ -122,7 +143,13 @@ if gcloud projects add-iam-policy-binding "${PROJECT}" \
     --role="roles/storage.objectAdmin" \
     --project="${PROJECT}" --quiet >/dev/null 2>&1 \
     || echo "    ⚠️  Could not grant bucket access — saved contexts will not persist."
-  echo "    BigQuery + Vertex AI + Cloud Build + context-bucket roles granted."
+  # Read-only: this SA only needs to fetch the source tarball Cloud Build stages here.
+  gcloud storage buckets add-iam-policy-binding "gs://${BUILD_STAGING_BUCKET}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/storage.objectViewer" \
+    --project="${PROJECT}" --quiet >/dev/null 2>&1 \
+    || echo "    ⚠️  Could not grant build-staging bucket access — builds may fail to fetch source."
+  echo "    BigQuery + Vertex AI + Cloud Build + context-bucket + build-staging roles granted."
 else
   echo ""
   echo "  ⚠️  Could not set IAM bindings (insufficient permissions)."
@@ -154,6 +181,7 @@ if ! gcloud builds submit backend \
        --config=backend/cloudbuild.yaml \
        --substitutions="_IMAGE=${BACKEND_IMAGE}" \
        --service-account="${CLOUDBUILD_SA}" \
+       --gcs-source-staging-dir="gs://${BUILD_STAGING_BUCKET}/source" \
        --project="${PROJECT}"; then
   echo ""
   echo "  ❌ Cloud Build failed. Two things to try:"
@@ -204,6 +232,7 @@ gcloud builds submit frontend \
   --config=frontend/cloudbuild.yaml \
   --substitutions="_IMAGE=${FRONTEND_IMAGE},_API_URL=${BACKEND_URL},_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" \
   --service-account="${CLOUDBUILD_SA}" \
+  --gcs-source-staging-dir="gs://${BUILD_STAGING_BUCKET}/source" \
   --project="${PROJECT}"
 
 # ── Step 7: Deploy frontend Cloud Run ─────────────────────────────────────
