@@ -1,28 +1,34 @@
 """
-Extract structured audit data from BigQuery Google Ads tables (Supermetrics export).
+Extract structured audit data from BigQuery Google Ads tables.
 
-Schema notes (Supermetrics "Google Ads" BigQuery connector, dataset `google_ads`):
-- Six flat tables: GOOGLEADS_CAMPAIGN, GOOGLEADS_AD, GOOGLEADS_CONVERSION,
-  GOOGLEADS_KEYWORD, GOOGLEADS_SEARCH_QUERY, GOOGLEADS_SHOPPING.
-- No per-account table suffix — every row carries an ACCOUNT_ID column instead,
-  filtered via account_param(). Multiple accounts can be blended in the same tables.
-- No _PARTITIONTIME pseudo-column — DATE is a normal partitioned column on every
-  row. "Latest known state" entity queries use latest_row_qualifier() instead of
-  the old _max_partition() snapshot pattern.
-- Much flatter/less granular than the previous native Google Ads BQ Data Transfer
-  export: there is no AdGroup, CampaignCriterion, CampaignAudience, Gender,
-  AgeRange, HourlyCampaignStats, SharedSet, or AssetGroupAudienceView equivalent
-  anywhere in this dataset. Categories/topics that depended entirely on those
-  tables (see _audience_targeting, and large parts of _pmax_performance and
-  _keyword_strategy below) now have no data source and are handled as empty
-  DataFrames — the specialist prompt turns those into manual-verification stubs.
-- Some fields are actually richer than before: GOOGLEADS_SHOPPING has a real
-  PRODUCT_TITLE column (the old export was missing it entirely), and
-  GOOGLEADS_CONVERSION has ESTIMATED_CROSS_DEVICE_CONVERSIONS directly on the
-  row (the old export needed a separate table + join).
+Schema notes (dataset `google_ads`, rebuilt 2026-08-20):
+- The client's cloud team mirrored the native Google Ads BigQuery Data Transfer
+  schema into this dataset. Two families of tables:
+    * GOOGLEADS_P_*        — dated fact tables (DATE + PROFILE_ID + metrics).
+    * GOOGLEADS_*METADATA  — undated entity snapshots (structure/config only).
+- PROFILE_ID is the *account* id (Supermetrics' rename of ACCOUNT_ID). It is the
+  only account key, and it exists ONLY on the P_* fact tables — every METADATA
+  table lacks it. Metadata is therefore scoped to an account by joining through
+  the account's campaign ids (see _account_campaigns_cte).
+- Metric columns on the new tables are plain COST / CONVERSIONS / CONVERSION_VALUE
+  (the old flat tables used COST_EUR).
+- The original flat GOOGLEADS_* tables (GOOGLEADS_CAMPAIGN, GOOGLEADS_AD, ...) are
+  FROZEN at 2026-08-17 and deprecated. The one exception is GOOGLEADS_SHOPPING,
+  still read for feed attributes — see _feeds_catalogue.
 
-Sampling strategy is unchanged: high-volume tables are aggregated in SQL before
-being sent to Gemini, not sampled row-by-row.
+Known remaining gaps (see DATA_GAPS below; keep it in sync with reality):
+- AD_STRENGTH exists in GOOGLEADS_ADMETADATA but that table only contains Demand
+  Gen / Video ads — 0 of 2,405 RSAs — so search ad strength is unavailable.
+- PMax asset *text* is unavailable: GOOGLEADS_ASSETGROUPASSET links assets with
+  field types (so counts/variety work), but GOOGLEADS_ASSETMETADATA holds only
+  sitelinks/callouts/promotions and shares no ids with it.
+- No negative keyword or shared-set signal anywhere in the new schema.
+- No conversion-action configuration (primary-for-goal, attribution model,
+  counting type).
+- TARGET_CPA exists as a column but is empty on every row; TARGET_ROAS is real.
+
+Sampling strategy: high-volume tables are aggregated in SQL before being sent to
+Gemini, never sampled row-by-row.
 """
 from __future__ import annotations
 
@@ -30,571 +36,798 @@ import logging
 
 import pandas as pd
 
-from app.services.bigquery import account_param, cutoff_date_param, latest_row_qualifier, run_query, table
+from app.services.bigquery import account_param, cutoff_date_param, run_query, table
 
 logger = logging.getLogger(__name__)
 
 
-def _enum_eq(column: str, value: str) -> str:
-    """Case/spacing-insensitive equality for Supermetrics enum-like columns.
+# Topics that still have no BigQuery signal after the 2026-08-20 schema rebuild.
+# specialist.py injects these into the per-category prompt so Gemini marks them
+# as manual-verification stubs instead of inventing a score.
+DATA_GAPS: dict[str, list[str]] = {
+    "audience_targeting": [
+        "Exclusion lists",
+    ],
+    "keyword_strategy": [
+        "Negative keyword coverage",
+    ],
+    "conversion_kpi": [
+        "Conversion categories",
+        "Primary vs secondary conversions",
+        "Attribution model",
+    ],
+    "feeds_catalogue": [
+        "Dynamic remarketing feed",
+        "Conversational attributes",
+    ],
+    "ai_readiness": [
+        "Audience signal quality",
+        "Native AI-driven generative tools in AI Max",
+        "Native AI-driven generative tools in PMax",
+    ],
+}
 
-    Supermetrics emits these as human-readable, inconsistently-cased strings
-    (e.g. CAMPAIGN_STATUS='enabled', AD_STATUS='Enabled', ADVERTISING_CHANNEL_TYPE=
-    'Performance Max', AD_TYPE='DEMAND_GEN_VIDEO_RESPONSIVE_AD' — mixing sentence
-    case, spaces, and raw enum tokens in the same dataset) rather than the old
-    GAQL SCREAMING_SNAKE_CASE enums. Normalise both sides the same way before
-    comparing. `value` must already be a normalised literal (spaces as
-    underscores, uppercase) and must never come from user input.
+
+def _enum_eq(column: str, value: str) -> str:
+    """Case/spacing-insensitive equality for human-readable enum columns.
+
+    The export emits inconsistently-cased strings ("enabled", "Enabled",
+    "Performance Max", "Maximize Conversion Value") rather than GAQL
+    SCREAMING_SNAKE_CASE. Normalise both sides before comparing. `value` must
+    already be a normalised literal (uppercase, spaces as underscores) and must
+    never come from user input.
     """
     return f"UPPER(REPLACE({column}, ' ', '_')) = '{value}'"
 
 
+def _account_campaigns_cte(dataset: str | None = None) -> str:
+    """CTE yielding the campaign ids belonging to @account_id in the window.
+
+    METADATA tables carry no PROFILE_ID, so this is the only way to scope them
+    to one account. CAMPAIGN_ID is globally unique in Google Ads, so joining on
+    it alone is safe.
+    """
+    t_stats = table("GOOGLEADS_P_CAMPAIGNBASICSTATS", dataset)
+    return f"""
+    acct_campaigns AS (
+        SELECT DISTINCT CAMPAIGN_ID
+        FROM {t_stats}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    )
+    """
+
+
+def _tagged(df: pd.DataFrame, source: str) -> pd.DataFrame:
+    """Tag a frame with its _source label (no-op on empty frames)."""
+    if df.empty:
+        return df
+    df = df.copy()
+    df["_source"] = source
+    return df
+
+
+def _safe(label: str, sql: str, params: list, source: str) -> pd.DataFrame:
+    """Run one query, tag it, and degrade to an empty frame on failure.
+
+    A single broken sub-query must never take down a whole category — the
+    remaining sources still give the specialist something to score.
+    """
+    try:
+        df = run_query(sql, params)
+        logger.warning("%s: %d rows", label, len(df))
+        return _tagged(df, source)
+    except Exception as exc:
+        logger.warning("%s FAILED — %s", label, exc)
+        return pd.DataFrame()
+
+
+def _combine(*frames: pd.DataFrame) -> pd.DataFrame:
+    non_empty = [f for f in frames if not f.empty]
+    if not non_empty:
+        return pd.DataFrame()
+    return pd.concat(non_empty, ignore_index=True)
+
+
+# --------------------------------------------------------------------------- #
+# campaign_setup
+# --------------------------------------------------------------------------- #
 def _campaign_setup(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
-    t_campaign = table("GOOGLEADS_CAMPAIGN", dataset)
+    t_stats = table("GOOGLEADS_P_CAMPAIGNBASICSTATS", dataset)
+    t_meta = table("GOOGLEADS_CAMPAIGNMETADATA", dataset)
+    t_budget = table("GOOGLEADS_P_CAMPAIGNBUDGET", dataset)
+    t_bid = table("GOOGLEADS_P_BIDDINGSTRATEGY", dataset)
+    t_is = table("GOOGLEADS_P_CAMPAIGNIMPRESSIONSHARE", dataset)
+
     recent_days = min(7, lookback_days)
     params = [account_param(account_id), cutoff_date_param(lookback_days)]
     recent_params = params + [cutoff_date_param(recent_days, name="recent_cutoff_date")]
+    cte = _account_campaigns_cte(dataset)
 
-    # Entity snapshot: latest known row per campaign within the window.
-    # LIMIT 50: account has ~200 campaigns; Gemini needs a representative sample.
+    # Entity snapshot: one row per campaign, structure + config + latest budget/bid.
     campaign_sql = f"""
+    WITH {cte},
+    budget AS (
+        SELECT CAMPAIGN_ID, DAILYBUDGET, BUDGET_PERIOD, BUDGET_STATUS, IS_BUDGET_EXPLICITLY_SHARED
+        FROM {t_budget}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY CAMPAIGN_ID ORDER BY DATE DESC) = 1
+    ),
+    bid AS (
+        SELECT CAMPAIGN_ID, BIDDING_STRATEGY_TYPE, CAMPAIGN_BID_STRATEGY_STATUS, TARGET_ROAS
+        FROM {t_bid}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY CAMPAIGN_ID ORDER BY DATE DESC) = 1
+    )
     SELECT
-        CAMPAIGN_ID                        AS campaign_id,
-        CAMPAIGN_NAME                      AS campaign_name,
-        CAMPAIGN_STATUS                    AS status,
-        ADVERTISING_CHANNEL_TYPE           AS campaign_advertising_channel_type,
-        ADVERTISING_CHANNEL_SUB_TYPE       AS campaign_advertising_channel_sub_type,
-        BIDDING_STRATEGY_TYPE              AS campaign_bidding_strategy_type,
-        DAILY_BUDGET                       AS daily_budget
-    FROM {t_campaign}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    {latest_row_qualifier("CAMPAIGN_ID")}
-    LIMIT 50
+        m.CAMPAIGN_ID                       AS campaign_id,
+        ANY_VALUE(m.CAMPAIGN_NAME)          AS campaign_name,
+        ANY_VALUE(m.CAMPAIGN_STATUS)        AS status,
+        ANY_VALUE(m.CAMPAIGN_SERVING_STATUS) AS serving_status,
+        ANY_VALUE(m.ADVERTISING_CHANNEL_TYPE) AS campaign_advertising_channel_type,
+        ANY_VALUE(m.START_DATE)             AS start_date,
+        ANY_VALUE(m.END_DATE)               AS end_date,
+        ANY_VALUE(b.DAILYBUDGET)            AS daily_budget,
+        ANY_VALUE(b.BUDGET_PERIOD)          AS budget_period,
+        ANY_VALUE(b.IS_BUDGET_EXPLICITLY_SHARED) AS budget_is_shared,
+        ANY_VALUE(bd.BIDDING_STRATEGY_TYPE) AS campaign_bidding_strategy_type,
+        ANY_VALUE(bd.CAMPAIGN_BID_STRATEGY_STATUS) AS bid_strategy_status,
+        ANY_VALUE(bd.TARGET_ROAS)           AS target_roas,
+        COUNT(DISTINCT m.DAY_OF_WEEK_WITH_NUM) AS ad_schedule_days
+    FROM {t_meta} m
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    LEFT JOIN budget b  ON b.CAMPAIGN_ID = m.CAMPAIGN_ID
+    LEFT JOIN bid bd    ON bd.CAMPAIGN_ID = m.CAMPAIGN_ID
+    GROUP BY campaign_id
+    LIMIT 60
     """
 
-    # Per-campaign performance across the lookback window, plus a shorter
-    # "recent" sub-window to detect campaigns that stalled.
     perf_sql = f"""
     SELECT
-        CAMPAIGN_ID                                                      AS campaign_id,
-        SUM(IMPRESSIONS)                                                 AS impressions_period,
+        CAMPAIGN_ID                                                           AS campaign_id,
+        SUM(IMPRESSIONS)                                                      AS impressions_period,
         SUM(CASE WHEN DATE >= @recent_cutoff_date THEN IMPRESSIONS ELSE 0 END) AS impressions_recent,
-        SUM(CONVERSIONS)                                                 AS conversions_period,
-        SUM(COST)                                                        AS cost_period
-    FROM {t_campaign}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
+        SUM(CONVERSIONS)                                                      AS conversions_period,
+        SUM(CONVERSION_VALUE)                                                 AS conversion_value_period,
+        SUM(COST)                                                             AS cost_period
+    FROM {t_stats}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
     GROUP BY campaign_id
     """
 
     type_summary_sql = f"""
     SELECT
-        ADVERTISING_CHANNEL_TYPE AS campaign_advertising_channel_type,
+        ADVERTISING_CHANNEL_TYPE    AS campaign_advertising_channel_type,
         COUNT(DISTINCT CAMPAIGN_ID) AS campaign_count,
-        TRUE AS _summary
-    FROM {t_campaign}
-    WHERE {_enum_eq("CAMPAIGN_STATUS", "ENABLED")}
-      AND ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
+        SUM(COST)                   AS cost_period,
+        TRUE                        AS _summary
+    FROM {t_stats}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
     GROUP BY 1
     ORDER BY campaign_count DESC
     """
 
-    campaigns = run_query(campaign_sql, params)
-    logger.warning("campaign_setup/campaign: %d rows", len(campaigns))
-    campaigns["_source"] = "campaign"
-
-    try:
-        perf = run_query(perf_sql, recent_params)
-        logger.warning("campaign_setup/perf: %d rows", len(perf))
-        perf["_source"] = "campaign_perf"
-    except Exception as exc:
-        logger.warning("campaign_setup/perf failed: %s", exc)
-        perf = pd.DataFrame()
-
-    try:
-        type_summary = run_query(type_summary_sql, params)
-        logger.warning("campaign_setup/type_summary: %d rows", len(type_summary))
-        type_summary["_source"] = "campaign_type_summary"
-    except Exception as exc:
-        logger.warning("campaign_setup/type_summary failed: %s", exc)
-        type_summary = pd.DataFrame()
-
-    # NOTE: HourlyCampaignStats (dayparting) and CampaignCriterion (AD_SCHEDULE)
-    # have no equivalent in this dataset — "Scheduling & dayparting" has no
-    # automated signal anymore; the specialist prompt scores it as a stub.
-
-    return pd.concat([campaigns, perf, type_summary], ignore_index=True)
-
-
-def _audience_targeting(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
-    # CampaignAudience, CampaignCriterion, Gender, and AgeRange have no
-    # equivalent table in this dataset at all — every topic in this category
-    # (segmentation, remarketing, lookalikes, demographics, geo targeting,
-    # exclusion lists) is unrecoverable from BigQuery under the current
-    # Supermetrics export. Return empty rather than firing four queries
-    # against tables that don't exist.
-    logger.warning("audience_targeting: no data source in current schema — returning empty")
-    return pd.DataFrame()
-
-
-def _conversion_kpi(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
-    t_campaign = table("GOOGLEADS_CAMPAIGN", dataset)
-    t_conv = table("GOOGLEADS_CONVERSION", dataset)
-    params = [account_param(account_id), cutoff_date_param(lookback_days)]
-
-    stats_sql = f"""
+    # Impression share lost to budget vs. rank — drives budget-allocation scoring.
+    impr_share_sql = f"""
     SELECT
-        CAMPAIGN_ID                                            AS campaign_id,
-        DATE                                                   AS date,
-        IMPRESSIONS                                            AS impressions,
-        CLICKS                                                 AS clicks,
-        COST                                                   AS cost,
-        CONVERSIONS                                            AS conversions,
-        CONVERSION_VALUE                                       AS conversions_value,
-        SAFE_DIVIDE(CONVERSION_VALUE, COST)                    AS roas,
-        SAFE_DIVIDE(COST, NULLIF(CONVERSIONS, 0))              AS cpa
-    FROM {t_campaign}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
+        CAMPAIGN_ID                                              AS campaign_id,
+        ROUND(AVG(NULLIF(SEARCH_IMPRESSION_SHARE, 0)), 4)        AS avg_search_impression_share,
+        ROUND(AVG(NULLIF(SEARCH_BUDGET_LOST_TOP_IMPRESSION_SHARE, 0)), 4) AS avg_budget_lost_is,
+        ROUND(AVG(NULLIF(SEARCH_RANK_LOST_TOP_IMPRESSION_SHARE, 0)), 4)   AS avg_rank_lost_is,
+        ROUND(AVG(NULLIF(SEARCH_ABSOLUTE_TOP_IMPRESSION_SHARE, 0)), 4)    AS avg_abs_top_is
+    FROM {t_is}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY campaign_id
     """
 
-    conv_sql = f"""
+    # Dayparting: distinct scheduled days per campaign, aggregated to account level.
+    schedule_sql = f"""
+    WITH {cte}
     SELECT
-        CAMPAIGN_ID              AS campaign_id,
-        CONVERSION_TYPE_NAME     AS conversion_name,
-        CONVERSION_CATEGORY      AS conversion_category,
-        SUM(CONVERSIONS)         AS conversions,
-        SUM(CONVERSION_VALUE)    AS conversions_value
-    FROM {t_conv}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY campaign_id, conversion_name, conversion_category
+        COUNT(DISTINCT m.CAMPAIGN_ID) AS campaigns_with_schedule,
+        COUNT(DISTINCT IF(m.DAY_OF_WEEK_WITH_NUM IS NOT NULL, m.CAMPAIGN_ID, NULL)) AS campaigns_with_day_rows,
+        COUNT(DISTINCT m.DAY_OF_WEEK_WITH_NUM) AS distinct_days_scheduled,
+        TRUE AS _schedule_summary
+    FROM {t_meta} m
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
     """
 
-    # Account-wide rollup by conversion type/category — same "no per-action
-    # status/primary_for_goal" gap as the previous schema.
-    conv_action_sql = f"""
-    SELECT
-        CONVERSION_TYPE_NAME                AS name,
-        CONVERSION_CATEGORY                 AS category,
-        ROUND(SUM(CONVERSIONS), 1)          AS conversions_period,
-        ROUND(SUM(CONVERSION_VALUE), 0)     AS value_period,
-        COUNT(DISTINCT CAMPAIGN_ID)         AS campaigns_tracking
-    FROM {t_conv}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY name, category
-    ORDER BY conversions_period DESC
-    """
-
-    # No target_roas/target_cpa column exists anywhere in this dataset (a
-    # regression vs. the previous export, which at least had target_roas) —
-    # this is now actual performance only, no target comparison possible.
-    targets_sql = f"""
-    WITH latest_status AS (
-        SELECT CAMPAIGN_ID, CAMPAIGN_STATUS
-        FROM {t_campaign}
-        WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-        {latest_row_qualifier("CAMPAIGN_ID")}
+    return _combine(
+        _safe("campaign_setup/campaign", campaign_sql, params, "campaign"),
+        _safe("campaign_setup/perf", perf_sql, recent_params, "campaign_perf"),
+        _safe("campaign_setup/type_summary", type_summary_sql, params, "campaign_type_summary"),
+        _safe("campaign_setup/impression_share", impr_share_sql, params, "campaign_impression_share"),
+        _safe("campaign_setup/schedule", schedule_sql, params, "campaign_schedule"),
     )
-    SELECT
-        c.CAMPAIGN_ID                                                        AS campaign_id,
-        ANY_VALUE(c.BIDDING_STRATEGY_TYPE)                                   AS bidding_strategy,
-        ROUND(SAFE_DIVIDE(SUM(c.CONVERSION_VALUE), SUM(c.COST)), 2)          AS actual_roas_period,
-        ROUND(SAFE_DIVIDE(SUM(c.COST), NULLIF(SUM(c.CONVERSIONS), 0)), 2)    AS actual_cpa_period,
-        SUM(c.CONVERSIONS)                                                   AS conversions_period
-    FROM {t_campaign} c
-    INNER JOIN latest_status ls
-            ON c.CAMPAIGN_ID = ls.CAMPAIGN_ID AND {_enum_eq("ls.CAMPAIGN_STATUS", "ENABLED")}
-    WHERE c.ACCOUNT_ID = @account_id AND c.DATE >= @cutoff_date
-    GROUP BY c.CAMPAIGN_ID
-    """
-
-    # Cross-device conversions live directly on GOOGLEADS_CONVERSION now — no
-    # separate table/join needed (an improvement over the previous schema).
-    xdevice_sql = f"""
-    SELECT
-        CONVERSION_TYPE_NAME                                     AS name,
-        CONVERSION_CATEGORY                                      AS category,
-        ROUND(SUM(ESTIMATED_CROSS_DEVICE_CONVERSIONS), 1)        AS cross_device_conversions_period,
-        COUNT(DISTINCT CAMPAIGN_ID)                              AS campaigns_with_xdevice,
-        TRUE                                                     AS _summary
-    FROM {t_conv}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY name, category
-    ORDER BY cross_device_conversions_period DESC
-    LIMIT 10
-    """
-
-    stats = run_query(stats_sql, params)
-    convs = run_query(conv_sql, params)
-
-    try:
-        conv_actions = run_query(conv_action_sql, params)
-        logger.warning("conversion_kpi/conv_actions: %d rows", len(conv_actions))
-        conv_actions["_source"] = "conversion_actions"
-    except Exception as exc:
-        logger.warning("conversion_kpi/conv_actions failed: %s", exc)
-        conv_actions = pd.DataFrame()
-
-    try:
-        targets = run_query(targets_sql, params)
-        logger.warning("conversion_kpi/targets: %d rows", len(targets))
-        targets["_source"] = "campaign_targets"
-    except Exception as exc:
-        logger.warning("conversion_kpi/targets failed: %s", exc)
-        targets = pd.DataFrame()
-
-    try:
-        xdevice = run_query(xdevice_sql, params)
-        logger.warning("conversion_kpi/xdevice: %d rows", len(xdevice))
-        xdevice["_source"] = "cross_device_conversions"
-    except Exception as exc:
-        logger.warning("conversion_kpi/xdevice failed: %s", exc)
-        xdevice = pd.DataFrame()
-
-    logger.warning("conversion_kpi: %d stats rows, %d conversion rows", len(stats), len(convs))
-
-    stats["_source"] = "campaign_basic_stats"
-    convs["_source"] = "campaign_conversion_stats"
-
-    return pd.concat([stats, convs, conv_actions, targets, xdevice], ignore_index=True)
 
 
-def _feeds_catalogue(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
-    t_shopping = table("GOOGLEADS_SHOPPING", dataset)
-    params = [account_param(account_id), cutoff_date_param(lookback_days)]
-    recent_params = [account_param(account_id), cutoff_date_param(min(7, lookback_days))]
-
-    # Custom labels: CUSTOM_ATTRIBUTE (label 0) + CUSTOM_ATTRIBUTE_1..4 (labels 1-4).
-    # NOTE: no conversions column exists on this table in the new export (a
-    # regression vs. the old ShoppingProductStats, which had metrics_conversions).
-    shopping_sql = f"""
-    SELECT
-        CAMPAIGN_ID                                                     AS campaign_id,
-        BRAND                                                           AS product_brand,
-        COUNTIF(CUSTOM_ATTRIBUTE IS NOT NULL AND CUSTOM_ATTRIBUTE != '')     AS rows_with_label_0,
-        COUNTIF(CUSTOM_ATTRIBUTE_1 IS NOT NULL AND CUSTOM_ATTRIBUTE_1 != '') AS rows_with_label_1,
-        COUNTIF(CUSTOM_ATTRIBUTE_2 IS NOT NULL AND CUSTOM_ATTRIBUTE_2 != '') AS rows_with_label_2,
-        COUNTIF(CUSTOM_ATTRIBUTE_3 IS NOT NULL AND CUSTOM_ATTRIBUTE_3 != '') AS rows_with_label_3,
-        COUNTIF(CUSTOM_ATTRIBUTE_4 IS NOT NULL AND CUSTOM_ATTRIBUTE_4 != '') AS rows_with_label_4,
-        SUM(IMPRESSIONS)                                                AS impressions,
-        SUM(CLICKS)                                                     AS clicks,
-        SUM(COST)                                                       AS cost
-    FROM {t_shopping}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY campaign_id, product_brand
-    """
-
-    # PRODUCT_TITLE actually exists in this export (unlike the previous schema,
-    # where segments_product_title was missing entirely) — a genuine upgrade.
-    title_sql = f"""
-    SELECT
-        PRODUCT_TITLE                                  AS product_title,
-        PRODUCT_TYPE_LEVEL_1                            AS product_type,
-        BRAND                                           AS product_brand,
-        NULLIF(CUSTOM_ATTRIBUTE, '')                    AS custom_label_0,
-        NULLIF(CUSTOM_ATTRIBUTE_1, '')                  AS custom_label_1,
-        NULLIF(CUSTOM_ATTRIBUTE_2, '')                  AS custom_label_2,
-        SUM(IMPRESSIONS)                                AS impressions
-    FROM {t_shopping}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-      AND PRODUCT_TITLE IS NOT NULL
-    GROUP BY product_title, product_type, product_brand, custom_label_0, custom_label_1, custom_label_2
-    ORDER BY impressions DESC
-    LIMIT 50
-    """
-
-    shopping = run_query(shopping_sql, params)
-
-    try:
-        titles = run_query(title_sql, recent_params)
-        logger.warning("feeds_catalogue/titles: %d sample rows", len(titles))
-        titles["_source"] = "product_title_sample"
-    except Exception as exc:
-        logger.warning("feeds_catalogue/titles failed: %s", exc)
-        titles = pd.DataFrame()
-
-    logger.warning("feeds_catalogue: %d shopping rows", len(shopping))
-
-    shopping["_source"] = "shopping_product_stats"
-
-    # NOTE: ProductGroupStats (catch-all vs. partitioned product groups) has no
-    # equivalent — there is no ad_group_id/product-group concept in this
-    # dataset. "Shopping campaign structure" has no automated signal anymore.
-
-    return pd.concat([shopping, titles], ignore_index=True)
-
-
-def _creative_content(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
-    t_ad = table("GOOGLEADS_AD", dataset)
-    params = [account_param(account_id), cutoff_date_param(lookback_days)]
-
-    # No separate AdGroup entity table — derive the ad-group list from the
-    # latest known row per ad group in GOOGLEADS_AD. No ad_group_type column
-    # exists either (DSA ad-group detection has no source anymore — see
-    # _keyword_strategy).
-    ad_group_sql = f"""
-    SELECT
-        AD_GROUP_ID     AS ad_group_id,
-        CAMPAIGN_ID     AS campaign_id,
-        AD_GROUP_NAME   AS ad_group_name,
-        AD_GROUP_STATUS AS status
-    FROM {t_ad}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    {latest_row_qualifier("AD_GROUP_ID")}
-    LIMIT 50
-    """
-
-    # Account-level type/status/approval breakdown. NOTE: ad_strength does not
-    # exist in this export at all (not even as a weak proxy) — dropped.
-    ad_sql = f"""
-    SELECT
-        AD_TYPE               AS type,
-        AD_STATUS              AS status,
-        AD_APPROVAL_STATUS     AS policy_approval_status,
-        COUNT(DISTINCT AD_ID)  AS ad_count
-    FROM {t_ad}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY 1, 2, 3
-    ORDER BY ad_count DESC
-    """
-
-    # Per-ad-group RSA presence and policy status. This is a daily fact table
-    # (multiple rows per ad), so counts use COUNT(DISTINCT AD_ID), not COUNTIF(*).
-    # AD_TYPE values are inconsistently cased/spaced (e.g. "Responsive search ad",
-    # "DEMAND_GEN_VIDEO_RESPONSIVE_AD") — normalise before comparing. Rich media
-    # is defined as "anything that isn't a text-only search ad format" rather
-    # than an exact enum list, since the observed vocabulary doesn't match the
-    # old GAQL constants closely enough to enumerate safely.
-    _rsa = "UPPER(REPLACE(AD_TYPE, ' ', '_'))"
-    rsa_per_adgroup_sql = f"""
-    SELECT
-        AD_GROUP_ID  AS ad_group_id,
-        CAMPAIGN_ID  AS campaign_id,
-        COUNT(DISTINCT IF({_rsa} = 'RESPONSIVE_SEARCH_AD' AND {_enum_eq("AD_STATUS", "ENABLED")}, AD_ID, NULL))
-                                                                                AS enabled_rsa_count,
-        COUNT(DISTINCT IF({_enum_eq("AD_STATUS", "ENABLED")}, AD_ID, NULL))    AS total_enabled_ads,
-        COUNT(DISTINCT IF({_enum_eq("AD_APPROVAL_STATUS", "DISAPPROVED")} AND {_enum_eq("AD_STATUS", "ENABLED")}, AD_ID, NULL))
-                                                                                AS disapproved_count,
-        COUNT(DISTINCT IF({_rsa} NOT IN ('RESPONSIVE_SEARCH_AD', 'EXPANDED_DYNAMIC_SEARCH_AD'), AD_ID, NULL))
-                                                                                AS rich_media_count
-    FROM {t_ad}
-    WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY ad_group_id, campaign_id
-    """
-
-    # Headline/description text is now flat scalar columns instead of a JSON
-    # array — max 6 observable headline slots (HEADLINE, HEADLINE_PART_1/2/3,
-    # LONG_HEADLINE, SHORT_HEADLINE) and max 3 description slots (DESCRIPTION,
-    # DESCRIPTION_1/2), versus up to 15/4 in the old export. Thresholds below
-    # are recalibrated for this ceiling — see specialist.py for the matching
-    # pass/warn/fail criteria. NOTE: verified against live data that these
-    # columns can come back completely empty for RSAs on some accounts (a
-    # Supermetrics report-configuration gap) even though the ads exist —
-    # specialist.py treats an all-zero result as a data gap, not a real fail.
-    rsa_headline_sql = f"""
-    SELECT
-        COUNT(*)                                AS total_rsa_ads,
-        COUNTIF(headline_count >= 5)            AS ads_5plus_headlines,
-        COUNTIF(headline_count < 3)             AS ads_under_3_headlines,
-        COUNTIF(description_count >= 2)         AS ads_2plus_descriptions,
-        ROUND(AVG(headline_count), 1)           AS avg_headline_count,
-        ROUND(AVG(description_count), 1)        AS avg_description_count,
-        TRUE                                     AS _summary
-    FROM (
-        SELECT
-            AD_ID,
-            (IF(HEADLINE IS NOT NULL AND HEADLINE != '', 1, 0)
-             + IF(HEADLINE_PART_1 IS NOT NULL AND HEADLINE_PART_1 != '', 1, 0)
-             + IF(HEADLINE_PART_2 IS NOT NULL AND HEADLINE_PART_2 != '', 1, 0)
-             + IF(HEADLINE_PART_3 IS NOT NULL AND HEADLINE_PART_3 != '', 1, 0)
-             + IF(LONG_HEADLINE IS NOT NULL AND LONG_HEADLINE != '', 1, 0)
-             + IF(SHORT_HEADLINE IS NOT NULL AND SHORT_HEADLINE != '', 1, 0))  AS headline_count,
-            (IF(DESCRIPTION IS NOT NULL AND DESCRIPTION != '', 1, 0)
-             + IF(DESCRIPTION_1 IS NOT NULL AND DESCRIPTION_1 != '', 1, 0)
-             + IF(DESCRIPTION_2 IS NOT NULL AND DESCRIPTION_2 != '', 1, 0))    AS description_count
-        FROM {t_ad}
-        WHERE {_rsa} = 'RESPONSIVE_SEARCH_AD'
-          AND {_enum_eq("AD_STATUS", "ENABLED")}
-          AND ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-        {latest_row_qualifier("AD_ID")}
-    )
-    """
-
-    ad_groups = run_query(ad_group_sql, params)
-    ads = run_query(ad_sql, params)
-
-    try:
-        rsa_per_adgroup = run_query(rsa_per_adgroup_sql, params)
-        logger.warning("creative_content/rsa_per_adgroup: %d rows", len(rsa_per_adgroup))
-        rsa_per_adgroup["_source"] = "rsa_per_adgroup"
-    except Exception as exc:
-        logger.warning("creative_content/rsa_per_adgroup failed: %s", exc)
-        rsa_per_adgroup = pd.DataFrame()
-
-    try:
-        rsa_headlines = run_query(rsa_headline_sql, params)
-        logger.warning("creative_content/rsa_headlines: %d rows", len(rsa_headlines))
-        rsa_headlines["_source"] = "rsa_headline_summary"
-    except Exception as exc:
-        logger.warning("creative_content/rsa_headlines failed: %s", exc)
-        rsa_headlines = pd.DataFrame()
-
-    logger.warning("creative_content: %d ad groups, %d ad type rows", len(ad_groups), len(ads))
-
-    ad_groups["_source"] = "ad_group"
-    ads["_source"] = "ad"
-
-    return pd.concat([ad_groups, ads, rsa_per_adgroup, rsa_headlines], ignore_index=True)
-
-
-def _pmax_performance(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
-    t_campaign = table("GOOGLEADS_CAMPAIGN", dataset)
-    params = [account_param(account_id), cutoff_date_param(lookback_days)]
-
-    # with_target_roas/with_target_cpa are hardcoded 0 — no target_roas or
-    # target_cpa column exists anywhere in this dataset (previously only
-    # target_cpa was missing; now both are). "Smart bidding configuration"
-    # regresses to a full manual-verification stub — see specialist.py.
-    pmax_sql = f"""
-    SELECT
-        CAMPAIGN_STATUS                    AS status,
-        BIDDING_STRATEGY_TYPE               AS campaign_bidding_strategy_type,
-        COUNT(DISTINCT CAMPAIGN_ID)         AS campaign_count,
-        0                                    AS with_target_roas,
-        0                                    AS with_target_cpa
-    FROM {t_campaign}
-    WHERE {_enum_eq("ADVERTISING_CHANNEL_TYPE", "PERFORMANCE_MAX")}
-      AND ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY 1, 2
-    ORDER BY campaign_count DESC
-    """
-
-    all_campaigns_sql = f"""
-    SELECT
-        ADVERTISING_CHANNEL_TYPE AS campaign_advertising_channel_type,
-        CAMPAIGN_STATUS          AS status,
-        COUNT(DISTINCT CAMPAIGN_ID) AS campaign_count
-    FROM {t_campaign}
-    WHERE {_enum_eq("CAMPAIGN_STATUS", "ENABLED")}
-      AND ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    GROUP BY 1, 2
-    """
-
-    pmax = run_query(pmax_sql, params)
-    pmax["_source"] = "pmax_campaign"
-
-    all_campaigns = run_query(all_campaigns_sql, params)
-    all_campaigns["_source"] = "all_campaigns"
-
-    logger.warning("pmax_performance: %d pmax status rows, %d all-campaign rows", len(pmax), len(all_campaigns))
-
-    # NOTE: brand-exclusion checks (CampaignCriterion), asset ad_strength
-    # (Ad.ad_strength — gone entirely, not even as a proxy), and PMax audience
-    # signals (AssetGroupAudienceView / CampaignAudience — both gone) have no
-    # data source left in this dataset. Only "PMax campaign adoption" stays
-    # genuinely automated in this category; the rest score as
-    # manual-verification stubs in the specialist prompt.
-
-    return pd.concat([pmax, all_campaigns], ignore_index=True)
-
-
+# --------------------------------------------------------------------------- #
+# keyword_strategy
+# --------------------------------------------------------------------------- #
 def _keyword_strategy(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
-    t_keyword = table("GOOGLEADS_KEYWORD", dataset)
-    t_campaign = table("GOOGLEADS_CAMPAIGN", dataset)
-    params = [account_param(account_id), cutoff_date_param(lookback_days)]
+    t_kw_meta = table("GOOGLEADS_KEYWORDMETADATA", dataset)
+    t_kw_stats = table("GOOGLEADS_P_KEYWORDBASICSTATS", dataset)
+    t_sq = table("GOOGLEADS_P_SEARCHQUERYSTATS", dataset)
+    t_ag_meta = table("GOOGLEADS_ADGROUPMETADATA", dataset)
 
-    # GOOGLEADS_KEYWORD has no campaign_id — join to campaign by name (+account,
-    # to avoid name collisions across blended accounts) to recover bidding
-    # strategy type. It also has no is_negative flag: this report only
-    # contains positive/active keywords, so the old negative/positive split
-    # is gone (see negative-keyword-coverage note below).
+    params = [account_param(account_id), cutoff_date_param(lookback_days)]
+    cte = _account_campaigns_cte(dataset)
+
+    # Top keywords by spend, with quality score and match type from metadata.
     keyword_sql = f"""
-    WITH campaign_bidding AS (
-        SELECT DISTINCT CAMPAIGN_NAME, BIDDING_STRATEGY_TYPE
-        FROM {t_campaign}
-        WHERE ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
+    WITH stats AS (
+        SELECT
+            KEYWORD_ID,
+            ANY_VALUE(KEYWORD)   AS keyword,
+            SUM(IMPRESSIONS)     AS impressions_period,
+            SUM(CLICKS)          AS clicks_period,
+            SUM(COST)            AS cost_period,
+            SUM(CONVERSIONS)     AS conversions_period,
+            SUM(CONVERSION_VALUE) AS conversion_value_period
+        FROM {t_kw_stats}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+        GROUP BY KEYWORD_ID
+    ),
+    meta AS (
+        SELECT
+            KEYWORD_ID,
+            ANY_VALUE(MATCH_TYPE)             AS match_type,
+            ANY_VALUE(KEYWORD_STATUS)         AS keyword_status,
+            ANY_VALUE(QUALITY_SCORE)          AS quality_score,
+            ANY_VALUE(CREATIVE_QUALITY_SCORE) AS creative_quality_score,
+            ANY_VALUE(POST_CLICK_QUALITY_SCORE) AS landing_page_quality_score,
+            ANY_VALUE(FIRST_PAGE_CPC)         AS first_page_cpc,
+            ANY_VALUE(TOP_OF_PAGE_CPC)        AS top_of_page_cpc
+        FROM {t_kw_meta}
+        GROUP BY KEYWORD_ID
     )
     SELECT
-        kw.MATCH_TYPE               AS match_type,
-        kw.KEYWORD_STATUS           AS status,
-        cb.BIDDING_STRATEGY_TYPE    AS bidding_strategy_type,
-        COUNT(DISTINCT kw.KEYWORD_ID)                          AS keyword_count,
-        ROUND(AVG(NULLIF(kw.QUALITY_SCORE, 0)), 1)             AS avg_quality_score
-    FROM {t_keyword} kw
-    LEFT JOIN campaign_bidding cb ON kw.CAMPAIGN_NAME = cb.CAMPAIGN_NAME
-    WHERE kw.ACCOUNT_ID = @account_id AND kw.DATE >= @cutoff_date
-    GROUP BY 1, 2, 3
+        s.keyword, m.match_type, m.keyword_status, m.quality_score,
+        m.creative_quality_score, m.landing_page_quality_score,
+        m.first_page_cpc, m.top_of_page_cpc,
+        s.impressions_period, s.clicks_period, s.cost_period,
+        s.conversions_period, s.conversion_value_period
+    FROM stats s
+    LEFT JOIN meta m USING (KEYWORD_ID)
+    ORDER BY s.cost_period DESC
+    LIMIT 60
+    """
+
+    # Match type mix + status hygiene across the whole account. Deliberately spans
+    # ALL keywords in the account's campaigns, not just those that served — the
+    # paused/removed tail is exactly what status hygiene is scoring.
+    match_mix_sql = f"""
+    WITH {cte}
+    SELECT
+        m.MATCH_TYPE     AS match_type,
+        m.KEYWORD_STATUS AS keyword_status,
+        COUNT(DISTINCT m.KEYWORD_ID) AS keyword_count,
+        TRUE AS _summary
+    FROM {t_kw_meta} m
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    GROUP BY 1, 2
     ORDER BY keyword_count DESC
     """
 
-    # Quality score and impressions are on the same row now — no join to a
-    # separate KeywordBasicStats table needed (simpler than the old schema).
-    impression_qs_sql = f"""
-    SELECT
-        ROUND(SAFE_DIVIDE(SUM(QUALITY_SCORE * IMPRESSIONS), SUM(IMPRESSIONS)), 1)
-                                                             AS impression_weighted_avg_qs,
-        COUNTIF(QUALITY_SCORE >= 7)                         AS keywords_qs_7plus,
-        COUNTIF(QUALITY_SCORE <= 4)                         AS keywords_qs_4minus,
-        COUNT(*)                                            AS total_keywords_with_qs,
-        TRUE                                                AS _summary
-    FROM {t_keyword}
-    WHERE {_enum_eq("KEYWORD_STATUS", "ENABLED")}
-      AND NULLIF(QUALITY_SCORE, 0) IS NOT NULL
-      AND ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-    """
-
-    adgroup_structure_sql = f"""
-    SELECT
-        COUNT(*)                             AS total_ad_groups,
-        COUNTIF(kw_count > 50)               AS ad_groups_50plus_kw,
-        COUNTIF(kw_count BETWEEN 16 AND 50)  AS ad_groups_16_to_50_kw,
-        COUNTIF(kw_count <= 15)              AS ad_groups_15minus_kw,
-        ROUND(AVG(kw_count), 1)              AS avg_kw_per_adgroup,
-        MAX(kw_count)                        AS max_kw_per_adgroup,
-        TRUE                                 AS _summary
-    FROM (
-        SELECT AD_GROUP_ID, COUNT(DISTINCT KEYWORD_ID) AS kw_count
-        FROM {t_keyword}
-        WHERE {_enum_eq("KEYWORD_STATUS", "ENABLED")}
-          AND ACCOUNT_ID = @account_id AND DATE >= @cutoff_date
-        GROUP BY AD_GROUP_ID
+    # Quality score distribution — only over keywords that actually served.
+    qs_sql = f"""
+    WITH kw AS (
+        SELECT DISTINCT KEYWORD_ID FROM {t_kw_stats}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
     )
+    SELECT
+        COUNT(DISTINCT m.KEYWORD_ID)                                      AS keywords_scored,
+        COUNT(DISTINCT IF(m.QUALITY_SCORE >= 7, m.KEYWORD_ID, NULL))      AS qs_7_plus,
+        COUNT(DISTINCT IF(m.QUALITY_SCORE BETWEEN 4 AND 6, m.KEYWORD_ID, NULL)) AS qs_4_to_6,
+        COUNT(DISTINCT IF(m.QUALITY_SCORE BETWEEN 1 AND 3, m.KEYWORD_ID, NULL)) AS qs_1_to_3,
+        ROUND(AVG(NULLIF(m.QUALITY_SCORE, 0)), 2)                         AS avg_quality_score,
+        TRUE AS _qs_summary
+    FROM {t_kw_meta} m
+    JOIN kw USING (KEYWORD_ID)
     """
 
-    keywords = run_query(keyword_sql, params)
+    # Search terms: volume, spend concentration, and AI Max broad-match share.
+    search_term_sql = f"""
+    SELECT
+        SEARCH_TERM_MATCH_SOURCE   AS match_source,
+        COUNT(DISTINCT SEARCH_TERM) AS search_terms,
+        SUM(IMPRESSIONS)            AS impressions_period,
+        SUM(CLICKS)                 AS clicks_period,
+        SUM(COST)                   AS cost_period,
+        SUM(CONVERSIONS)            AS conversions_period,
+        COUNT(DISTINCT IF(CONVERSIONS = 0 AND COST > 0, SEARCH_TERM, NULL)) AS zero_conv_paid_terms,
+        TRUE AS _search_term_summary
+    FROM {t_sq}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1
+    """
 
-    try:
-        impression_qs = run_query(impression_qs_sql, params)
-        qs_val = impression_qs["impression_weighted_avg_qs"].iloc[0] if not impression_qs.empty else None
-        logger.warning("keyword_strategy/impression_qs: weighted_avg_qs=%s", qs_val)
-        if qs_val is not None:
-            impression_qs["qs_status_computed"] = (
-                "fail" if qs_val < 5.5 else "warn" if qs_val < 7.0 else "pass"
-            )
-        impression_qs["_source"] = "impression_weighted_qs"
-    except Exception as exc:
-        logger.warning("keyword_strategy/impression_qs failed: %s", exc)
-        impression_qs = pd.DataFrame()
+    # Ad group types — DSA / dynamic ad group detection.
+    adgroup_sql = f"""
+    WITH {cte}
+    SELECT
+        m.AD_GROUP_TYPE   AS ad_group_type,
+        m.AD_GROUP_STATUS AS ad_group_status,
+        COUNT(DISTINCT m.AD_GROUP_ID) AS ad_group_count,
+        TRUE AS _adgroup_summary
+    FROM {t_ag_meta} m
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    GROUP BY 1, 2
+    ORDER BY ad_group_count DESC
+    """
 
-    try:
-        adgroup_structure = run_query(adgroup_structure_sql, params)
-        logger.warning("keyword_strategy/adgroup_structure: %d total ad groups",
-                       adgroup_structure["total_ad_groups"].iloc[0] if not adgroup_structure.empty else 0)
-        adgroup_structure["_source"] = "adgroup_kw_structure"
-    except Exception as exc:
-        logger.warning("keyword_strategy/adgroup_structure failed: %s", exc)
-        adgroup_structure = pd.DataFrame()
+    return _combine(
+        _safe("keyword_strategy/keywords", keyword_sql, params, "keyword"),
+        _safe("keyword_strategy/match_mix", match_mix_sql, params, "keyword_match_mix"),
+        _safe("keyword_strategy/quality_score", qs_sql, params, "keyword_quality_score"),
+        _safe("keyword_strategy/search_terms", search_term_sql, params, "search_term_summary"),
+        _safe("keyword_strategy/adgroups", adgroup_sql, params, "adgroup_structure"),
+    )
 
-    logger.warning("keyword_strategy: %d keyword aggregate rows", len(keywords))
 
-    keywords["_source"] = "keyword"
+# --------------------------------------------------------------------------- #
+# audience_targeting  (was a permanent stub before the 2026-08-20 rebuild)
+# --------------------------------------------------------------------------- #
+def _audience_targeting(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
+    t_aud_meta = table("GOOGLEADS_CAMPAIGNAUDIENCE", dataset)
+    t_aud_stats = table("GOOGLEADS_P_AUDIENCEBASICSTATS", dataset)
+    t_age = table("GOOGLEADS_P_AGERANGEBASICSTATS", dataset)
+    t_gender = table("GOOGLEADS_P_GENDERBASICSTATS", dataset)
+    t_loc_meta = table("GOOGLEADS_CAMPAIGNLOCATION", dataset)
+    t_loc_stats = table("GOOGLEADS_P_CAMPAIGNTARGETEDLOCATIONSTATS", dataset)
 
-    # NOTE: campaign-level negatives (CampaignCriterion), DSA ad-group detection
-    # (no ad_group_type column), system_serving_status breakdown, and shared
-    # negative lists (SharedSet) have no data source left in this dataset.
-    # "Negative keyword coverage" loses all three of its old signals and
-    # becomes a full stub; "Keyword status hygiene" and "DSA / dynamic ad
-    # groups" weaken but stay partially automated — see specialist.py.
+    params = [account_param(account_id), cutoff_date_param(lookback_days)]
+    cte = _account_campaigns_cte(dataset)
 
-    return pd.concat([keywords, impression_qs, adgroup_structure], ignore_index=True)
+    # Attached audiences per campaign — segmentation + remarketing + lookalikes.
+    audience_sql = f"""
+    WITH {cte}
+    SELECT
+        a.AUDIENCE        AS audience_name,
+        a.AUDIENCE_STATUS AS audience_status,
+        COUNT(DISTINCT a.CAMPAIGN_ID) AS campaign_count,
+        -- "LAL"/"Lookalike"/"Similar" prefixes mark lookalike lists in this account
+        REGEXP_CONTAINS(UPPER(a.AUDIENCE), r'^LAL|LOOKALIKE|SIMILAR') AS is_lookalike,
+        REGEXP_CONTAINS(UPPER(a.AUDIENCE), r'VISITOR|CONVERT|CUSTOMER|KLANT|REMARKET|ALL USERS|GEBRUIKER') AS is_remarketing
+    FROM {t_aud_meta} a
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    GROUP BY 1, 2, 4, 5
+    ORDER BY campaign_count DESC
+    LIMIT 60
+    """
+
+    # Audience performance — proves the segments are actually serving.
+    audience_perf_sql = f"""
+    SELECT
+        AUDIENCE            AS audience_name,
+        COUNT(DISTINCT CAMPAIGN_ID) AS campaign_count,
+        SUM(IMPRESSIONS)    AS impressions_period,
+        SUM(CLICKS)         AS clicks_period,
+        SUM(COST)           AS cost_period,
+        SUM(CONVERSIONS)    AS conversions_period,
+        SUM(CONVERSION_VALUE) AS conversion_value_period
+    FROM {t_aud_stats}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1
+    ORDER BY impressions_period DESC
+    LIMIT 40
+    """
+
+    demographics_sql = f"""
+    SELECT 'age' AS dimension, AGE AS bucket,
+           SUM(IMPRESSIONS) AS impressions_period, SUM(COST) AS cost_period,
+           SUM(CONVERSIONS) AS conversions_period
+    FROM {t_age}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1, 2
+    UNION ALL
+    SELECT 'gender', GENDER,
+           SUM(IMPRESSIONS), SUM(COST), SUM(CONVERSIONS)
+    FROM {t_gender}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1, 2
+    ORDER BY dimension, impressions_period DESC
+    """
+
+    # Geo targeting precision: presence-vs-interest mode + targeted location granularity.
+    geo_mode_sql = f"""
+    WITH {cte}
+    SELECT
+        l.LOCATION_TYPE AS location_targeting_mode,
+        COUNT(DISTINCT l.CAMPAIGN_ID) AS campaign_count,
+        TRUE AS _geo_mode_summary
+    FROM {t_loc_meta} l
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    GROUP BY 1
+    ORDER BY campaign_count DESC
+    """
+
+    geo_perf_sql = f"""
+    SELECT
+        LOCATION_TYPE    AS location_granularity,
+        COUNT(DISTINCT LOCATION)    AS locations_targeted,
+        COUNT(DISTINCT CAMPAIGN_ID) AS campaign_count,
+        SUM(IMPRESSIONS) AS impressions_period,
+        SUM(COST)        AS cost_period,
+        SUM(CONVERSIONS) AS conversions_period
+    FROM {t_loc_stats}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1
+    ORDER BY impressions_period DESC
+    """
+
+    return _combine(
+        _safe("audience_targeting/audiences", audience_sql, params, "audience"),
+        _safe("audience_targeting/audience_perf", audience_perf_sql, params, "audience_perf"),
+        _safe("audience_targeting/demographics", demographics_sql, params, "demographics"),
+        _safe("audience_targeting/geo_mode", geo_mode_sql, params, "geo_mode"),
+        _safe("audience_targeting/geo_perf", geo_perf_sql, params, "geo_perf"),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# conversion_kpi
+# --------------------------------------------------------------------------- #
+def _conversion_kpi(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
+    t_stats = table("GOOGLEADS_P_CAMPAIGNBASICSTATS", dataset)
+    t_xdev = table("GOOGLEADS_P_ADGROUPCROSSDEVICESTATS", dataset)
+    t_bid = table("GOOGLEADS_P_BIDDINGSTRATEGY", dataset)
+
+    params = [account_param(account_id), cutoff_date_param(lookback_days)]
+
+    # Account-level conversion health.
+    stats_sql = f"""
+    SELECT
+        SUM(IMPRESSIONS)      AS impressions_period,
+        SUM(CLICKS)           AS clicks_period,
+        SUM(COST)             AS cost_period,
+        SUM(CONVERSIONS)      AS conversions_period,
+        SUM(CONVERSION_VALUE) AS conversion_value_period,
+        SUM(VIEW_THROUGH_CONVERSIONS) AS view_through_conversions_period,
+        SAFE_DIVIDE(SUM(CONVERSION_VALUE), NULLIF(SUM(COST), 0)) AS account_roas,
+        SAFE_DIVIDE(SUM(COST), NULLIF(SUM(CONVERSIONS), 0))      AS account_cpa,
+        COUNT(DISTINCT CAMPAIGN_ID) AS campaigns_total,
+        COUNT(DISTINCT IF(CONVERSIONS > 0, CAMPAIGN_ID, NULL)) AS campaigns_with_conversions,
+        COUNT(DISTINCT DATE) AS days_with_data,
+        TRUE AS _summary
+    FROM {t_stats}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    """
+
+    # Per-campaign conversion + value, so the specialist can see value-based coverage.
+    per_campaign_sql = f"""
+    SELECT
+        CAMPAIGN_ID              AS campaign_id,
+        ANY_VALUE(ADVERTISING_CHANNEL_TYPE) AS campaign_advertising_channel_type,
+        SUM(COST)                AS cost_period,
+        SUM(CONVERSIONS)         AS conversions_period,
+        SUM(CONVERSION_VALUE)    AS conversion_value_period,
+        SAFE_DIVIDE(SUM(CONVERSION_VALUE), NULLIF(SUM(COST), 0)) AS roas
+    FROM {t_stats}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY campaign_id
+    ORDER BY cost_period DESC
+    LIMIT 50
+    """
+
+    # Cross-device conversions — proves the account is not blind to multi-device journeys.
+    xdev_sql = f"""
+    SELECT
+        SUM(CONVERSIONS)                        AS conversions_period,
+        SUM(ESTIMATED_CROSS_DEVICE_CONVERSIONS) AS cross_device_conversions_period,
+        SAFE_DIVIDE(SUM(ESTIMATED_CROSS_DEVICE_CONVERSIONS), NULLIF(SUM(CONVERSIONS), 0)) AS cross_device_share,
+        TRUE AS _xdev_summary
+    FROM {t_xdev}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    """
+
+    # Value-based bidding: is TARGET_ROAS actually set, and how does it compare to actual?
+    vbb_sql = f"""
+    SELECT
+        BIDDING_STRATEGY_TYPE AS bidding_strategy_type,
+        COUNT(DISTINCT CAMPAIGN_ID) AS campaign_count,
+        COUNT(DISTINCT IF(TARGET_ROAS > 0, CAMPAIGN_ID, NULL)) AS campaigns_with_target_roas,
+        ROUND(AVG(NULLIF(TARGET_ROAS, 0)), 3) AS avg_target_roas,
+        SAFE_DIVIDE(SUM(CONVERSION_VALUE), NULLIF(SUM(COST), 0)) AS actual_roas,
+        TRUE AS _vbb_summary
+    FROM {t_bid}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1
+    ORDER BY campaign_count DESC
+    """
+
+    return _combine(
+        _safe("conversion_kpi/stats", stats_sql, params, "conversion_stats"),
+        _safe("conversion_kpi/per_campaign", per_campaign_sql, params, "conversion_per_campaign"),
+        _safe("conversion_kpi/cross_device", xdev_sql, params, "cross_device"),
+        _safe("conversion_kpi/vbb", vbb_sql, params, "value_based_bidding"),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# feeds_catalogue
+# --------------------------------------------------------------------------- #
+def _feeds_catalogue(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
+    t_shop = table("GOOGLEADS_P_SHOPPINGBASICSTATS", dataset)
+    t_shop_old = table("GOOGLEADS_SHOPPING", dataset)
+    t_lgf = table("GOOGLEADS_PMAXASSETGROUPMETADATA", dataset)
+
+    params = [account_param(account_id), cutoff_date_param(lookback_days)]
+    cte = _account_campaigns_cte(dataset)
+
+    # Product performance — the new table finally carries conversions + value.
+    product_sql = f"""
+    SELECT
+        COUNT(DISTINCT PRODUCT_TITLE) AS products_served,
+        COUNT(DISTINCT CAMPAIGN_ID)   AS shopping_campaigns,
+        SUM(IMPRESSIONS)              AS impressions_period,
+        SUM(CLICKS)                   AS clicks_period,
+        SUM(COST)                     AS cost_period,
+        SUM(CONVERSIONS)              AS conversions_period,
+        SUM(CONVERSION_VALUE)         AS conversion_value_period,
+        SAFE_DIVIDE(SUM(CONVERSION_VALUE), NULLIF(SUM(COST), 0)) AS shopping_roas,
+        COUNT(DISTINCT IF(CONVERSIONS > 0, PRODUCT_TITLE, NULL)) AS products_with_conversions,
+        COUNT(DISTINCT IF(IMPRESSIONS > 0 AND CLICKS = 0, PRODUCT_TITLE, NULL)) AS products_zero_clicks,
+        TRUE AS _summary
+    FROM {t_shop}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    """
+
+    top_products_sql = f"""
+    SELECT
+        PRODUCT_TITLE         AS product_title,
+        SUM(IMPRESSIONS)      AS impressions_period,
+        SUM(COST)             AS cost_period,
+        SUM(CONVERSIONS)      AS conversions_period,
+        SUM(CONVERSION_VALUE) AS conversion_value_period
+    FROM {t_shop}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY product_title
+    ORDER BY cost_period DESC
+    LIMIT 40
+    """
+
+    # PMax listing group filters — the product-partition structure.
+    listing_group_sql = f"""
+    WITH {cte}
+    SELECT
+        l.LISTING_GROUP_FILTER_TYPE           AS listing_group_filter_type,
+        l.LISTING_GROUP_FILTER_LISTING_SOURCE AS listing_source,
+        COUNT(DISTINCT l.LISTING_GROUP_FILTER_ID) AS filter_count,
+        COUNT(DISTINCT l.ASSET_GROUP_ID)          AS asset_group_count,
+        TRUE AS _listing_group_summary
+    FROM {t_lgf} l
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    GROUP BY 1, 2
+    ORDER BY filter_count DESC
+    """
+
+    # Feed attribute coverage (product type levels, custom labels) exists ONLY on the
+    # frozen legacy table — the new P_SHOPPINGBASICSTATS carries PRODUCT_TITLE alone.
+    # Flagged stale so the specialist can discount it; taxonomy changes slowly enough
+    # to stay directionally useful.
+    feed_attrs_sql = f"""
+    SELECT
+        COUNT(DISTINCT OFFER_ID) AS offers,
+        COUNT(DISTINCT IF(COALESCE(PRODUCT_TITLE, '') != '', OFFER_ID, NULL))          AS offers_with_title,
+        COUNT(DISTINCT IF(COALESCE(PRODUCT_TYPE_LEVEL_1, '') != '', OFFER_ID, NULL))   AS offers_with_product_type_1,
+        COUNT(DISTINCT IF(COALESCE(PRODUCT_TYPE_LEVEL_3, '') != '', OFFER_ID, NULL))   AS offers_with_product_type_3,
+        COUNT(DISTINCT IF(COALESCE(CUSTOM_ATTRIBUTE, '') != '', OFFER_ID, NULL))       AS offers_with_custom_label,
+        COUNT(DISTINCT MERCHANT_ID) AS merchant_accounts,
+        MAX(DATE) AS snapshot_date,
+        TRUE AS _feed_attrs_stale_snapshot
+    FROM {t_shop_old}
+    WHERE PROFILE_ID = @account_id
+    """
+
+    return _combine(
+        _safe("feeds_catalogue/products", product_sql, params, "shopping_summary"),
+        _safe("feeds_catalogue/top_products", top_products_sql, params, "shopping_product"),
+        _safe("feeds_catalogue/listing_groups", listing_group_sql, params, "listing_group_summary"),
+        _safe("feeds_catalogue/feed_attrs", feed_attrs_sql, [account_param(account_id)], "feed_attributes_stale"),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# creative_content
+# --------------------------------------------------------------------------- #
+def _creative_content(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
+    t_ad = table("GOOGLEADS_P_ADBASICSTATS", dataset)
+    t_ad_meta = table("GOOGLEADS_ADMETADATA", dataset)
+    t_aga = table("GOOGLEADS_ASSETGROUPASSET", dataset)
+
+    params = [account_param(account_id), cutoff_date_param(lookback_days)]
+    cte = _account_campaigns_cte(dataset)
+
+    headline_cols = " + ".join(
+        f"(CASE WHEN COALESCE(AD_HEADLINE_{i}, '') != '' THEN 1 ELSE 0 END)" for i in range(1, 16)
+    )
+    desc_cols = " + ".join(
+        f"(CASE WHEN COALESCE(AD_DESCRIPTION_{i}, '') != '' THEN 1 ELSE 0 END)" for i in range(1, 6)
+    )
+
+    # RSA asset depth — the headline/description text landed in the 2026-08-20 rebuild.
+    rsa_sql = f"""
+    WITH latest AS (
+        SELECT *
+        FROM {t_ad}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+          AND {_enum_eq("AD_TYPE", "RESPONSIVE_SEARCH_AD")}
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY AD_ID ORDER BY DATE DESC) = 1
+    )
+    SELECT
+        COUNT(*) AS rsa_count,
+        ROUND(AVG({headline_cols}), 2) AS avg_headlines_per_rsa,
+        ROUND(AVG({desc_cols}), 2)     AS avg_descriptions_per_rsa,
+        COUNTIF(({headline_cols}) >= 12) AS rsas_with_12_plus_headlines,
+        COUNTIF(({desc_cols}) >= 4)      AS rsas_with_4_plus_descriptions,
+        COUNTIF(({headline_cols}) < 8)   AS rsas_under_8_headlines,
+        TRUE AS _rsa_summary
+    FROM latest
+    """
+
+    # A sample of actual copy so the specialist can judge relevance/differentiation.
+    rsa_sample_sql = f"""
+    SELECT
+        AD_ID AS ad_id,
+        AD_HEADLINE_1 AS headline_1, AD_HEADLINE_2 AS headline_2, AD_HEADLINE_3 AS headline_3,
+        AD_DESCRIPTION_1 AS description_1, AD_DESCRIPTION_2 AS description_2,
+        FINAL_URL AS final_url
+    FROM {t_ad}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+      AND {_enum_eq("AD_TYPE", "RESPONSIVE_SEARCH_AD")}
+      AND COALESCE(AD_HEADLINE_1, '') != ''
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY AD_ID ORDER BY DATE DESC) = 1
+    LIMIT 25
+    """
+
+    # Ad mix + per-ad-group ad counts (rotation / testing coverage).
+    ad_mix_sql = f"""
+    WITH per_ad AS (
+        SELECT AD_ID, ANY_VALUE(AD_TYPE) AS ad_type, ANY_VALUE(AD_STATUS) AS ad_status,
+               ANY_VALUE(AD_GROUP_ID) AS ad_group_id
+        FROM {t_ad}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+        GROUP BY AD_ID
+    )
+    SELECT
+        ad_type, ad_status,
+        COUNT(DISTINCT AD_ID) AS ad_count,
+        COUNT(DISTINCT ad_group_id) AS ad_group_count,
+        ROUND(SAFE_DIVIDE(COUNT(DISTINCT AD_ID), NULLIF(COUNT(DISTINCT ad_group_id), 0)), 2) AS ads_per_ad_group,
+        TRUE AS _ad_mix_summary
+    FROM per_ad
+    GROUP BY 1, 2
+    ORDER BY ad_count DESC
+    """
+
+    # AD_STRENGTH: present only for Demand Gen / Video ads. Emitted with an explicit
+    # coverage count so the specialist can see it does NOT cover search ads.
+    ad_strength_sql = f"""
+    WITH {cte},
+    served AS (
+        SELECT DISTINCT AD_ID FROM {t_ad}
+        WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    )
+    SELECT
+        m.AD_TYPE      AS ad_type,
+        m.AD_STRENGTH  AS ad_strength,
+        COUNT(DISTINCT m.AD_ID) AS ad_count,
+        TRUE AS _ad_strength_summary
+    FROM {t_ad_meta} m
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    JOIN served USING (AD_ID)
+    WHERE COALESCE(m.AD_STRENGTH, '') != ''
+    GROUP BY 1, 2
+    ORDER BY ad_count DESC
+    """
+
+    # PMax asset variety by field type — counts only; asset text is unavailable.
+    asset_variety_sql = f"""
+    WITH {cte}
+    SELECT
+        a.ASSET_FIELD_TYPE AS asset_field_type,
+        COUNT(DISTINCT a.ASSET_ID)       AS asset_count,
+        COUNT(DISTINCT a.ASSET_GROUP_ID) AS asset_group_count,
+        ROUND(SAFE_DIVIDE(COUNT(DISTINCT a.ASSET_ID), NULLIF(COUNT(DISTINCT a.ASSET_GROUP_ID), 0)), 2)
+            AS assets_per_asset_group,
+        TRUE AS _asset_variety_summary
+    FROM {t_aga} a
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    GROUP BY 1
+    ORDER BY asset_count DESC
+    """
+
+    return _combine(
+        _safe("creative_content/rsa_summary", rsa_sql, params, "rsa_summary"),
+        _safe("creative_content/rsa_sample", rsa_sample_sql, params, "rsa_sample"),
+        _safe("creative_content/ad_mix", ad_mix_sql, params, "ad_mix"),
+        _safe("creative_content/ad_strength", ad_strength_sql, params, "ad_strength_partial"),
+        _safe("creative_content/asset_variety", asset_variety_sql, params, "asset_variety"),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# ai_readiness / PMax
+# --------------------------------------------------------------------------- #
+def _pmax_performance(account_id: str, dataset: str | None = None, lookback_days: int = 30) -> pd.DataFrame:
+    t_ag_stats = table("GOOGLEADS_P_ASSETGROUPBASICSTATS", dataset)
+    t_ag_meta = table("GOOGLEADS_PMAXASSETGROUPMETADATA", dataset)
+    t_camp = table("GOOGLEADS_P_CAMPAIGNBASICSTATS", dataset)
+    t_sq = table("GOOGLEADS_P_SEARCHQUERYSTATS", dataset)
+
+    params = [account_param(account_id), cutoff_date_param(lookback_days)]
+    cte = _account_campaigns_cte(dataset)
+
+    # PMax vs. standard campaign balance.
+    balance_sql = f"""
+    SELECT
+        ADVERTISING_CHANNEL_TYPE AS campaign_advertising_channel_type,
+        COUNT(DISTINCT CAMPAIGN_ID) AS campaign_count,
+        SUM(COST)                AS cost_period,
+        SUM(CONVERSIONS)         AS conversions_period,
+        SUM(CONVERSION_VALUE)    AS conversion_value_period,
+        SAFE_DIVIDE(SUM(CONVERSION_VALUE), NULLIF(SUM(COST), 0)) AS roas,
+        TRUE AS _channel_balance_summary
+    FROM {t_camp}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1
+    ORDER BY cost_period DESC
+    """
+
+    # Asset group performance — now dated, so it can be windowed properly.
+    asset_group_sql = f"""
+    SELECT
+        ASSET_GROUP_ID        AS asset_group_id,
+        ANY_VALUE(ASSET_GROUP_NAME)   AS asset_group_name,
+        ANY_VALUE(ASSET_GROUP_STATUS) AS asset_group_status,
+        SUM(IMPRESSIONS)      AS impressions_period,
+        SUM(CLICKS)           AS clicks_period,
+        SUM(COST)             AS cost_period,
+        SUM(CONVERSIONS)      AS conversions_period,
+        SUM(CONVERSION_VALUE) AS conversion_value_period
+    FROM {t_ag_stats}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY asset_group_id
+    ORDER BY cost_period DESC
+    LIMIT 40
+    """
+
+    # Asset group strength — AD_STRENGTH *is* populated at asset-group level.
+    ag_strength_sql = f"""
+    WITH {cte}
+    SELECT
+        m.AD_STRENGTH         AS asset_group_ad_strength,
+        m.ASSET_GROUP_STATUS  AS asset_group_status,
+        COUNT(DISTINCT m.ASSET_GROUP_ID) AS asset_group_count,
+        TRUE AS _ag_strength_summary
+    FROM {t_ag_meta} m
+    JOIN acct_campaigns USING (CAMPAIGN_ID)
+    GROUP BY 1, 2
+    ORDER BY asset_group_count DESC
+    """
+
+    # AI Max adoption — surfaced via the search-term match source.
+    ai_max_sql = f"""
+    SELECT
+        SEARCH_TERM_MATCH_SOURCE AS match_source,
+        COUNT(DISTINCT SEARCH_TERM) AS search_terms,
+        COUNT(DISTINCT CAMPAIGN_ID) AS campaign_count,
+        SUM(IMPRESSIONS)         AS impressions_period,
+        SUM(COST)                AS cost_period,
+        SUM(CONVERSIONS)         AS conversions_period,
+        TRUE AS _ai_max_summary
+    FROM {t_sq}
+    WHERE PROFILE_ID = @account_id AND DATE >= @cutoff_date
+    GROUP BY 1
+    ORDER BY impressions_period DESC
+    """
+
+    return _combine(
+        _safe("ai_readiness/channel_balance", balance_sql, params, "channel_balance"),
+        _safe("ai_readiness/asset_groups", asset_group_sql, params, "asset_group"),
+        _safe("ai_readiness/ag_strength", ag_strength_sql, params, "asset_group_strength"),
+        _safe("ai_readiness/ai_max", ai_max_sql, params, "ai_max_summary"),
+    )
 
 
 def extract_audit_data(

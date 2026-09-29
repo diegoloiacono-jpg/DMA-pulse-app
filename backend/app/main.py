@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
-from app.routers import audit, validation
+from app.routers import audit, contexts, validation
 from app.config import GCP_PROJECT, bq_client
 from app.services.bigquery import run_query
 
@@ -65,6 +65,7 @@ app.add_middleware(
 
 app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
 app.include_router(validation.router, prefix="/api/audit", tags=["validation"])
+app.include_router(contexts.router, prefix="/api/contexts", tags=["contexts"])
 
 
 @app.get("/health")
@@ -83,11 +84,41 @@ _DATASET_ID_RE = re.compile(r"^[A-Za-z0-9_]+$")
 
 @app.get("/api/datasets/{dataset}/accounts")
 def list_accounts(dataset: str) -> dict:
-    """List distinct Google Ads accounts blended in a dataset's campaign table."""
+    """List the Google Ads accounts blended into a dataset.
+
+    Accounts are keyed by PROFILE_ID (the export's name for the Google Ads
+    customer id). The account roster comes from GOOGLEADS_CUSTOMERMETADATA,
+    restricted to accounts that actually have campaign stats in the window the
+    audit can read — an account present in metadata but with no facts would
+    produce an empty audit.
+    """
     if not _DATASET_ID_RE.match(dataset):
         raise HTTPException(status_code=400, detail="Invalid dataset name")
-    df = run_query(
-        f"SELECT DISTINCT ACCOUNT_ID, ACCOUNT_NAME "
-        f"FROM `{GCP_PROJECT}.{dataset}.GOOGLEADS_CAMPAIGN` ORDER BY ACCOUNT_NAME"
+
+    sql = f"""
+    WITH with_data AS (
+        SELECT PROFILE_ID, MAX(DATE) AS last_date, SUM(COST) AS cost
+        FROM `{GCP_PROJECT}.{dataset}.GOOGLEADS_P_CAMPAIGNBASICSTATS`
+        GROUP BY PROFILE_ID
     )
-    return {"accounts": df.rename(columns=str.lower).to_dict(orient="records")}
+    SELECT
+        c.PROFILE_ID   AS account_id,
+        c.PROFILE      AS account_name,
+        d.last_date    AS last_date
+    FROM `{GCP_PROJECT}.{dataset}.GOOGLEADS_CUSTOMERMETADATA` c
+    JOIN with_data d USING (PROFILE_ID)
+    ORDER BY d.cost DESC
+    """
+    try:
+        df = run_query(sql)
+    except Exception as exc:
+        # Surface the reason instead of 500ing — the UI shows it inline so a
+        # schema change here is visible rather than silently degrading to the
+        # server-default account.
+        logging.warning("list_accounts failed for dataset %s: %s", dataset, exc)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not list accounts in dataset '{dataset}': {str(exc)[:200]}",
+        ) from exc
+
+    return {"accounts": df.astype(str).to_dict(orient="records")}

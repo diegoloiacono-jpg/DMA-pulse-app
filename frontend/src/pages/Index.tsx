@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import artefactLogo from "@/assets/artefact-logo-white.png";
 import { Settings, FileSpreadsheet, Upload, ArrowRight, AlertCircle, X, ChevronDown, Zap, Lightbulb, Sparkles, Check, XCircle, PlayCircle, Home, TrendingUp, Trash2, Info, RotateCcw, AlertTriangle } from "lucide-react";
@@ -18,7 +18,7 @@ import ValidationLayer from "@/components/ValidationLayer";
 import StrategicWins from "@/components/StrategicWins";
 import RawDataPreview from "@/components/RawDataPreview";
 import { type BrandContext, DEFAULT_BRAND_CONTEXT, getEffectiveBenchmark, PLATFORM_OPTIONS, type PlatformKey } from "@/utils/brandContext";
-import { listSavedContexts, saveContext, deleteContext, type SavedContext } from "@/utils/savedContexts";
+import { listSavedContexts, fetchContexts, saveContext, deleteContext, type SavedContext } from "@/utils/savedContexts";
 import { computeDashboardState, type DashboardState } from "@/utils/dashboardLogic";
 import {
   type ManualScoreMap,
@@ -60,8 +60,38 @@ export default function Index() {
   const [showSettings, setShowSettings] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [brandContext, setBrandContext] = useState<BrandContext>(DEFAULT_BRAND_CONTEXT);
+  // Seeded from the browser cache so the dropdown renders immediately, then
+  // replaced by the server copy (the source of truth) once it loads.
   const [savedContexts, setSavedContexts] = useState<SavedContext[]>(() => listSavedContexts());
   const [editingContextId, setEditingContextId] = useState<string | null>(null);
+  const [contextStoreError, setContextStoreError] = useState<string>("");
+
+  const refreshContexts = useCallback(async () => {
+    try {
+      setSavedContexts(await fetchContexts());
+      setContextStoreError("");
+    } catch (err) {
+      setContextStoreError(
+        err instanceof Error ? err.message : "Could not reach the saved-context store.",
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshContexts();
+  }, [refreshContexts]);
+
+  // Shared by the Brand Context card's selector and the AuditRunner card's
+  // selector, so both always agree on which saved context is active.
+  const handleSelectContext = useCallback((id: string | null) => {
+    if (!id) { setEditingContextId(null); return; }
+    const entry = savedContexts.find(s => s.id === id);
+    if (entry) {
+      setBrandContext(entry.context);
+      setEditingContextId(id);
+    }
+  }, [savedContexts]);
+
   const [manualScores, setManualScores] = useState<ManualScoreMap>({});
   const [showGapsFlyout, setShowGapsFlyout] = useState(false);
   const [contextSaved, setContextSaved] = useState(false);
@@ -347,6 +377,13 @@ export default function Index() {
               </button>
             </div>
           </div>
+          {contextStoreError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-xs text-destructive">
+                Saved clients are not syncing: {contextStoreError}
+              </p>
+            </div>
+          )}
           {/* Saved clients panel */}
           {savedContexts.length > 0 && (
             <div className="rounded-xl border bg-card p-4 space-y-2">
@@ -369,10 +406,14 @@ export default function Index() {
                         {editingContextId === s.id ? "Editing…" : "Edit"}
                       </button>
                       <button
-                        onClick={() => {
-                          deleteContext(s.id);
-                          if (editingContextId === s.id) setEditingContextId(null);
-                          setSavedContexts(listSavedContexts());
+                        onClick={async () => {
+                          try {
+                            await deleteContext(s.id);
+                            if (editingContextId === s.id) setEditingContextId(null);
+                            await refreshContexts();
+                          } catch (err) {
+                            setContextStoreError(err instanceof Error ? err.message : "Delete failed.");
+                          }
                         }}
                         className="text-xs px-2.5 py-1 rounded-md border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
                       >
@@ -404,10 +445,14 @@ export default function Index() {
               <div className="flex gap-2">
                 <button
                   disabled={!brandContext.brandName}
-                  onClick={() => {
-                    saveContext(brandContext.brandName, brandContext, editingContextId ?? undefined);
-                    setEditingContextId(null);
-                    setSavedContexts(listSavedContexts());
+                  onClick={async () => {
+                    try {
+                      await saveContext(brandContext.brandName, brandContext, editingContextId ?? undefined);
+                      setEditingContextId(null);
+                      await refreshContexts();
+                    } catch (err) {
+                      setContextStoreError(err instanceof Error ? err.message : "Save failed.");
+                    }
                   }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -530,6 +575,8 @@ export default function Index() {
                 <ScoringReview
                   auditId={auditId}
                   output={apiAuditState.scoring_output}
+                  specialistResults={apiAuditState.specialist_results}
+                  benchmarkScore={effectiveBenchmark}
                   onComplete={(output) => {
                     setApiScoringOutput(output);
                     setApiAuditState(prev => prev ? { ...prev, status: "complete" } : prev);
@@ -557,6 +604,36 @@ export default function Index() {
                         <h3 className="text-sm font-semibold">Brand Context</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">Google Ads — configure before running the audit</p>
                       </div>
+
+                      {/* Load a saved client context */}
+                      {savedContexts.length > 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-foreground">Load saved context</label>
+                          <select
+                            value={editingContextId ?? ""}
+                            onChange={e => handleSelectContext(e.target.value || null)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <option value="">— New / current form —</option>
+                            {savedContexts.map(s => (
+                              <option key={s.id} value={s.id}>{s.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {editingContextId && (
+                        <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+                          <p className="text-xs text-primary font-medium">
+                            Using: {savedContexts.find(s => s.id === editingContextId)?.label}
+                          </p>
+                          <button
+                            onClick={() => setEditingContextId(null)}
+                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      )}
 
                       {/* Brand Name */}
                       <div className="space-y-1.5">
@@ -669,13 +746,17 @@ export default function Index() {
 
                       {/* Save button */}
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           const ctx = { ...brandContext, selectedPlatforms: ["sea-google" as PlatformKey] };
-                          const newId = saveContext(ctx.brandName || "Unnamed", ctx, editingContextId);
-                          setEditingContextId(newId);
-                          setSavedContexts(listSavedContexts());
-                          setContextSaved(true);
-                          setTimeout(() => setContextSaved(false), 2000);
+                          try {
+                            const entry = await saveContext(ctx.brandName || "Unnamed", ctx, editingContextId ?? undefined);
+                            setEditingContextId(entry.id);
+                            await refreshContexts();
+                            setContextSaved(true);
+                            setTimeout(() => setContextSaved(false), 2000);
+                          } catch (err) {
+                            setContextStoreError(err instanceof Error ? err.message : "Save failed.");
+                          }
                         }}
                         disabled={!brandContext.brandName.trim()}
                         className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
@@ -706,11 +787,12 @@ export default function Index() {
                           hasProductFeed: brandContext.hasProductFeed ?? false,
                         }}
                         savedContexts={savedContexts}
+                        activeContextId={editingContextId}
+                        onSelectContext={handleSelectContext}
                         onSpecialistReady={(id, state) => {
                           setAuditId(id);
                           setApiAuditState(state);
                         }}
-                        onLoadContext={setBrandContext}
                       />
                     </div>
                   </div>

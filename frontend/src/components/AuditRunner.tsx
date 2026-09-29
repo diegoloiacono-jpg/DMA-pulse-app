@@ -3,14 +3,14 @@ import { Loader2, Play, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AccountInfo, apiClient, AuditState, AuditStatus, BrandContextPayload } from "@/lib/apiClient";
-import { BrandContext } from "@/utils/brandContext";
 import { SavedContext } from "@/utils/savedContexts";
 
 interface Props {
   brandContext: BrandContextPayload;
   savedContexts: SavedContext[];
+  activeContextId: string | null;
+  onSelectContext: (id: string | null) => void;
   onSpecialistReady: (auditId: string, state: AuditState) => void;
-  onLoadContext?: (ctx: BrandContext) => void;
 }
 
 const STATUS_LABELS: Record<AuditStatus, string> = {
@@ -31,14 +31,13 @@ const POLLING_STATUSES: AuditStatus[] = [
   "scoring_running",
 ];
 
-export default function AuditRunner({ brandContext, savedContexts, onSpecialistReady, onLoadContext }: Props) {
+export default function AuditRunner({ brandContext, savedContexts, activeContextId, onSelectContext, onSpecialistReady }: Props) {
   const [auditId, setAuditId] = useState<string | null>(null);
   const [status, setStatus] = useState<AuditStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [selectedContextId, setSelectedContextId] = useState<string>("");
   const [dataset, setDataset] = useState<string>("");
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(true);
@@ -46,11 +45,15 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
   const [accountId, setAccountId] = useState<string>("");
   const [availableAccounts, setAvailableAccounts] = useState<AccountInfo[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
+  // Surfaced in the UI: a silent catch here previously made a broken accounts
+  // query look identical to "no accounts", so every audit quietly ran against
+  // the server-default account.
+  const [accountsError, setAccountsError] = useState<string>("");
 
-  // Data may only span a few days if the BigQuery connector was just set up —
-  // default the displayed lookback low so a fresh audit isn't run against an
-  // empty 30-day window; the backend still defaults to 30 if this is unset.
-  const [lookbackDays, setLookbackDays] = useState<number>(7);
+  // 30 days matches the window most scoring criteria assume (e.g. the ~30
+  // conversions smart bidding needs to learn). The export now carries enough
+  // history for this; it was temporarily lowered while the connector was new.
+  const [lookbackDays, setLookbackDays] = useState<number>(30);
 
   useEffect(() => {
     apiClient.listDatasets()
@@ -63,13 +66,23 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
     if (!dataset) {
       setAvailableAccounts([]);
       setAccountId("");
+      setAccountsError("");
       return;
     }
     setAccountsLoading(true);
     setAccountId("");
+    setAccountsError("");
     apiClient.listAccounts(dataset)
-      .then(r => setAvailableAccounts(r.accounts))
-      .catch(() => setAvailableAccounts([]))
+      .then(r => {
+        setAvailableAccounts(r.accounts);
+        if (!r.accounts.length) {
+          setAccountsError("No accounts with campaign data found in this dataset.");
+        }
+      })
+      .catch(err => {
+        setAvailableAccounts([]);
+        setAccountsError(err instanceof Error ? err.message : "Could not load accounts.");
+      })
       .finally(() => setAccountsLoading(false));
   }, [dataset]);
 
@@ -102,16 +115,11 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
     }
   };
 
-  const handleContextSelect = (id: string) => {
-    setSelectedContextId(id);
-    if (!id) return;
-    const entry = savedContexts.find(s => s.id === id);
-    if (entry && onLoadContext) {
-      onLoadContext(entry.context);
-    }
-  };
-
   const handleRun = async () => {
+    if (!activeContextId) {
+      setError("Select a client context before running the audit.");
+      return;
+    }
     setError(null);
     setRunning(true);
     setStatus("pending");
@@ -138,6 +146,7 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
   useEffect(() => () => stopPolling(), []);
 
   const isActive = running || (status && POLLING_STATUSES.includes(status));
+  const contextSelected = !!activeContextId;
 
   return (
     <div className="flex flex-col gap-3 p-4 rounded-xl border bg-card">
@@ -149,26 +158,6 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
           </Badge>
         )}
       </div>
-
-      {/* Client context selector */}
-      {savedContexts.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Client context</label>
-          <select
-            value={selectedContextId}
-            onChange={e => handleContextSelect(e.target.value)}
-            disabled={!!isActive}
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-          >
-            <option value="">— Use current form context —</option>
-            {savedContexts.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* Dataset + Account ID overrides */}
       <div className="flex flex-col gap-1">
@@ -200,9 +189,13 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
           {availableAccounts.map(a => (
             <option key={a.account_id} value={a.account_id}>
               {a.account_name} ({a.account_id})
+              {a.last_date ? ` — data to ${a.last_date}` : ""}
             </option>
           ))}
         </select>
+        {accountsError && (
+          <p className="text-xs text-destructive">{accountsError}</p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -217,8 +210,43 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
           className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
         />
         <p className="text-[10px] text-muted-foreground">
-          Kept short by default — the BigQuery connector may only have a few days of history so far.
+          30 days matches what most scoring criteria assume. The export currently holds history
+          back to 2026-07-21, so longer windows will silently cover fewer days.
         </p>
+      </div>
+
+      {/* Client context — shared with the Brand Context card, so both stay in sync.
+          Selecting one is mandatory: the specialist agent needs brand context to
+          score anything meaningfully, so Run Audit stays disabled until a saved
+          context is picked here. */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">
+          Client context <span className="text-destructive">*</span>
+        </label>
+        {savedContexts.length > 0 ? (
+          <select
+            value={activeContextId ?? ""}
+            onChange={e => onSelectContext(e.target.value || null)}
+            disabled={!!isActive}
+            className={`w-full rounded-md border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 ${
+              contextSelected ? "border-input" : "border-destructive/50"
+            }`}
+          >
+            <option value="">— Select a client context —</option>
+            {savedContexts.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-xs text-muted-foreground rounded-md border border-destructive/50 px-2 py-1.5">
+            No saved client contexts yet — fill in the Brand Context form and click "Save Context", then select it here.
+          </p>
+        )}
+        {!contextSelected && (
+          <p className="text-[10px] text-destructive">
+            Select a client context above before running the audit.
+          </p>
+        )}
       </div>
 
       {error && (
@@ -230,7 +258,7 @@ export default function AuditRunner({ brandContext, savedContexts, onSpecialistR
 
       <Button
         onClick={handleRun}
-        disabled={!!isActive}
+        disabled={!!isActive || !contextSelected}
         className="w-full"
         size="sm"
       >

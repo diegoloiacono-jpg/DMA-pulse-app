@@ -1,13 +1,17 @@
-import { useState } from "react";
-import { ArrowLeft, CheckCircle, Loader2, TrendingUp, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, CheckCircle, Loader2, Radar, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { apiClient, ScoringOutput } from "@/lib/apiClient";
+import { apiClient, ScoringOutput, SpecialistResult } from "@/lib/apiClient";
+import { platforms } from "@/data/auditData";
+import ScoringCategoryBreakdown from "@/components/ScoringCategoryBreakdown";
+import RadarChart from "@/components/RadarChart";
 
 interface Props {
   auditId: string;
   output: ScoringOutput;
+  specialistResults: SpecialistResult[];
+  benchmarkScore: number;
   onComplete: (output: ScoringOutput) => void;
   onBack?: () => void;
 }
@@ -19,8 +23,13 @@ const MATURITY_COLORS: Record<string, string> = {
   Basic: "text-score-poor",
 };
 
-export default function ScoringReview({ auditId, output, onComplete, onBack }: Props) {
+export default function ScoringReview({ auditId, output, specialistResults, benchmarkScore, onComplete, onBack }: Props) {
   const [submitting, setSubmitting] = useState(false);
+
+  const platformLabel = useMemo(
+    () => platforms.find(p => p.id === output.platform_id)?.shortName ?? output.platform_id,
+    [output.platform_id]
+  );
 
   const handleApprove = async () => {
     setSubmitting(true);
@@ -101,22 +110,26 @@ export default function ScoringReview({ auditId, output, onComplete, onBack }: P
         </div>
       )}
 
-      {/* Category scores — compact card grid */}
+      {/* Category scores — expandable bar-list */}
       <div className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <TrendingUp className="h-4 w-4" /> Category Breakdown
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          {output.category_scores.map((cat) => (
-            <div key={cat.name} className="rounded-lg border bg-card p-3 flex flex-col gap-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground truncate">
-                {cat.name.replace(/_/g, " ")}
-              </span>
-              <span className="text-xl font-bold tabular-nums">{cat.score.toFixed(0)}</span>
-              <Progress value={cat.score} className="h-1" />
-            </div>
-          ))}
-        </div>
+        <ScoringCategoryBreakdown categoryScores={output.category_scores} specialistResults={specialistResults} />
+      </div>
+
+      {/* Category radar */}
+      <div className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Radar className="h-4 w-4" /> {platformLabel} Category Radar
+        </h3>
+        <RadarChart
+          categories={output.category_scores.map(c => ({ name: c.name.replace(/_/g, " "), score: c.score }))}
+          label={platformLabel}
+          showBenchmark
+          benchmarkScore={benchmarkScore}
+          confidence="high"
+        />
       </div>
     </div>
   );

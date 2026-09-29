@@ -105,6 +105,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface AccountInfo {
   account_id: string;
   account_name: string;
+  /** Most recent DATE with campaign stats for this account. */
+  last_date?: string;
+}
+
+/** Server-side saved brand context. Mirrors SavedContext in utils/savedContexts. */
+export interface SavedContextDTO {
+  id: string;
+  label: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: any;
+  savedAt: string;
 }
 
 export const apiClient = {
@@ -148,5 +159,22 @@ export const apiClient = {
 
   listAccounts(dataset: string) {
     return request<{ accounts: AccountInfo[] }>(`/api/datasets/${encodeURIComponent(dataset)}/accounts`);
+  },
+
+  listContexts() {
+    return request<SavedContextDTO[]>("/api/contexts");
+  },
+
+  putContext(id: string, body: { label: string; context: unknown }) {
+    return request<SavedContextDTO>(`/api/contexts/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  deleteContext(id: string) {
+    return request<{ id: string; deleted: boolean }>(`/api/contexts/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
   },
 };

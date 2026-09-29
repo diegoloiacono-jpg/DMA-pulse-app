@@ -9,6 +9,8 @@ BQ_DATASET: str          = os.getenv("BQ_DATASET",          "google_ads")
 DEFAULT_ACCOUNT_ID: str  = os.getenv("DEFAULT_ACCOUNT_ID",  "3676622146")
 DEFAULT_LOOKBACK_DAYS: int = int(os.getenv("DEFAULT_LOOKBACK_DAYS", "30"))
 MODEL_DATASET: str       = os.getenv("MODEL_DATASET",       "google_ads_audit")
+# Durable store for saved brand contexts (see services/context_store.py).
+CONTEXT_BUCKET: str      = os.getenv("CONTEXT_BUCKET",      f"{GCP_PROJECT}-dma-pulse-contexts")
 
 SPECIALIST_MODEL: str = f"{GCP_PROJECT}.{MODEL_DATASET}.gemini_3_auditor"
 SCORING_MODEL: str    = f"{GCP_PROJECT}.{MODEL_DATASET}.gemini_model"

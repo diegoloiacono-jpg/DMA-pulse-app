@@ -1,10 +1,14 @@
 import { useRef, useCallback } from "react";
 import { Download } from "lucide-react";
-import { type PlatformCategory } from "@/data/auditData";
 import type { ConfidenceLevel } from "@/utils/auditCriteria";
 
+interface RadarCategory {
+  name: string;
+  score: number;
+}
+
 interface Props {
-  categories: PlatformCategory[];
+  categories: RadarCategory[];
   label: string;
   showBenchmark?: boolean;
   benchmarkScore?: number;
