@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 
 import pandas as pd
 from google.cloud import bigquery
 
 from app.config import GCP_PROJECT, bq_client
+
+logger = logging.getLogger(__name__)
 
 
 def run_query(sql: str, params: list[bigquery.ScalarQueryParameter] | None = None) -> pd.DataFrame:
@@ -29,6 +32,29 @@ def table(name: str, dataset: str | None = None) -> str:
 def account_param(account_id: str) -> bigquery.ScalarQueryParameter:
     """Query parameter for `WHERE ACCOUNT_ID = @account_id`."""
     return bigquery.ScalarQueryParameter("account_id", "STRING", account_id)
+
+
+def resolve_account_id(account_id: str, dataset: str | None = None) -> str:
+    """Translate a real account ID to its anonymized value when reading an
+    anonymized dataset (anonymizer/ remaps account IDs), so a configured default
+    account keeps working. Any other dataset, an unmapped ID, or an unreadable
+    mapping returns the ID unchanged.
+    """
+    from app.config import ANON_KEYS_DATASET, BQ_DATASET
+
+    ds = dataset or BQ_DATASET
+    if not ds.startswith("anonymized") or not account_id:
+        return account_id
+    try:
+        df = run_query(
+            f"SELECT anonymized_value FROM `{GCP_PROJECT}.{ANON_KEYS_DATASET}._anon_mapping` "
+            "WHERE entity_type = 'ACCOUNT_ID' AND original_value = @account_id LIMIT 1",
+            [account_param(account_id)],
+        )
+    except Exception:
+        logger.warning("Could not read the account ID mapping; using the ID as given")
+        return account_id
+    return str(df.iloc[0, 0]) if not df.empty else account_id
 
 
 def cutoff_date_param(lookback_days: int, name: str = "cutoff_date") -> bigquery.ScalarQueryParameter:

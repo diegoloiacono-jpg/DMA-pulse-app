@@ -8,6 +8,9 @@ GCP_PROJECT: str         = os.getenv("GCP_PROJECT",         "paid-media-2a86")
 BQ_DATASET: str          = os.getenv("BQ_DATASET",          "google_ads")
 DEFAULT_ACCOUNT_ID: str  = os.getenv("DEFAULT_ACCOUNT_ID",  "3676622146")
 DEFAULT_LOOKBACK_DAYS: int = int(os.getenv("DEFAULT_LOOKBACK_DAYS", "30"))
+# Restricted dataset holding the anonymizer's original -> anonymized mapping
+# (see anonymizer/). Only read by the backend, to translate DEFAULT_ACCOUNT_ID.
+ANON_KEYS_DATASET: str   = os.getenv("ANON_KEYS_DATASET",   "anonymization_keys")
 MODEL_DATASET: str       = os.getenv("MODEL_DATASET",       "google_ads_audit")
 # Durable store for saved brand contexts (see services/context_store.py).
 CONTEXT_BUCKET: str      = os.getenv("CONTEXT_BUCKET",      f"{GCP_PROJECT}-dma-pulse-contexts")

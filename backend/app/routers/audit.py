@@ -12,6 +12,7 @@ from app.models.audit import (
     AuditStatus,
     ScoringOutput,
 )
+from app.services.bigquery import resolve_account_id
 from app.services.data_extraction import extract_audit_data
 from app.services.specialist import run_specialist_agent
 
@@ -53,8 +54,10 @@ def _run_pipeline(audit_id: str, account_id: str, dataset: str | None = None, lo
 def run_audit(payload: AuditRunRequest, background_tasks: BackgroundTasks) -> dict:
     """Kick off a new audit and immediately return the audit_id."""
     audit_id = str(uuid.uuid4())
-    account_id = payload.account_id or DEFAULT_ACCOUNT_ID
     dataset = payload.dataset or None
+    # An account picked in the UI is already in the dataset's own ID space. Only
+    # the configured default is a real ID that may need mapping (anonymized data).
+    account_id = payload.account_id or resolve_account_id(DEFAULT_ACCOUNT_ID, dataset)
     lookback_days = payload.lookback_days
     now = _now()
 

@@ -200,13 +200,13 @@ fi
 echo ""
 echo "==> [5/7] Deploying backend..."
 # Dev reads the anonymized copy of the data (see anonymizer/); prod reads the real
-# dataset. The anonymizer remaps account IDs, so the real DEFAULT_ACCOUNT_ID
-# doesn't exist in the anonymized data: dev leaves it unset and the account is
-# picked in the UI dropdown.
+# dataset. The anonymizer remaps account IDs, so on dev the backend translates
+# DEFAULT_ACCOUNT_ID through the restricted mapping in ANON_KEYS_DATASET.
+BACKEND_ENV="GCP_PROJECT=${PROJECT},DEFAULT_ACCOUNT_ID=3676622146,MODEL_DATASET=google_ads_audit,CONTEXT_BUCKET=${CONTEXT_BUCKET}"
 if [[ "${ENV}" == "prod" ]]; then
-  BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=google_ads,DEFAULT_ACCOUNT_ID=3676622146,MODEL_DATASET=google_ads_audit,CONTEXT_BUCKET=${CONTEXT_BUCKET}"
+  BACKEND_ENV="${BACKEND_ENV},BQ_DATASET=google_ads"
 else
-  BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=anonymized_data,MODEL_DATASET=google_ads_audit,CONTEXT_BUCKET=${CONTEXT_BUCKET}"
+  BACKEND_ENV="${BACKEND_ENV},BQ_DATASET=anonymized_data,ANON_KEYS_DATASET=anonymization_keys"
 fi
 if [[ -n "${GOOGLE_CLIENT_ID}" ]]; then
   BACKEND_ENV="${BACKEND_ENV},GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
