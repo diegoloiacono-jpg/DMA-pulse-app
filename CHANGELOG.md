@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ---
 
+## [0.11.0] — 2026-10-02
+
+### BigQuery anonymizer + dev environment reads anonymized data
+
+Client data in `google_ads` shouldn't reach personal code assistants, so there is now an anonymized copy to develop against.
+
+- **`anonymizer/`** (new): a scheduled BigQuery script that copies every `google_ads` table into `anonymized_data`, replacing client-identifying terms (account names plus a maintained list of brand terms, matched case-insensitively on word boundaries in every text column) and account-level IDs (`PROFILE_ID`, `ACCOUNT_ID`, `CUSTOMER_ID`, `MERCHANT_ID`) with stable random tokens. Metrics, dates, markets, channel codes and campaign types stay real, so naming-convention, market and audience logic still work.
+- **Mapping kept separately**: original → anonymized lookups live in the restricted `anonymization_keys` dataset (the de-anonymization key). Tokens never change once assigned; only unseen values get new ones.
+- **Incremental**: per table the job skips unchanged tables, reloads only changed `DATE` partitions for partitioned tables, and fully rebuilds on first run or when the term list changes. Row counts are checked after every load.
+- **`anonymizer/run.py`**: runs setup, grants, the schedule, one-off runs and checks through the BigQuery client (`uv run`), as an alternative to the `bq` CLI.
+- **`deploy.sh`**: the dev backend now defaults to `BQ_DATASET=anonymized_data` and no longer sets `DEFAULT_ACCOUNT_ID` (the anonymizer remaps account IDs, so the account is picked in the UI). Prod is unchanged.
+
+---
+
 ## [0.10.0] — 2026-09-29
 
 ### Dev Cloud Run environment + auto-deploy on push to master

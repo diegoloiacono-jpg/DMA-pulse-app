@@ -199,7 +199,15 @@ fi
 # ── Step 5: Deploy backend Cloud Run ──────────────────────────────────────
 echo ""
 echo "==> [5/7] Deploying backend..."
-BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=google_ads,DEFAULT_ACCOUNT_ID=3676622146,MODEL_DATASET=google_ads_audit,CONTEXT_BUCKET=${CONTEXT_BUCKET}"
+# Dev reads the anonymized copy of the data (see anonymizer/); prod reads the real
+# dataset. The anonymizer remaps account IDs, so the real DEFAULT_ACCOUNT_ID
+# doesn't exist in the anonymized data: dev leaves it unset and the account is
+# picked in the UI dropdown.
+if [[ "${ENV}" == "prod" ]]; then
+  BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=google_ads,DEFAULT_ACCOUNT_ID=3676622146,MODEL_DATASET=google_ads_audit,CONTEXT_BUCKET=${CONTEXT_BUCKET}"
+else
+  BACKEND_ENV="GCP_PROJECT=${PROJECT},BQ_DATASET=anonymized_data,MODEL_DATASET=google_ads_audit,CONTEXT_BUCKET=${CONTEXT_BUCKET}"
+fi
 if [[ -n "${GOOGLE_CLIENT_ID}" ]]; then
   BACKEND_ENV="${BACKEND_ENV},GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
 fi
