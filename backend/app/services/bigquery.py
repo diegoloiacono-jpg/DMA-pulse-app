@@ -57,6 +57,29 @@ def resolve_account_id(account_id: str, dataset: str | None = None) -> str:
     return str(df.iloc[0, 0]) if not df.empty else account_id
 
 
+def resolve_account_names(names: list[str], dataset: str | None = None) -> dict[str, str]:
+    """Map anonymized account names (e.g. 'account003') back to the real names,
+    for display only. Returns {} for non-anonymized datasets or when the mapping
+    can't be read, so callers fall back to the names as stored. The anonymizer
+    keeps names upper-cased, so the real names come back upper-cased.
+    """
+    from app.config import ANON_KEYS_DATASET, BQ_DATASET
+
+    ds = dataset or BQ_DATASET
+    if not ds.startswith("anonymized") or not names:
+        return {}
+    try:
+        df = run_query(
+            f"SELECT anonymized_value, term FROM `{GCP_PROJECT}.{ANON_KEYS_DATASET}._anon_sensitive_terms` "
+            "WHERE entity_type = 'ACCOUNT' AND anonymized_value IN UNNEST(@names)",
+            [bigquery.ArrayQueryParameter("names", "STRING", names)],
+        )
+    except Exception:
+        logger.warning("Could not read the account name mapping; showing names as stored")
+        return {}
+    return dict(zip(df["anonymized_value"], df["term"]))
+
+
 def cutoff_date_param(lookback_days: int, name: str = "cutoff_date") -> bigquery.ScalarQueryParameter:
     """Query parameter for `WHERE DATE >= @cutoff_date`, computed from a lookback window in days."""
     return bigquery.ScalarQueryParameter(name, "DATE", date.today() - timedelta(days=lookback_days))

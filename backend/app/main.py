@@ -13,7 +13,7 @@ from google.oauth2 import id_token
 
 from app.routers import audit, contexts, validation
 from app.config import GCP_PROJECT, bq_client
-from app.services.bigquery import run_query
+from app.services.bigquery import resolve_account_names, run_query
 
 app = FastAPI(title="DMA Pulse API", version="0.1.0")
 
@@ -121,4 +121,10 @@ def list_accounts(dataset: str) -> dict:
             detail=f"Could not list accounts in dataset '{dataset}': {str(exc)[:200]}",
         ) from exc
 
-    return {"accounts": df.astype(str).to_dict(orient="records")}
+    accounts = df.astype(str).to_dict(orient="records")
+    # Anonymized datasets: show the real account names in the dropdown. Display
+    # only — account_id stays in the dataset's own (anonymized) ID space.
+    real_names = resolve_account_names([a["account_name"] for a in accounts], dataset)
+    for a in accounts:
+        a["account_name"] = real_names.get(a["account_name"], a["account_name"])
+    return {"accounts": accounts}
