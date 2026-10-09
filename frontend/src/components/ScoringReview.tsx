@@ -85,6 +85,9 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Topic</th>
                   <th className="px-3 py-2 text-left font-medium">Category</th>
+                  <th className="px-3 py-2 text-right font-medium">Impact</th>
+                  <th className="px-3 py-2 text-right font-medium">Confidence</th>
+                  <th className="px-3 py-2 text-right font-medium">Ease</th>
                   <th className="px-3 py-2 text-right font-medium">Priority</th>
                   <th className="px-3 py-2 text-left font-medium">Action</th>
                 </tr>
@@ -96,6 +99,9 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
                     <td className="px-3 py-2 text-muted-foreground capitalize">
                       {win.category.replace(/_/g, " ")}
                     </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{win.impact}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{win.confidence}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{win.ease}</td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <Badge variant="secondary">{win.priority_score.toFixed(1)}</Badge>
                     </td>

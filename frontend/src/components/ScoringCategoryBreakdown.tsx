@@ -23,8 +23,19 @@ export default function ScoringCategoryBreakdown({ categoryScores, specialistRes
     return map;
   }, [specialistResults]);
 
+  const naCategories = Array.from(byCategory.entries())
+    .filter(([, rs]) => rs.every((r) => r.not_applicable))
+    .map(([name]) => name);
+
   return (
     <div className="grid grid-cols-1 gap-1.5">
+      {naCategories.map((name) => (
+        <div key={name} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-3">
+          <span className="font-mono text-base font-bold text-muted-foreground shrink-0">N/A</span>
+          <span className="text-xs font-semibold text-foreground truncate">{name.replace(/_/g, " ")}</span>
+          <span className="text-[10px] text-muted-foreground">not applicable for B2B</span>
+        </div>
+      ))}
       {categoryScores.map((cat) => {
         const topics = byCategory.get(cat.name) ?? [];
         const total = topics.length;

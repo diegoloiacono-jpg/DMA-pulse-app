@@ -23,6 +23,7 @@ export interface SpecialistResult {
   action: string;
   explanation: string;
   human_override: boolean;
+  not_applicable?: boolean;
 }
 
 export interface CategoryScore {

@@ -1028,6 +1028,26 @@ def _fallback_stubs(category: str, reason: str) -> list[SpecialistResult]:
     ]
 
 
+# Categories that do not apply to B2B brands (no product feed / shopping).
+_B2B_NOT_APPLICABLE = {"feeds_catalogue"}
+
+
+def _not_applicable_stubs(category: str) -> list[SpecialistResult]:
+    return [
+        SpecialistResult(
+            topic=t,
+            category=category,
+            status="pass",
+            level="basic",
+            source="not_applicable",
+            action="None",
+            explanation="Not applicable for B2B brands.",
+            not_applicable=True,
+        )
+        for t in _CATEGORY_TOPICS.get(category, [])
+    ]
+
+
 def run_specialist_agent(
     audit_data: dict[str, pd.DataFrame],
     brand_context: "BrandContext | None" = None,
@@ -1040,6 +1060,10 @@ def run_specialist_agent(
 
     for category, df in audit_data.items():
         topics = _CATEGORY_TOPICS.get(category, [])
+
+        if brand_context and brand_context.model == "B2B" and category in _B2B_NOT_APPLICABLE:
+            all_results.extend(_not_applicable_stubs(category))
+            continue
 
         if category == "campaign_setup" and brand_context and brand_context.namingConvention:
             df = _enrich_campaign_setup(df, brand_context.namingConvention)

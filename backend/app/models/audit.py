@@ -30,6 +30,8 @@ class SpecialistResult(BaseModel):
     action: str
     explanation: str
     human_override: bool = False
+    # True when the category does not apply to the brand (e.g. Feeds for B2B)
+    not_applicable: bool = False
 
 
 class CategoryScore(BaseModel):
@@ -42,10 +44,10 @@ class CategoryScore(BaseModel):
 class PrioritizedWin(BaseModel):
     topic: str
     category: str
-    impact: float       # 1–10
-    confidence: float   # 1–10
-    ease: float         # 1–10
-    priority_score: float   # (impact * confidence * ease), capped at 10
+    impact: float       # 1–5
+    confidence: float   # 1–5
+    ease: float         # 1–5 (higher = easier)
+    priority_score: float   # mean(impact, confidence, ease) * 2, range 0–10
     action: str
     explanation: str
 
