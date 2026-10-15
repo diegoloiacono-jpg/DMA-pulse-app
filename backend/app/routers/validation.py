@@ -3,11 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.audit import AuditStatus, SpecialistResult
 from app.routers.audit import audit_sessions
-from app.services.scoring import run_scoring_agent
+from app.services.scoring import ice_priority, run_scoring_agent
 
 router = APIRouter()
 
@@ -21,8 +21,18 @@ class SpecialistValidationPayload(BaseModel):
     overrides: list[SpecialistResult] = []
 
 
+class IceOverride(BaseModel):
+    category: str
+    topic: str
+    impact: float = Field(ge=1, le=5)
+    confidence: float = Field(ge=1, le=5)
+    ease: float = Field(ge=1, le=5)
+
+
 class ScoringValidationPayload(BaseModel):
     approved: bool
+    # Only the quick wins whose ICE scores the human changed
+    ice_overrides: list[IceOverride] = []
 
 
 def _run_scoring(audit_id: str) -> None:
@@ -104,6 +114,18 @@ def validate_scoring(
             status_code=409,
             detail=f"Expected status scoring_review, got {state.status}",
         )
+
+    if payload.ice_overrides and state.scoring_output:
+        override_map = {(o.category, o.topic): o for o in payload.ice_overrides}
+        for win in state.scoring_output.quick_wins:
+            o = override_map.get((win.category, win.topic))
+            if o:
+                win.impact = o.impact
+                win.confidence = o.confidence
+                win.ease = o.ease
+                win.priority_score = ice_priority(o.impact, o.confidence, o.ease)
+                win.human_override = True
+        state.scoring_output.quick_wins.sort(key=lambda w: w.priority_score, reverse=True)
 
     if payload.approved:
         state.status = AuditStatus.COMPLETE

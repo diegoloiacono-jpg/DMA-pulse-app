@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiClient, SpecialistResult } from "@/lib/apiClient";
+import { categoryLabel } from "@/lib/categoryLabel";
 
 interface Props {
   auditId: string;
@@ -76,8 +77,8 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
         if (results.filter((r) => r.category === cat).every((r) => r.not_applicable)) {
           return (
             <div key={cat} className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold capitalize text-muted-foreground">
-                {cat.replace(/_/g, " ")}
+              <h3 className="text-sm font-semibold text-muted-foreground">
+                {categoryLabel(cat)}
               </h3>
               <Badge variant="outline" className="text-xs">N/A</Badge>
               <span className="text-xs text-muted-foreground">Not applicable for B2B brands</span>
@@ -86,8 +87,8 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
         }
         return (
         <div key={cat} className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold capitalize text-muted-foreground">
-            {cat.replace(/_/g, " ")}
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            {categoryLabel(cat)}
           </h3>
           <div className="rounded-lg border overflow-hidden">
             <table className="w-full text-sm">

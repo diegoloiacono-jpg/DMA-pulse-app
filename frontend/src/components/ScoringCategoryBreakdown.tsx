@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, Check, ChevronDown, X } from "lucide-react";
 import { getMaturityColor, getScoreStatus, type MaturityLevel } from "@/data/auditData";
 import type { CategoryScore, SpecialistResult } from "@/lib/apiClient";
+import { categoryLabel } from "@/lib/categoryLabel";
 
 interface Props {
   categoryScores: CategoryScore[];
@@ -32,7 +33,7 @@ export default function ScoringCategoryBreakdown({ categoryScores, specialistRes
       {naCategories.map((name) => (
         <div key={name} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-3">
           <span className="font-mono text-base font-bold text-muted-foreground shrink-0">N/A</span>
-          <span className="text-xs font-semibold text-foreground truncate">{name.replace(/_/g, " ")}</span>
+          <span className="text-xs font-semibold text-foreground truncate">{categoryLabel(name)}</span>
           <span className="text-[10px] text-muted-foreground">not applicable for B2B</span>
         </div>
       ))}
@@ -57,7 +58,7 @@ export default function ScoringCategoryBreakdown({ categoryScores, specialistRes
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-foreground truncate">
-                      {cat.name.replace(/_/g, " ")}
+                      {categoryLabel(cat.name)}
                     </span>
                     {total > 0 && (
                       <span className="text-[10px] text-muted-foreground shrink-0">

@@ -42,6 +42,7 @@ export interface PrioritizedWin {
   priority_score: number;
   action: string;
   explanation: string;
+  human_override?: boolean;
 }
 
 export interface ScoringOutput {
@@ -147,10 +148,18 @@ export const apiClient = {
     );
   },
 
-  validateScoring(auditId: string, approved: boolean) {
+  validateScoring(auditId: string, approved: boolean, iceOverrides: PrioritizedWin[] = []) {
     return request<{ audit_id: string; status: AuditStatus }>(
       `/api/audit/${auditId}/validate/scoring`,
-      { method: "POST", body: JSON.stringify({ approved }) },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          approved,
+          ice_overrides: iceOverrides.map(({ category, topic, impact, confidence, ease }) => ({
+            category, topic, impact, confidence, ease,
+          })),
+        }),
+      },
     );
   },
 

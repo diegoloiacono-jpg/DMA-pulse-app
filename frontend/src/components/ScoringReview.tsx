@@ -2,7 +2,15 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle, Loader2, Radar, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { apiClient, ScoringOutput, SpecialistResult } from "@/lib/apiClient";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { apiClient, PrioritizedWin, ScoringOutput, SpecialistResult } from "@/lib/apiClient";
+import { categoryLabel } from "@/lib/categoryLabel";
 import { platforms } from "@/data/auditData";
 import ScoringCategoryBreakdown from "@/components/ScoringCategoryBreakdown";
 import RadarChart from "@/components/RadarChart";
@@ -25,17 +33,38 @@ const MATURITY_COLORS: Record<string, string> = {
 
 export default function ScoringReview({ auditId, output, specialistResults, benchmarkScore, onComplete, onBack }: Props) {
   const [submitting, setSubmitting] = useState(false);
+  const [edited, setEdited] = useState<Record<string, PrioritizedWin>>({});
 
   const platformLabel = useMemo(
     () => platforms.find(p => p.id === output.platform_id)?.shortName ?? output.platform_id,
     [output.platform_id]
   );
 
+  const winKey = (w: PrioritizedWin) => `${w.category}::${w.topic}`;
+
+  // Quick wins with local ICE edits applied, re-ranked live
+  const wins = useMemo(
+    () =>
+      output.quick_wins
+        .slice(0, 10)
+        .map((w) => edited[winKey(w)] ?? w)
+        .sort((a, b) => b.priority_score - a.priority_score),
+    [output.quick_wins, edited]
+  );
+
+  const update = (win: PrioritizedWin, field: "impact" | "confidence" | "ease", value: number) => {
+    const next = { ...win, [field]: value };
+    next.priority_score = Math.round(Math.min(((next.impact + next.confidence + next.ease) / 3) * 2, 10) * 100) / 100;
+    next.human_override = true;
+    setEdited((prev) => ({ ...prev, [winKey(win)]: next }));
+  };
+
   const handleApprove = async () => {
     setSubmitting(true);
     try {
-      await apiClient.validateScoring(auditId, true);
-      onComplete(output);
+      const overrides = Object.values(edited);
+      await apiClient.validateScoring(auditId, true, overrides);
+      onComplete({ ...output, quick_wins: wins });
     } catch (e) {
       console.error(e);
     } finally {
@@ -73,11 +102,26 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
         </div>
       </div>
 
-      {/* Quick wins — surfaced first */}
-      {output.quick_wins.length > 0 && (
+      {/* Category radar */}
+      <div className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Radar className="h-4 w-4" /> {platformLabel} Category Radar
+        </h3>
+        <RadarChart
+          categories={output.category_scores.map(c => ({ name: categoryLabel(c.name), score: c.score }))}
+          label={platformLabel}
+          showBenchmark
+          benchmarkScore={benchmarkScore}
+          confidence="high"
+        />
+      </div>
+
+      {/* Quick wins — ICE scores can be overridden */}
+      {wins.length > 0 && (
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Zap className="h-4 w-4" /> Top Quick Wins
+            <span className="text-xs font-normal text-muted-foreground">(ICE scores are editable)</span>
           </h3>
           <div className="rounded-lg border overflow-hidden">
             <table className="w-full text-sm">
@@ -93,15 +137,34 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {output.quick_wins.slice(0, 10).map((win, i) => (
-                  <tr key={i} className="hover:bg-muted/30">
-                    <td className="px-3 py-2 font-medium">{win.topic}</td>
-                    <td className="px-3 py-2 text-muted-foreground capitalize">
-                      {win.category.replace(/_/g, " ")}
+                {wins.map((win) => (
+                  <tr key={winKey(win)} className="hover:bg-muted/30">
+                    <td className="px-3 py-2 font-medium">
+                      {win.topic}
+                      {edited[winKey(win)] && (
+                        <Badge variant="outline" className="ml-2 text-[10px]">edited</Badge>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{win.impact}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{win.confidence}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{win.ease}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {categoryLabel(win.category)}
+                    </td>
+                    {(["impact", "confidence", "ease"] as const).map((field) => (
+                      <td key={field} className="px-3 py-2 text-right">
+                        <Select
+                          value={String(win[field])}
+                          onValueChange={(v) => update(win, field, Number(v))}
+                        >
+                          <SelectTrigger className="ml-auto h-7 w-16 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    ))}
                     <td className="px-3 py-2 text-right tabular-nums">
                       <Badge variant="secondary">{win.priority_score.toFixed(1)}</Badge>
                     </td>
@@ -122,20 +185,6 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
           <TrendingUp className="h-4 w-4" /> Category Breakdown
         </h3>
         <ScoringCategoryBreakdown categoryScores={output.category_scores} specialistResults={specialistResults} />
-      </div>
-
-      {/* Category radar */}
-      <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Radar className="h-4 w-4" /> {platformLabel} Category Radar
-        </h3>
-        <RadarChart
-          categories={output.category_scores.map(c => ({ name: c.name.replace(/_/g, " "), score: c.score }))}
-          label={platformLabel}
-          showBenchmark
-          benchmarkScore={benchmarkScore}
-          confidence="high"
-        />
       </div>
     </div>
   );

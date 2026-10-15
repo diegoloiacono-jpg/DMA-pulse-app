@@ -50,6 +50,7 @@ class PrioritizedWin(BaseModel):
     priority_score: float   # mean(impact, confidence, ease) * 2, range 0–10
     action: str
     explanation: str
+    human_override: bool = False
 
 
 class ScoringOutput(BaseModel):

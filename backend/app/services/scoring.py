@@ -67,6 +67,11 @@ _MATURITY_LABELS: list[tuple[float, str]] = [
 ]
 
 
+def ice_priority(impact: float, confidence: float, ease: float) -> float:
+    """ICE average scaled to 0-10."""
+    return round(min((impact + confidence + ease) / 3.0 * 2.0, 10.0), 2)
+
+
 def _multiplier(category: str, model: str) -> float:
     if model == "B2B":
         return _B2B_MULTIPLIERS.get(category, 1.0)
@@ -127,14 +132,14 @@ def _compute_python(
         impact, confidence, ease = get_ice(r.category, r.topic)
         if r.source in _LOW_EVIDENCE_SOURCES:
             confidence = min(confidence, 2.0)
-        priority = min((impact + confidence + ease) / 3.0 * 2.0, 10.0)
+        priority = ice_priority(impact, confidence, ease)
         wins.append(PrioritizedWin(
             topic=r.topic,
             category=r.category,
             impact=float(impact),
             confidence=float(confidence),
             ease=float(ease),
-            priority_score=round(priority, 2),
+            priority_score=priority,
             action=r.action,
             explanation=r.explanation,
         ))
