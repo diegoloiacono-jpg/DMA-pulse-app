@@ -1,0 +1,326 @@
+sf_category,issue_name,issue_type,issue_priority,topic,category
+Response Codes,Internal No Response,Issue,High,Server Stability,crawling_indexing
+Response Codes,Internal Client Error (4XX),Issue,High,Error Handling & Soft 404s,crawling_indexing
+Response Codes,Internal Server Error (5XX),Issue,High,Server Stability,crawling_indexing
+Response Codes,Internal Redirect Loop,Issue,High,Redirect Hygiene,crawling_indexing
+Response Codes,Internal Blocked by Robots.txt,Warning,High,Robots.txt Configuration,crawling_indexing
+Response Codes,Internal Blocked Resource,Warning,High,Content Without JavaScript,crawling_indexing
+Response Codes,Internal Redirect Chain,Warning,Medium,Redirect Hygiene,crawling_indexing
+Response Codes,External Blocked Resource,Warning,Medium,Content Without JavaScript,crawling_indexing
+Response Codes,Internal Redirection (3XX),Warning,Low,Internal Link Health,site_structure
+Response Codes,Internal Redirection (Meta Refresh),Warning,Low,Redirect Hygiene,crawling_indexing
+Response Codes,Internal Redirection (HTTP Refresh),Warning,Low,Redirect Hygiene,crawling_indexing
+Response Codes,Internal Redirection (JavaScript),Warning,Low,Redirect Hygiene,crawling_indexing
+Response Codes,External No Response,Warning,Low,Source Citations,onpage_content
+Response Codes,External Client Error (4XX),Warning,Low,Source Citations,onpage_content
+Response Codes,External Server Error (5XX),Warning,Low,Source Citations,onpage_content
+Security,HTTP URLs,Issue,High,HTTPS & Mixed Content,crawling_indexing
+Security,Mixed Content,Issue,High,HTTPS & Mixed Content,crawling_indexing
+Security,Form URL Insecure,Issue,High,HTTPS & Mixed Content,crawling_indexing
+Security,Form On HTTP URL,Issue,High,HTTPS & Mixed Content,crawling_indexing
+Security,Missing HSTS Header,Warning,Low,HTTPS & Mixed Content,crawling_indexing
+Security,Bad Content Type,Warning,Low,Head Integrity & File Size,crawling_indexing
+URL,Multiple Slashes,Issue,Low,URL Structure,site_structure
+URL,Contains A Space,Issue,Low,URL Structure,site_structure
+URL,Broken Bookmark,Issue,Low,Internal Link Health,site_structure
+URL,Non ASCII Characters,Warning,Low,URL Structure,site_structure
+URL,Uppercase,Warning,Low,URL Structure,site_structure
+URL,Repetitive Path,Warning,Low,URL Structure,site_structure
+URL,Internal Search,Warning,Low,Parameters & Faceted Navigation,crawling_indexing
+URL,Parameters,Warning,Low,Parameters & Faceted Navigation,crawling_indexing
+URL,GA Tracking Parameters,Warning,Low,Parameters & Faceted Navigation,crawling_indexing
+URL,Underscores,Opportunity,Low,URL Structure,site_structure
+URL,Over 115 Characters,Opportunity,Low,URL Structure,site_structure
+Page Titles,Missing,Issue,High,Page Titles,onpage_content
+Page Titles,Multiple,Issue,High,Page Titles,onpage_content
+Page Titles,Outside <head>,Issue,High,Head Integrity & File Size,crawling_indexing
+Page Titles,Duplicate,Opportunity,Medium,Page Titles,onpage_content
+Page Titles,Over 60 Characters,Opportunity,Medium,Page Titles,onpage_content
+Page Titles,Below 30 Characters,Opportunity,Medium,Page Titles,onpage_content
+Page Titles,Over 561 Pixels,Opportunity,Medium,Page Titles,onpage_content
+Page Titles,Below 200 Pixels,Opportunity,Medium,Page Titles,onpage_content
+Page Titles,Same as H1,Opportunity,Low,Page Titles,onpage_content
+Meta Description,Multiple,Issue,Medium,Meta Descriptions,onpage_content
+Meta Description,Outside <head>,Issue,Medium,Head Integrity & File Size,crawling_indexing
+Meta Description,Missing,Opportunity,Low,Meta Descriptions,onpage_content
+Meta Description,Duplicate,Opportunity,Low,Meta Descriptions,onpage_content
+Meta Description,Over 155 Characters,Opportunity,Low,Meta Descriptions,onpage_content
+Meta Description,Below 70 Characters,Opportunity,Low,Meta Descriptions,onpage_content
+Meta Description,Over 985 Pixels,Opportunity,Low,Meta Descriptions,onpage_content
+Meta Description,Below 400 Pixels,Opportunity,Low,Meta Descriptions,onpage_content
+H1,Missing,Issue,Medium,Heading Structure,onpage_content
+H1,Multiple,Warning,Medium,Heading Structure,onpage_content
+H1,Alt Text in h1,Warning,Low,Heading Structure,onpage_content
+H1,Non-sequential,Warning,Low,Heading Structure,onpage_content
+H1,Duplicate,Opportunity,Low,Heading Structure,onpage_content
+H1,Over 70 Characters,Opportunity,Low,Heading Structure,onpage_content
+H2,Missing,Warning,Low,Heading Structure,onpage_content
+H2,Multiple,Warning,Low,Heading Structure,onpage_content
+H2,Non-sequential,Warning,Low,Heading Structure,onpage_content
+H2,Duplicate,Opportunity,Low,Heading Structure,onpage_content
+H2,Over 70 Characters,Opportunity,Low,Heading Structure,onpage_content
+Content,Exact Duplicates,Issue,High,Duplicate & Thin Content,onpage_content
+Content,Spelling Errors,Issue,Medium,Content Hygiene,onpage_content
+Content,Grammar Errors,Issue,Medium,Content Hygiene,onpage_content
+Content,Soft 404 Pages,Warning,High,Error Handling & Soft 404s,crawling_indexing
+Content,Lorem Ipsum Placeholder,Warning,High,Content Hygiene,onpage_content
+Content,Near Duplicates,Warning,Medium,Duplicate & Thin Content,onpage_content
+Content,Semantically Similar,Warning,Medium,Keyword Cannibalisation,onpage_content
+Content,Low Relevance Content,Warning,Low,Topic Clusters,onpage_content
+Content,Low Content Pages,Opportunity,Medium,Duplicate & Thin Content,onpage_content
+Content,Readability Difficult,Opportunity,Low,Answer-First Content,onpage_content
+Content,Readability Very Difficult,Opportunity,Low,Answer-First Content,onpage_content
+Images,Missing Alt Text,Issue,Low,Image Alt Text,onpage_content
+Images,Missing Alt Attribute,Issue,Low,Image Alt Text,onpage_content
+Images,Background Images,Warning,Low,Image Weight & Format,performance_mobile
+Images,Over 100 kb,Opportunity,Medium,Image Weight & Format,performance_mobile
+Images,Alt Text Over 100 Characters,Opportunity,Low,Image Weight & Format,performance_mobile
+Images,Incorrectly Sized Images,Opportunity,Low,Image Weight & Format,performance_mobile
+Images,Missing Size Attributes,Opportunity,Low,Image Weight & Format,performance_mobile
+Canonicals,Multiple Conflicting,Issue,High,Canonical Tags,crawling_indexing
+Canonicals,Non-Indexable Canonical,Issue,High,Canonical Tags,crawling_indexing
+Canonicals,Invalid Attribute In Annotation,Issue,High,Canonical Tags,crawling_indexing
+Canonicals,Contains Fragment URL,Issue,High,Canonical Tags,crawling_indexing
+Canonicals,Outside <head>,Issue,High,Head Integrity & File Size,crawling_indexing
+Canonicals,Canonicalised,Warning,High,Canonical Host & URL Variants,crawling_indexing
+Canonicals,Missing,Warning,Medium,Canonical Tags,crawling_indexing
+Canonicals,Unlinked,Warning,Medium,Canonical Tags,crawling_indexing
+Canonicals,Multiple,Warning,Low,Canonical Tags,crawling_indexing
+Canonicals,Canonical Is Relative,Warning,Low,Canonical Tags,crawling_indexing
+Pagination,Pagination URL Not In Anchor Tag,Issue,High,Pagination,crawling_indexing
+Pagination,Non-200 Pagination URLs,Issue,High,Pagination,crawling_indexing
+Pagination,Unlinked Pagination URLs,Issue,Medium,Pagination,crawling_indexing
+Pagination,Multiple Pagination URLs,Issue,Low,Pagination,crawling_indexing
+Pagination,Pagination Loop,Issue,Low,Pagination,crawling_indexing
+Pagination,Sequence Error,Issue,Low,Pagination,crawling_indexing
+Pagination,Non-Indexable,Warning,High,Pagination,crawling_indexing
+Directives,Outside <head>,Issue,High,Head Integrity & File Size,crawling_indexing
+Directives,NoImageIndex,Issue,Low,Image Weight & Format,performance_mobile
+Directives,Noindex,Warning,High,Index Coverage,crawling_indexing
+Directives,Nofollow,Warning,High,Internal Link Health,site_structure
+Directives,None,Warning,High,Index Coverage,crawling_indexing
+Directives,Unavailable_After,Warning,Medium,Index Coverage,crawling_indexing
+Directives,NoSnippet,Warning,Low,Snippet Directives,ai_search_readiness
+Hreflang,Non-200 Hreflang URLs,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Missing Return Links,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Inconsistent Language & Region Confirmation Links,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Non-Canonical Return Links,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Noindex Returns Links,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Incorrect Language & Region Codes,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Multiple Entries,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Not Using Canonical,Issue,High,Internationalisation,crawling_indexing
+Hreflang,Outside <head>,Issue,High,Head Integrity & File Size,crawling_indexing
+Hreflang,Unlinked Hreflang URLs,Issue,Medium,Internationalisation,crawling_indexing
+Hreflang,Missing Self Reference,Warning,Low,Internationalisation,crawling_indexing
+Hreflang,Missing X-Default,Warning,Low,Internationalisation,crawling_indexing
+JavaScript,Noindex Only in Original HTML,Issue,High,Content Without JavaScript,crawling_indexing
+JavaScript,Nofollow Only in Original HTML,Issue,High,Content Without JavaScript,crawling_indexing
+JavaScript,Canonical Mismatch,Issue,High,Canonical Tags,crawling_indexing
+JavaScript,Uses Old AJAX Crawling Scheme URLs,Issue,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Uses Old AJAX Crawling Scheme Meta Fragment Tag,Issue,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Pages with Blocked Resources,Warning,High,Content Without JavaScript,crawling_indexing
+JavaScript,Contains JavaScript Links,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Contains JavaScript Content,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Page Title Only in Rendered HTML,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Page Title Updated by JavaScript,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Meta Description Only in Rendered HTML,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Meta Description Updated by JavaScript,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,H1 Only in Rendered HTML,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,H1 Updated by JavaScript,Warning,Medium,Content Without JavaScript,crawling_indexing
+JavaScript,Canonical Only in Rendered HTML,Warning,Low,Content Without JavaScript,crawling_indexing
+JavaScript,Pages With JavaScript Errors,Warning,Low,Content Without JavaScript,crawling_indexing
+Links,Outlinks To Localhost,Issue,High,Internal Link Health,site_structure
+Links,Pages With Uncrawlable Internal Outlinks,Warning,High,Internal Link Health,site_structure
+Links,Pages Without Internal Outlinks,Warning,High,Internal Link Health,site_structure
+Links,Non-Indexable Page Inlinks Only,Warning,High,Orphan Pages,site_structure
+Links,Internal Nofollow Outlinks,Warning,Low,Internal Link Health,site_structure
+Links,Pages With High External Outlinks,Warning,Low,Internal Link Health,site_structure
+Links,Pages With High Internal Outlinks,Warning,Low,Internal Link Health,site_structure
+Links,Follow & Nofollow Internal Inlinks To Page,Warning,Low,Internal Link Health,site_structure
+Links,Internal Nofollow Inlinks Only,Warning,Low,Internal Link Health,site_structure
+Links,Pages With High Crawl Depth,Opportunity,Medium,Click Depth of Key Pages,site_structure
+Links,Internal Outlinks With No Anchor Text,Opportunity,Low,Internal Link Health,site_structure
+Links,Non-Descriptive Anchor Text In Internal Outlinks,Opportunity,Low,Internal Link Health,site_structure
+Structured Data,Validation Errors,Issue,High,Structured Data,onpage_content
+Structured Data,Rich Result Validation Errors,Issue,High,Structured Data,onpage_content
+Structured Data,Parse Errors,Issue,High,Structured Data,onpage_content
+Structured Data,Missing,Opportunity,Low,Structured Data,onpage_content
+Structured Data,Validation Warnings,Opportunity,Low,Structured Data,onpage_content
+Structured Data,Rich Result Validation Warnings,Opportunity,Low,Structured Data,onpage_content
+Sitemaps,XML Sitemap With Over 50k URLs,Issue,High,XML Sitemap Quality,crawling_indexing
+Sitemaps,XML Sitemap Over 50mb,Issue,High,XML Sitemap Quality,crawling_indexing
+Sitemaps,URLs Not In Sitemap,Issue,Medium,XML Sitemap Quality,crawling_indexing
+Sitemaps,Orphan URLs,Issue,Medium,Orphan Pages,site_structure
+Sitemaps,Non-Indexable URLs In Sitemap,Issue,Medium,XML Sitemap Quality,crawling_indexing
+Sitemaps,URLs In Multiple Sitemaps,Warning,Low,XML Sitemap Quality,crawling_indexing
+PageSpeed,Document Request Latency,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,LCP Request Discovery,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Render Blocking Requests,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Network Dependency Tree,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Use Efficient Cache Lifetimes,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Layout Shift Culprits,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Improve Image Delivery,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Forced Reflow,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Legacy JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Duplicated JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Avoid Enormous Network Payloads,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Minify CSS,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Minify JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Reduce Unused CSS,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Reduce Unused JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Reduce JavaScript Execution Time,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Minimize Main-Thread Work,Opportunity,Medium,Core Web Vitals,performance_mobile
+PageSpeed,Optimize DOM Size,Opportunity,Low,Core Web Vitals,performance_mobile
+PageSpeed,Font Display,Opportunity,Low,Core Web Vitals,performance_mobile
+Mobile,Viewport Not Set,Issue,High,Mobile Parity,performance_mobile
+Mobile,Content Not Sized Correctly,Issue,High,Mobile Parity,performance_mobile
+Mobile,Illegible Font Size,Issue,High,Mobile Parity,performance_mobile
+Mobile,Contains Unsupported Plugins,Issue,High,Mobile Parity,performance_mobile
+Mobile,Target Size,Issue,Medium,Mobile Parity,performance_mobile
+Mobile,Mobile Alternate Link,Warning,High,Mobile Parity,performance_mobile
+Accessibility,Best Practice – Accesskey Attribute Value Must Be Unique,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Elements Must Not Have Tabindex Greater Than Zero,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Elements Must Not Have Tabindex Greater Than Zero,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,Best Practice – ARIA Dialog & Alertdialog Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – ARIA Dialog & Alertdialog Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,Best Practice – ARIA Treeitem Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – ARIA Treeitem Nodes Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,Best Practice – Role=text Should Have No Focusable Descendants,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Role=text Should Have No Focusable Descendants,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,Best Practice – Form Elements Should Have Visible Label,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Frames Should Be Tested With axe-core,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Scope Attribute Should Be Used Correctly On Tables,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Scrollable Region Requires Keyboard Access,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Required ARIA Attributes Must Be Provided,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Required ARIA Attributes Must Be Provided,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Values,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Values,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Names,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Names,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Commands Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Commands Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Input Fields Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Input Fields Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Meter Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Progressbar Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Roles Require Valid Values,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Roles Require Valid Values,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Aria-braille Require Non-braille Equivalent,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Page Requires Means To Bypass Repeated Blocks,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Form <input> Elements Require Labels,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Form <input> Elements Require Labels,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Frames Require Title Attribute,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Frames Require Unique Title Attribute,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Frames With Focusable Content Must Not Use tabindex=-1,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Page Must Contain <title>,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Page Must Contain <title>,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – HTML Element Lang Attribute Value Must Be Valid,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – HTML Element Requires Lang Attribute,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Image Button Requires Alternate Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Image Button Requires Alternate Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Images Require Alternate Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <object> Elements Require Alternate Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Active <area> Elements Require Alternate Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Elements Marked role=img Require Alternate Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – SVG Images & Graphics Require Accessible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – SVG Images & Graphics Require Accessible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – <video> Elements Require <track> For Captions,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <video> or <audio> Elements Must Not Auto-play,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Buttons Require Discernible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Buttons Require Discernible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Input Buttons Require Discernible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Input Buttons Require Discernible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Links Require Discernible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Links Require Discernible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Links Must Be Distinguishable,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Select Element Requires Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Select Element Requires Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Summary Elements Require Discernible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Deprecated <marquee> Element Must Not Be Used,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Interactive Controls Must Not Be Nested,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – List Items Must Be Contained In List Elements,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Lists Must Only Contain <li> Content Elements,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <dt> & <dd> Elements Must Be Contained by <dl>,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – <blink> Elements Deprecated & Must Not Be Used,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <th> Element Requires Associated Data Cells,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Table Header Attr Must Refer To Cell In Same Table,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 AA – Meta Viewport Zoom & Scaling Disabled,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 AA – Lang Attribute Requires Valid Value,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 AA – Text Requires Higher Color Contrast to Background,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 AAA – Text Requires Higher Color Contrast Ratio,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly,Warning,High,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.1 AA – Inline Text Spacing Must Be Adjustable,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.2 AA – Touch Targets Require Sufficient Size & Spacing,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Skip-link Target Should Exist & Be Focusable,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – All Page Content Must Be Contained By Landmarks,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Page Requires One Main Landmark,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Page Must Not Have More Than One Banner Landmark,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Banner Landmark Must Not Be In Another Landmark,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Page Must Not Have Multiple Contentinfo Landmarks,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Page Requires At Most One Main Landmark,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Complementary Landmarks & Asides Must Be Top Level,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Contentinfo Landmark Must Be Top Level Landmark,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Main Landmark Must Not Be In Another Landmark,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Landmarks Require Unique Role Or Accessible Name,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Page Must Contain <h1>,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Heading Levels Should Only Increase By One,Warning,Medium,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Form Field Must Not Have Multiple Label Elements,Warning,Medium,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – HTML Lang & XML Lang Value Should Match,Warning,Medium,Accessibility,onpage_content
+Accessibility,Best Practice – Ensure Elements Marked Presentational Are Ignored,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – Ensure Elements Marked Presentational Are Ignored,Warning,Low,Agent Accessibility Tree,ai_search_readiness
+Accessibility,Best Practice – ARIA Role Should Be Appropriate For Element,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – ARIA Role Should Be Appropriate For Element,Warning,Low,Agent Accessibility Tree,ai_search_readiness
+Accessibility,Best Practice – Headings Should Not Be Empty,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – Meta Viewport Should Allow Zoom & Scale Up to 500%,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – Alt Text Should Not Be Repeated As Text,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – Table Headers Require Discernible Text,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – Table With Identical Summary & Caption Text,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – Table With Identical Summary & Caption Text,Warning,Low,Agent Accessibility Tree,ai_search_readiness
+Accessibility,WCAG 2.0 A – Deprecated ARIA Roles Must Not Be Used,Warning,Low,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Server-Side Image Maps Must Not Be Used,Warning,Low,Accessibility,onpage_content
+Accessibility,WCAG 2.0 AAA – Delayed Meta Refresh Must Not Be Used,Warning,Low,Accessibility,onpage_content
+Accessibility,WCAG 2.0 AAA – Links With Same Accessible Name,Warning,Low,Accessibility,onpage_content
+Analytics,Orphan URLs,Issue,Medium,Orphan Pages,site_structure
+Analytics,No GA Data,Warning,Low,Index Bloat,onpage_content
+Analytics,Non-Indexable with GA Data,Warning,Low,Index Coverage,crawling_indexing
+Search Console,Page is Not Mobile Friendly,Issue,High,Mobile Parity,performance_mobile
+Search Console,Orphan URLs,Issue,Medium,Orphan Pages,site_structure
+Search Console,"URL is on Google, But Has Issues",Issue,Medium,Index Coverage,crawling_indexing
+Search Console,Rich Result is Invalid,Issue,Medium,Structured Data,onpage_content
+Search Console,Indexable URL Not Indexed,Warning,High,Index Coverage,crawling_indexing
+Search Console,User-Declared Canonical Not Selected,Warning,Medium,Canonical Tags,crawling_indexing
+Search Console,No Search Analytics Data,Warning,Low,Index Bloat,onpage_content
+Search Console,Non-Indexable with Search Analytics Data,Warning,Low,Index Coverage,crawling_indexing
+Search Console,URL Is Not on Google,Warning,Low,Index Coverage,crawling_indexing
+Validation,Missing <head> Tag,Issue,High,Head Integrity & File Size,crawling_indexing
+Validation,Multiple <head> Tags,Issue,High,Head Integrity & File Size,crawling_indexing
+Validation,Missing <body> Tag,Issue,High,Head Integrity & File Size,crawling_indexing
+Validation,Multiple <body> Tags,Issue,High,Head Integrity & File Size,crawling_indexing
+Validation,HTML Document Over 2MB,Issue,High,Head Integrity & File Size,crawling_indexing
+Validation,Resource Over 2MB,Issue,High,Head Integrity & File Size,crawling_indexing
+Validation,Invalid HTML Elements In <head>,Warning,High,Head Integrity & File Size,crawling_indexing
+Validation,<body> Element Preceding <html>,Warning,High,Head Integrity & File Size,crawling_indexing
+Validation,<head> Not First In <html> Element,Warning,High,Head Integrity & File Size,crawling_indexing
