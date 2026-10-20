@@ -6,6 +6,15 @@ This adds **SEO & AI for SEO** as a second platform next to Google Ads. The crit
 
 **Checked against master `055c951` (15 October).** That covers your `criteria_ice.py` with `get_ice()`, `ice_priority()`, the ICE overrides and `SpecialistResult.not_applicable`. The module now uses all four, so SEO needs fewer app changes than in the first version of this handoff.
 
+## Status on branch `SEO-feature` (20 October 2026)
+
+Wouter builds the SEO integration on this branch himself, without touching master. Google Ads keeps working exactly as before. Built and tested so far:
+- **Backend.** `POST /api/audit/run` with `platform: "seo"` and `seo: {domain, market, as_of, max_age_days, search_console}` runs `services/seo_pipeline.py`. It reads three BigQuery views (`seo/bigquery/03_app_views.sql`), makes one Gemini call per category with the SEO prompt, and then calls `seo_finalise_results()`. Scoring routes `platform_id == "seo"` to `seo_scoring()`. The changes to `specialist.py`, `scoring.py`, the models and `config.py` are optional parameters and fields only.
+- **Frontend.** A separate SEO tab (`/seo`, `pages/SeoAudit.tsx`) with its own brand context fields, audit runner, the shared review screens (with per-topic N/A and the fixed tier) and a results page with the maturity staircase. The overview gets a fourth group, "Organic", that shows the last SEO audit and links to the tab. Labels and tiers come from the generated `frontend/src/data/seoPulse.ts`. A **Demo** button on the SEO tab loads a sample audit (`frontend/src/data/seoDemo.ts`, fake data) that runs entirely in the browser, so the tab can be shown without a backend (e.g. in Lovable). The runner first calls `GET /api/audit/seo/support` and stays disabled on a backend without it: an older backend ignores `platform` and would start a Google Ads audit instead.
+- **Tests.** End to end through the FastAPI app with fake BigQuery and Gemini, including the Google Ads path unchanged; type check, lint and production build of the frontend.
+
+Still open: the Screaming Frog → BigQuery load job and the SQL that turns the SF exports into metrics (into `metric_values`); Search Console and Ahrefs into `metric_values`; a first run against real BigQuery and Gemini; a test environment for the branch (it is not deployed to dev). The numbered steps below are what this branch implements.
+
 ## What's in this branch
 
 | File | What it is | Use |

@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import artefactLogo from "@/assets/artefact-logo-white.png";
-import { Settings, FileSpreadsheet, Upload, ArrowRight, AlertCircle, X, ChevronDown, Zap, Lightbulb, Sparkles, Check, XCircle, PlayCircle, Home, TrendingUp, Trash2, Info, RotateCcw, AlertTriangle } from "lucide-react";
+import { Settings, FileSpreadsheet, Upload, ArrowRight, AlertCircle, X, ChevronDown, Zap, Lightbulb, Sparkles, Check, XCircle, PlayCircle, Home, TrendingUp, Trash2, Info, RotateCcw, AlertTriangle, Globe } from "lucide-react";
 import DataGapsFlyout, { generateDataGaps } from "@/components/DataGapsFlyout";
 import { analyzeAIReadiness } from "@/utils/aiAudit";
 import { platforms, omnichannelScore, type Platform } from "@/data/auditData";
@@ -330,6 +330,14 @@ export default function Index() {
                 Reset
               </button>
             </div>
+            <Link
+              to="/seo"
+              title="SEO & AI Search audit"
+              className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium text-white/60 hover:text-white hover:bg-white/10"
+            >
+              <Globe size={16} />
+              SEO
+            </Link>
             <button
               onClick={() => setShowSettings(!showSettings)}
               className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium ${

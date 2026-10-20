@@ -2032,12 +2032,18 @@ def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
     with the frame from seo_category_frame().
 
     Per result: level = the topic's fixed tier. When status_computed is pass, warn or fail, that
-    is the status. When it is "na", the topic gets not_applicable = True (status "pass", like the
-    B2B feed stubs), so scoring skips it. When it is None, Gemini's judgement stands. Works on
-    SpecialistResult objects and dicts; changes them in place and returns the same list.
+    is the status, and the topic counts as measured even when Gemini labelled it as having no
+    data. When it is "na", the topic gets not_applicable = True (status "pass", like the B2B feed
+    stubs), so scoring skips it. When it is None, Gemini's judgement stands, unless the topic has
+    no evidence at all (no metric and no Screaming Frog issue): then it counts as no data
+    (source no_data_source), so a guess does not enter the score. Works on SpecialistResult
+    objects and dicts; changes them in place and returns the same list.
     """
-    rows = frame[frame["_source"] == "topic_results"] if "_source" in frame.columns else frame.iloc[0:0]
+    has_source = "_source" in frame.columns
+    rows = frame[frame["_source"] == "topic_results"] if has_source else frame.iloc[0:0]
     computed = dict(zip(rows["topic"], rows["status_computed"])) if len(rows) else {}
+    measured = {t for t, m in zip(rows["topic"], rows["metrics"]) if isinstance(m, dict) and m} if len(rows) else set()
+    with_issues = set(frame.loc[frame["_source"] == "issue_detail", "topic"]) if has_source else set()
     for r in results:
         topic = _get(r, "topic")
         if topic in SEO_TOPIC_TIER:
@@ -2046,10 +2052,15 @@ def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
         if status in ("pass", "warn", "fail"):
             _set(r, "status", status)
             _set(r, "not_applicable", False)
+            if _get(r, "source") in _UNSCORED_SOURCES:
+                _set(r, "source", "topic_results")
         elif status == "na":
             _set(r, "status", "pass")
             _set(r, "not_applicable", True)
             _set(r, "action", "None")
+        elif (topic not in measured and topic not in with_issues and not _is_na(r)
+              and _get(r, "source") not in _UNSCORED_SOURCES):
+            _set(r, "source", "no_data_source")
     return results
 
 

@@ -3,6 +3,7 @@ import { Search, Share2, Monitor, ArrowRight, AlertTriangle, TrendingUp } from "
 import type { ManualScoreMap } from "@/utils/auditCriteria";
 import type { BusinessModel } from "@/utils/brandContext";
 import { getTopStrategicWins } from "@/utils/roadmapLogic";
+import OrganicGroupCard from "@/components/OrganicGroupCard";
 
 interface Props {
   getPlatformLiveScore: (p: Platform) => number;
@@ -46,7 +47,7 @@ export default function PlatformMaturityGrid({
   emptyState = false,
 }: Props) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
       {CHANNEL_GROUPS.map((group) => {
         const Icon = group.icon;
         const groupPlatforms = platforms.filter((p) =>
@@ -191,6 +192,8 @@ export default function PlatformMaturityGrid({
           </div>
         );
       })}
+      {/* Organic search has its own tab (/seo); this card shows its last audit */}
+      <OrganicGroupCard />
     </div>
   );
 }

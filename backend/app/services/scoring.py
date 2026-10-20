@@ -23,6 +23,7 @@ from app.models.audit import (
     SpecialistResult,
 )
 from app.services.criteria_ice import get_ice
+from app.services.seo_criteria import SEO_PLATFORM_ID, seo_scoring
 
 logger = logging.getLogger(__name__)
 
@@ -160,4 +161,7 @@ def run_scoring_agent(
     brand_model: Literal["B2B", "B2C", "D2C"],
     platform_id: str = "sea-google",
 ) -> ScoringOutput:
+    if platform_id == SEO_PLATFORM_ID:
+        # SEO: impact-weighted category scores and the maturity staircase (seo_criteria.py)
+        return ScoringOutput(**seo_scoring(results, brand_model))
     return _compute_python(results, brand_model, platform_id)
