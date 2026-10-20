@@ -2,7 +2,7 @@
 
 From: Wouter Visser (SEO, Artefact Benelux) · 6 October 2026, updated 20 October 2026 · for: Diego
 
-This adds **SEO & AI for SEO** as a second platform next to Google Ads. The criteria are the 2026 SEO DMA pulse (66 criteria, 8 sections, same house format as the Paid Search pulse). Everything here except this handoff is generated from that sheet. To change a criterion, I change the sheet and regenerate. Please don't edit the generated files by hand.
+This adds **SEO & AI for SEO** as a second platform next to Google Ads. The criteria are the 2026 SEO DMA pulse (64 criteria, 8 sections, same house format as the Paid Search pulse). Everything here except this handoff is generated from that sheet. To change a criterion, I change the sheet and regenerate. Please don't edit the generated files by hand.
 
 **Checked against master `055c951` (15 October).** That covers your `criteria_ice.py` with `get_ice()`, `ice_priority()`, the ICE overrides and `SpecialistResult.not_applicable`. The module now uses all four, so SEO needs fewer app changes than in the first version of this handoff.
 
@@ -13,7 +13,7 @@ Wouter builds the SEO integration on this branch himself, without touching maste
 - **Frontend.** A separate SEO tab (`/seo`, `pages/SeoAudit.tsx`) with its own brand context fields, audit runner, the shared review screens (with per-topic N/A and the fixed tier) and a results page with the maturity staircase. The overview gets a fourth group, "Organic", that shows the last SEO audit and links to the tab. Labels and tiers come from the generated `frontend/src/data/seoPulse.ts`. A **Demo** button on the SEO tab loads a sample audit (`frontend/src/data/seoDemo.ts`, fake data) that runs entirely in the browser, so the tab can be shown without a backend (e.g. in Lovable). The runner first calls `GET /api/audit/seo/support` and stays disabled on a backend without it: an older backend ignores `platform` and would start a Google Ads audit instead.
 - **Tests.** End to end through the FastAPI app with fake BigQuery and Gemini, including the Google Ads path unchanged; type check, lint and production build of the frontend.
 
-Still open: the Screaming Frog → BigQuery load job and the SQL that turns the SF exports into metrics (into `metric_values`); Search Console and Ahrefs into `metric_values`; a first run against real BigQuery and Gemini; a test environment for the branch (it is not deployed to dev). The numbered steps below are what this branch implements.
+Still open: the Screaming Frog → BigQuery load job and the SQL that turns the SF exports into metrics (into `metric_values`); Search Console and Ahrefs (authority only) into `metric_values`; a first run against real BigQuery and Gemini; a test environment for the branch (it is not deployed to dev). The numbered steps below are what this branch implements.
 
 ## What's in this branch
 
@@ -29,7 +29,7 @@ Still open: the Screaming Frog → BigQuery load job and the SQL that turns the 
 
 | Google Ads (yours) | SEO (this module) |
 |---|---|
-| `_CATEGORY_TOPICS` | `SEO_CATEGORY_TOPICS` (8 categories, 66 topics) |
+| `_CATEGORY_TOPICS` | `SEO_CATEGORY_TOPICS` (8 categories, 64 topics) |
 | `CRITERIA_ICE` / `get_ice()` in `criteria_ice.py` | `SEO_CRITERIA_ICE`: same `category::topic` keys, same (impact, confidence, ease) tuples. The values per dimension are also in `SEO_TOPIC_IMPACT`, `SEO_TOPIC_CONFIDENCE` and `SEO_TOPIC_EASE` |
 | `_BASE_WEIGHTS`, multipliers | `SEO_BASE_WEIGHTS`, `SEO_B2B_MULTIPLIERS`, `SEO_B2C_D2C_MULTIPLIERS` |
 | `DATA_GAPS` | `SEO_DATA_GAPS` (all topics outside phase 1) |
@@ -64,7 +64,7 @@ The main design choice follows what you learned on Quality Score: **Python decid
    - **Quick wins.** The same as your `_compute_python`: warn and fail topics, priority = `ice_priority(impact, confidence, ease)`, and confidence capped at 2 when the topic had no data. N/A and report-only topics are left out.
 7. **Brand context.** SEO needs the extra fields listed in `SEO_METRICS.md` (siteUrl, brandTerms, competitors, pageTypes, keyword mapping, hasOnlineSales, lowSearchVolume, locations, review platforms, expected profiles, AI bot policy, snippet exceptions, AI shopping platforms). These could be a nested `seo` object on `BrandContext`.
 8. **Data access instead of a measurement section.** Search Console and GA4 access are checked with `seo_preconditions(metrics)`, but neither is required and neither is scored. The first pulse usually runs without the client's Search Console. In that case, set `search_console = False` in `crawl_summary` and use `seo_data_gaps(search_console=False)` instead of `SEO_DATA_GAPS`. Then:
-   - 11 topics run on their fallback, mostly Ahrefs estimates (`SEO_GSC_FALLBACK`). The extractor fills the same metric names from that source.
+   - 9 topics run on their fallback (`SEO_GSC_FALLBACK`), mostly the key pages from the XML sitemaps (ranked by Screaming Frog Unique Inlinks) instead of the pages with the most clicks. The extractor fills the same metric names from that source.
    - Index Coverage and Index Bloat (`SEO_GSC_ONLY`) are reported as no data, and stay out of the score until access is granted.
 9. **Anonymizer.** SEO data contains client names in URLs, domains and Search Console queries. If dev should read anonymized data, the same term replacement needs to cover the SEO dataset.
 
@@ -95,15 +95,16 @@ Screaming Frog runs as a scheduled headless crawl with fixed exports to Cloud St
 
 | Phase | Sources | Topics |
 |---|---|---|
-| 1 | Screaming Frog crawl (+ list mode, JS rendering, custom extraction, accessibility), Search Console bulk export & API, PageSpeed Insights / CrUX, Ahrefs API (also the fallback without Search Console) | 48 |
-| 2 | GA4 export & Admin API, Merchant Center transfer, SEO intake form | 6 |
+| 1 | Screaming Frog crawl (+ list mode, JS rendering, custom extraction, accessibility), Search Console bulk export & API, PageSpeed Insights / CrUX, Ahrefs API (authority: backlinks and Domain Rating) | 47 |
+| 2 | GA4 export & Admin API, Merchant Center transfer, SEO intake form | 5 |
 | 3 | Fixed-prompt LLM steps, Brand Radar, Business Profile, Bing Webmaster, review platforms, Wikidata, verified-agent tests | 12 |
 
 ## Agreed
 
 - **No measurement and tooling section** (Wouter, 6 October 2026). The pulse measures the site, not the tooling. AI referral tracking moves to the Web Analytics DMA. Rank tracking, crawl monitoring and AI visibility monitoring are dropped, because they check the agency's tooling. Search Console and GA4 access become preconditions. Bing Webmaster Tools & IndexNow moves to Crawling & Indexing. This also removes the proposed Visibility Tracking thresholds.
-- **Maturity tiers.** Agreed by Wouter on 6 October 2026, with a threshold of 80% per tier and a warn weight of 0.5. With Rendering Strategy (added 9 October, Advanced) the totals are 20 Basic, 25 Advanced, 13 Expert, 8 Champion.
-- **First pulse without Search Console** (Wouter, 9 October 2026). Search Console access is recommended, not required. The topics that use it have a fallback, and Ahrefs moves to phase 1 because most fallbacks need it.
+- **Maturity tiers.** Agreed by Wouter on 6 October 2026, with a threshold of 80% per tier and a warn weight of 0.5. With Rendering Strategy (added 9 October, Advanced) the totals are 20 Basic, 25 Advanced, 11 Expert, 8 Champion (after the keyword topics left the pulse on 20 October).
+- **First pulse without Search Console** (Wouter, 9 October 2026). Search Console access is recommended, not required. The topics that use it have a fallback from the sitemap and the crawl (since 20 October; before that Ahrefs).
+- **Keyword research is a separate, later track** (Wouter, 20 October 2026). Keyword Mapping Coverage and Keyword Cannibalisation left the pulse. FAQ & Question Coverage stays, with the main questions chosen by the LLM step from the page itself plus the brand questions from the intake. Without Search Console, "top N pages" are the key pages from the XML sitemaps ranked by Screaming Frog Unique Inlinks, so the pulse needs Ahrefs only for authority (backlinks and Domain Rating). The SF issue Content: Semantically Similar now counts for Duplicate & Thin Content.
 - **JavaScript & rendering** (checklist from a colleague in the DMA Global edition, 9 October 2026). The checks are folded into the pulse:
   - Raw-HTML checks for head elements, headings, structured data and links: Content Without JavaScript.
   - Content loaded on click, JavaScript lazy-loading, dynamic rendering parity and client-side-only page types: the new Rendering Strategy (SEO-N15).

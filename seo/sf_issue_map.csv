@@ -65,7 +65,7 @@ Content,Grammar Errors,Issue,Medium,Content Hygiene,onpage_content
 Content,Soft 404 Pages,Warning,High,Error Handling & Soft 404s,crawling_indexing
 Content,Lorem Ipsum Placeholder,Warning,High,Content Hygiene,onpage_content
 Content,Near Duplicates,Warning,Medium,Duplicate & Thin Content,onpage_content
-Content,Semantically Similar,Warning,Medium,Keyword Cannibalisation,onpage_content
+Content,Semantically Similar,Warning,Medium,Duplicate & Thin Content,onpage_content
 Content,Low Relevance Content,Warning,Low,Topic Clusters,onpage_content
 Content,Low Content Pages,Opportunity,Medium,Duplicate & Thin Content,onpage_content
 Content,Readability Difficult,Opportunity,Low,Answer-First Content,onpage_content

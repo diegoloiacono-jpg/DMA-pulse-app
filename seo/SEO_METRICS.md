@@ -34,8 +34,8 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 
 | Phase | Sources | Topics |
 |---|---|---|
-| 1 | Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (also the fallback when Search Console access is missing) | 48 |
-| 2 | GA4 BigQuery export & Admin API, Merchant Center data transfer, SEO intake form | 6 |
+| 1 | Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (authority: backlinks and Domain Rating) | 47 |
+| 2 | GA4 BigQuery export & Admin API, Merchant Center data transfer, SEO intake form | 5 |
 | 3 | Fixed-prompt LLM steps, Ahrefs Brand Radar, Business Profile API, Bing Webmaster API, review platforms, Wikidata, verified-agent tests | 12 |
 
 Topics outside phase 1 start in `SEO_DATA_GAPS`.
@@ -65,19 +65,17 @@ The first pulse usually runs without the client's Search Console. These topics t
 
 | Topic | Without Search Console |
 |---|---|
-| Canonical Host & URL Variants | Top 50 URLs by Ahrefs organic traffic instead of Search Console clicks. |
+| Canonical Host & URL Variants | Top 50 key pages instead of the top 50 by Search Console clicks: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks. |
 | Server Stability | Key URLs are the sitemap URLs only. |
 | XML Sitemap Quality | Submission and errors in Search Console are not checked; the sitemap must be referenced in robots.txt or found at /sitemap.xml. |
 | Index Coverage | Not measurable without Search Console (URL Inspection API); left out of the score until access is granted. |
-| Canonical Tags | Top 100 URLs by Ahrefs organic traffic; whether Google overrides the declared canonical is not checked. |
-| Click Depth of Key Pages | Top 100 URLs by Ahrefs organic traffic. |
-| Orphan Pages | URLs from the sitemaps and the Ahrefs top pages instead of URLs with Search Console clicks. |
-| Meta Descriptions | Weighted by Ahrefs organic traffic instead of Search Console impressions. |
+| Canonical Tags | Top 100 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks); whether Google overrides the declared canonical is not checked. |
+| Click Depth of Key Pages | Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks. |
+| Orphan Pages | URLs from the XML sitemaps instead of URLs with Search Console clicks. |
+| Meta Descriptions | Share of the indexable URLs in the XML sitemaps (unweighted) instead of weighting by Search Console impressions. |
 | Index Bloat | Not measurable without Search Console impressions; left out of the score until access is granted. |
-| Keyword Mapping Coverage | Top 200 non-brand Ahrefs organic keywords by traffic instead of Search Console queries. |
-| Keyword Cannibalisation | Top 200 non-brand Ahrefs keywords for which 2 or more URLs of the site rank. |
-| FAQ & Question Coverage | Question keywords from Ahrefs instead of Search Console question queries. |
-| Snippet Directives | Top 100 URLs by Ahrefs organic traffic. |
+| FAQ & Question Coverage | Top 50 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) instead of the top landing pages by clicks. |
+| Snippet Directives | Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks. |
 
 ## Data access (checked before the pulse runs, not required, not scored)
 
@@ -112,7 +110,7 @@ Each topic has a fixed tier (`SEO_TOPIC_TIER`). `seo_maturity()` turns the statu
 |---|---|---|
 | Basic | Foundation. Search engines and AI crawlers can reach, render and index the site, the core on-page elements are in place and measurement works. Without these, nothing else pays off. | 20 |
 | Advanced | In order at scale. Technique, structure, performance and on-page are clean across the whole site, including the long tail. | 25 |
-| Expert | Managed. Content is steered by search demand and questions, authority is actively built and AI visibility is measured. | 13 |
+| Expert | Managed. Content is steered by search demand and questions, authority is actively built and AI visibility is measured. | 11 |
 | Champion | Leading. Ahead of competitors on authority, a recognised entity, and ready for AI agents and agentic commerce. | 8 |
 
 ## Metrics per topic
@@ -146,7 +144,7 @@ Rule: `fail if n_http_urls > 0 or n_mixed_content_pages > 0 or n_insecure_form_p
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_variants_tested` | SF list | URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: by Ahrefs organic traffic) |
+| `n_variants_tested` | SF list | URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_variants_ok` | SF list | Variants that 301-redirect in one hop to, or canonicalise to, the preferred URL |
 | `n_variants_200_no_canonical` | SF list | Variants that return 200 without a canonical to the preferred URL |
 | `n_variants_chain_or_302` | SF list | Variants that reach the preferred URL through a redirect chain or a 302/307 |
@@ -224,7 +222,7 @@ Rule: `fail if nonexistent_url_status == 200 or nonexistent_url_status in (301, 
 | Metric | Origin | Definition |
 |---|---|---|
 | `pct_indexable_canonical_issue` | SF crawl | Distinct indexable URLs in any Screaming Frog issue mapped to this topic / indexable HTML URLs |
-| `n_top100_canonical_issue` | SF crawl | Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: top 100 by Ahrefs organic traffic) |
+| `n_top100_canonical_issue` | SF crawl | Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_top100_canonical_overridden` *(optional)* | URL Inspection | Top 100 URLs where Google selected a different canonical than the declared one |
 
 Rule: `fail if pct_indexable_canonical_issue > 0.05 or n_top100_canonical_overridden > 0`; `pass if pct_indexable_canonical_issue <= 0.01 and n_top100_canonical_issue == 0`
@@ -329,7 +327,7 @@ Rule: `fail if pct_internal_links_to_3xx_4xx > 0.05 or n_uncrawlable_nav_links >
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_top100_depth_over_3` | SF crawl | Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: top 100 by Ahrefs organic traffic) |
+| `n_top100_depth_over_3` | SF crawl | Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_top100_depth_over_4` | SF crawl | Top 100 URLs more than 4 clicks from the homepage |
 
 Rule: `fail if n_top100_depth_over_4 > 0`; `pass if n_top100_depth_over_3 == 0`
@@ -338,7 +336,7 @@ Rule: `fail if n_top100_depth_over_4 > 0`; `pass if n_top100_depth_over_3 == 0`
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_click_urls_orphaned` | SF crawl | URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the sitemaps and the Ahrefs top pages) |
+| `pct_click_urls_orphaned` | SF crawl | URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the XML sitemaps) |
 | `pct_click_urls_weakly_linked` | SF crawl | URLs with clicks that are orphaned or only linked from non-indexable pages / URLs with clicks |
 
 Rule: `fail if pct_click_urls_weakly_linked > 0.05`; `pass if pct_click_urls_orphaned <= 0.01`
@@ -393,7 +391,7 @@ Note: Optional: when the keyword mapping is in the brand context, mention whethe
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_impressions_missing_or_duplicate_meta` | GSC bulk | Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: weighted by Ahrefs organic traffic) |
+| `pct_impressions_missing_or_duplicate_meta` | GSC bulk | Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: share of the indexable URLs in the XML sitemaps, unweighted) |
 
 Rule: `fail if pct_impressions_missing_or_duplicate_meta > 0.30`; `pass if pct_impressions_missing_or_duplicate_meta <= 0.10`
 
@@ -449,25 +447,6 @@ Rule: `fail if n_placeholder_pages > 0 or pct_pages_spelling_grammar_errors > 0.
 
 Rule: `fail if n_page_types_with_sd_errors > 0 or pct_pages_expected_type < 0.60`; `pass if pct_pages_expected_type >= 0.90`
 
-**Keyword Mapping Coverage** (SEO-22 · I4 C3 E4 · tier Expert, phase 2)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `has_keyword_mapping` | Intake | 1 if a keyword-to-URL mapping is in the brand context, else 0 |
-| `keyword_mapping_age_months` | Intake | Age of the keyword mapping in months |
-| `pct_top200_nonbrand_mapped` | GSC bulk | Top 200 non-brand Search Console queries (90 days) covered by the keyword mapping / 200 (without Search Console access: top 200 non-brand Ahrefs keywords by traffic) |
-
-Rule: `fail if has_keyword_mapping == 0 or keyword_mapping_age_months > 24 or pct_top200_nonbrand_mapped < 0.40`; `pass if keyword_mapping_age_months < 12 and pct_top200_nonbrand_mapped >= 0.70`
-
-**Keyword Cannibalisation** (SEO-23 · I3 C3 E4 · tier Expert, phase 1)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `pct_top200_nonbrand_cannibalised` | GSC bulk | Top 200 non-brand queries (90 days) where 2 or more URLs each receive at least 20% of the impressions / 200 (without Search Console access: top 200 non-brand Ahrefs keywords for which 2 or more URLs rank) |
-| `n_semantically_similar_pages` *(optional)* | SF crawl | Pages flagged as Content: Semantically Similar (cosine 0.95 or higher; informational) |
-
-Rule: `fail if pct_top200_nonbrand_cannibalised > 0.15`; `pass if pct_top200_nonbrand_cannibalised <= 0.05`
-
 **Content Freshness** (AI-37 · I3 C3 E4 · tier Expert, phase 1)
 
 | Metric | Origin | Definition |
@@ -490,7 +469,7 @@ Rule: `fail if pct_top20_meet_answer_rubric < 0.50`; `pass if pct_top20_meet_ans
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_top50_questions_answered` | LLM step | Top 50 landing pages whose main question-type queries (Search Console; without access: Ahrefs question keywords) and brand questions (reviews, delivery, complaints) are answered in a FAQ block / 50 |
+| `pct_top50_questions_answered` | LLM step | Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions, chosen by the LLM step from the page itself, and the brand questions from the intake (reviews, delivery, complaints) in a FAQ block / 50 |
 
 Rule: `fail if pct_top50_questions_answered < 0.20`; `pass if pct_top50_questions_answered >= 0.50`
 
@@ -582,7 +561,7 @@ Rule: `fail if n_pages_10plus_refdomains < 5 or n_pages_10plus_refdomains < 0.5 
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_refdomains_exact_match_anchor` | Ahrefs | Referring domains using exact-match commercial anchors (classified with the keyword mapping) / referring domains |
+| `pct_refdomains_exact_match_anchor` | Ahrefs | Referring domains using exact-match commercial anchors (classified with the brand terms in the brand context, and the keyword mapping when available) / referring domains |
 
 Rule: `fail if pct_refdomains_exact_match_anchor > 0.25`; `pass if pct_refdomains_exact_match_anchor <= 0.10`
 
@@ -698,7 +677,7 @@ Rule: `fail if n_retrieval_bots_blocked_robots > 0 or n_retrieval_bot_fetches_bl
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_top_urls_nosnippet_undocumented` | SF crawl | Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: top 100 by Ahrefs organic traffic) |
+| `n_top_urls_nosnippet_undocumented` | SF crawl | Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_top_urls_partial_snippet_undocumented` | SF extraction | Top 100 URLs with data-nosnippet or a max-snippet limit that the brand context does not document |
 
 Rule: `fail if n_top_urls_nosnippet_undocumented > 0`; `pass if n_top_urls_partial_snippet_undocumented == 0`

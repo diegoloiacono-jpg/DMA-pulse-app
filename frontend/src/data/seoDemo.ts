@@ -382,28 +382,6 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "not_applicable": false
   },
   {
-    "topic": "Keyword Mapping Coverage",
-    "category": "onpage_content",
-    "status": "warn",
-    "level": "expert",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
-    "topic": "Keyword Cannibalisation",
-    "category": "onpage_content",
-    "status": "pass",
-    "level": "expert",
-    "source": "topic_results",
-    "action": "None",
-    "explanation": "[demo] pct_top200_nonbrand_cannibalised = 0.03, n_semantically_similar_pages = 3.0; rule: pct_top200_nonbrand_cannibalised <= 0.05.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
     "topic": "Content Freshness",
     "category": "onpage_content",
     "status": "pass",
@@ -791,8 +769,8 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
     },
     {
       "name": "onpage_content",
-      "score": 72.7,
-      "pass_rate": 69.2,
+      "score": 70.7,
+      "pass_rate": 66.7,
       "weight": 1.0
     },
     {
@@ -814,7 +792,7 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "weight": 1.0
     }
   ],
-  "platform_score": 75.8,
+  "platform_score": 75.5,
   "omnichannel_score": null,
   "maturity_label": "Basic",
   "quick_wins": [
@@ -948,10 +926,10 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
         "reached": false
       },
       "Expert": {
-        "pass": 3,
+        "pass": 2,
         "warn": 2,
         "fail": 1,
-        "score": 0.667,
+        "score": 0.6,
         "reached": false
       },
       "Champion": {

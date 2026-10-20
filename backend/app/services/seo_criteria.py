@@ -93,8 +93,6 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'Index Bloat',
         'Content Hygiene',
         'Structured Data',
-        'Keyword Mapping Coverage',
-        'Keyword Cannibalisation',
         'Content Freshness',
         'Answer-First Content',
         'FAQ & Question Coverage',
@@ -172,8 +170,6 @@ SEO_TOPIC_IDS: dict[str, str] = {
     'Index Bloat': 'SEO-N5',
     'Content Hygiene': 'SEO-N10',
     'Structured Data': 'SEO-24',
-    'Keyword Mapping Coverage': 'SEO-22',
-    'Keyword Cannibalisation': 'SEO-23',
     'Content Freshness': 'AI-37',
     'Answer-First Content': 'AI-29',
     'FAQ & Question Coverage': 'AI-32',
@@ -242,8 +238,6 @@ SEO_TOPIC_IMPACT: dict[str, float] = {
     'onpage_content::index bloat': 2.0,
     'onpage_content::content hygiene': 4.0,
     'onpage_content::structured data': 5.0,
-    'onpage_content::keyword mapping coverage': 4.0,
-    'onpage_content::keyword cannibalisation': 3.0,
     'onpage_content::content freshness': 3.0,
     'onpage_content::answer-first content': 2.0,
     'onpage_content::faq & question coverage': 2.0,
@@ -312,8 +306,6 @@ SEO_TOPIC_CONFIDENCE: dict[str, float] = {
     'onpage_content::index bloat': 3.0,
     'onpage_content::content hygiene': 3.0,
     'onpage_content::structured data': 4.0,
-    'onpage_content::keyword mapping coverage': 3.0,
-    'onpage_content::keyword cannibalisation': 3.0,
     'onpage_content::content freshness': 3.0,
     'onpage_content::answer-first content': 2.0,
     'onpage_content::faq & question coverage': 3.0,
@@ -382,8 +374,6 @@ SEO_TOPIC_EASE: dict[str, float] = {
     'onpage_content::index bloat': 3.0,
     'onpage_content::content hygiene': 4.0,
     'onpage_content::structured data': 3.0,
-    'onpage_content::keyword mapping coverage': 4.0,
-    'onpage_content::keyword cannibalisation': 4.0,
     'onpage_content::content freshness': 4.0,
     'onpage_content::answer-first content': 4.0,
     'onpage_content::faq & question coverage': 4.0,
@@ -454,8 +444,6 @@ SEO_CRITERIA_ICE: dict[str, tuple[float, float, float]] = {
     'onpage_content::index bloat': (2.0, 3.0, 3.0),
     'onpage_content::content hygiene': (4.0, 3.0, 4.0),
     'onpage_content::structured data': (5.0, 4.0, 3.0),
-    'onpage_content::keyword mapping coverage': (4.0, 3.0, 4.0),
-    'onpage_content::keyword cannibalisation': (3.0, 3.0, 4.0),
     'onpage_content::content freshness': (3.0, 3.0, 4.0),
     'onpage_content::answer-first content': (2.0, 2.0, 4.0),
     'onpage_content::faq & question coverage': (2.0, 3.0, 4.0),
@@ -575,8 +563,6 @@ SEO_TOPIC_TIER: dict[str, str] = {
     'Index Bloat': 'Advanced',
     'Content Hygiene': 'Advanced',
     'Structured Data': 'Advanced',
-    'Keyword Mapping Coverage': 'Expert',
-    'Keyword Cannibalisation': 'Expert',
     'Content Freshness': 'Expert',
     'Answer-First Content': 'Expert',
     'FAQ & Question Coverage': 'Expert',
@@ -617,7 +603,7 @@ SEO_MATURITY_THRESHOLD: float = 0.8
 SEO_WARN_WEIGHT: float = 0.5
 
 # Rollout phase per topic:
-#   1: Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (also the fallback when Search Console access is missing)
+#   1: Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (authority: backlinks and Domain Rating)
 #   2: GA4 BigQuery export & Admin API, Merchant Center data transfer, SEO intake form
 #   3: Fixed-prompt LLM steps, Ahrefs Brand Radar, Business Profile API, Bing Webmaster API, review platforms, Wikidata, verified-agent tests
 SEO_TOPIC_PHASE: dict[str, int] = {
@@ -652,8 +638,6 @@ SEO_TOPIC_PHASE: dict[str, int] = {
     'Index Bloat': 1,
     'Content Hygiene': 1,
     'Structured Data': 1,
-    'Keyword Mapping Coverage': 2,
-    'Keyword Cannibalisation': 1,
     'Content Freshness': 1,
     'Answer-First Content': 3,
     'FAQ & Question Coverage': 3,
@@ -696,7 +680,6 @@ SEO_DATA_GAPS: dict[str, list[str]] = {
         'Bing Webmaster Tools & IndexNow',
     ],
     'onpage_content': [
-        'Keyword Mapping Coverage',
         'Answer-First Content',
         'FAQ & Question Coverage',
         'Topic Clusters',
@@ -725,19 +708,17 @@ SEO_DATA_GAPS: dict[str, list[str]] = {
 # What the pulse measures without Search Console access (the first pulse usually runs without it).
 # Topics not listed do not use Search Console. Pass search_console=False to seo_data_gaps().
 SEO_GSC_FALLBACK: dict[str, str] = {
-    'Canonical Host & URL Variants': 'Top 50 URLs by Ahrefs organic traffic instead of Search Console clicks.',
+    'Canonical Host & URL Variants': 'Top 50 key pages instead of the top 50 by Search Console clicks: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.',
     'Server Stability': 'Key URLs are the sitemap URLs only.',
     'XML Sitemap Quality': 'Submission and errors in Search Console are not checked; the sitemap must be referenced in robots.txt or found at /sitemap.xml.',
     'Index Coverage': 'Not measurable without Search Console (URL Inspection API); left out of the score until access is granted.',
-    'Canonical Tags': 'Top 100 URLs by Ahrefs organic traffic; whether Google overrides the declared canonical is not checked.',
-    'Click Depth of Key Pages': 'Top 100 URLs by Ahrefs organic traffic.',
-    'Orphan Pages': 'URLs from the sitemaps and the Ahrefs top pages instead of URLs with Search Console clicks.',
-    'Meta Descriptions': 'Weighted by Ahrefs organic traffic instead of Search Console impressions.',
+    'Canonical Tags': 'Top 100 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks); whether Google overrides the declared canonical is not checked.',
+    'Click Depth of Key Pages': 'Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.',
+    'Orphan Pages': 'URLs from the XML sitemaps instead of URLs with Search Console clicks.',
+    'Meta Descriptions': 'Share of the indexable URLs in the XML sitemaps (unweighted) instead of weighting by Search Console impressions.',
     'Index Bloat': 'Not measurable without Search Console impressions; left out of the score until access is granted.',
-    'Keyword Mapping Coverage': 'Top 200 non-brand Ahrefs organic keywords by traffic instead of Search Console queries.',
-    'Keyword Cannibalisation': 'Top 200 non-brand Ahrefs keywords for which 2 or more URLs of the site rank.',
-    'FAQ & Question Coverage': 'Question keywords from Ahrefs instead of Search Console question queries.',
-    'Snippet Directives': 'Top 100 URLs by Ahrefs organic traffic.',
+    'FAQ & Question Coverage': 'Top 50 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) instead of the top landing pages by clicks.',
+    'Snippet Directives': 'Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.',
 }
 
 # Not measurable at all without Search Console: left out of the score until access is granted
@@ -759,7 +740,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'has_hsts': ('SF crawl', '1 if HTML pages send a Strict-Transport-Security header (Missing HSTS Header = 0), else 0'),
     },
     'Canonical Host & URL Variants': {
-        'n_variants_tested': ('SF list', 'URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: by Ahrefs organic traffic)'),
+        'n_variants_tested': ('SF list', 'URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_variants_ok': ('SF list', 'Variants that 301-redirect in one hop to, or canonicalise to, the preferred URL'),
         'n_variants_200_no_canonical': ('SF list', 'Variants that return 200 without a canonical to the preferred URL'),
         'n_variants_chain_or_302': ('SF list', 'Variants that reach the preferred URL through a redirect chain or a 302/307'),
@@ -800,7 +781,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     },
     'Canonical Tags': {
         'pct_indexable_canonical_issue': ('SF crawl', 'Distinct indexable URLs in any Screaming Frog issue mapped to this topic / indexable HTML URLs'),
-        'n_top100_canonical_issue': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: top 100 by Ahrefs organic traffic)'),
+        'n_top100_canonical_issue': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_top100_canonical_overridden': ('URL Inspection', 'Top 100 URLs where Google selected a different canonical than the declared one'),
     },
     'Head Integrity & File Size': {
@@ -854,11 +835,11 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_internal_nofollow': ('SF crawl', 'Internal nofollow outlinks, including meta nofollow'),
     },
     'Click Depth of Key Pages': {
-        'n_top100_depth_over_3': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: top 100 by Ahrefs organic traffic)'),
+        'n_top100_depth_over_3': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_top100_depth_over_4': ('SF crawl', 'Top 100 URLs more than 4 clicks from the homepage'),
     },
     'Orphan Pages': {
-        'pct_click_urls_orphaned': ('SF crawl', 'URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the sitemaps and the Ahrefs top pages)'),
+        'pct_click_urls_orphaned': ('SF crawl', 'URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the XML sitemaps)'),
         'pct_click_urls_weakly_linked': ('SF crawl', 'URLs with clicks that are orphaned or only linked from non-indexable pages / URLs with clicks'),
     },
     'Core Web Vitals': {
@@ -882,7 +863,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_indexable_title_over_561px': ('SF crawl', 'Indexable URLs with a title over 561 pixels / indexable HTML URLs'),
     },
     'Meta Descriptions': {
-        'pct_impressions_missing_or_duplicate_meta': ('GSC bulk', 'Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: weighted by Ahrefs organic traffic)'),
+        'pct_impressions_missing_or_duplicate_meta': ('GSC bulk', 'Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: share of the indexable URLs in the XML sitemaps, unweighted)'),
     },
     'Heading Structure': {
         'pct_indexable_missing_h1': ('SF crawl', 'Indexable URLs without an H1 / indexable HTML URLs'),
@@ -906,15 +887,6 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_page_types_with_sd_errors': ('SF crawl', 'Page types (templates) with structured data validation, parse or rich result validation errors'),
         'pct_pages_expected_type': ('SF crawl', 'Pages carrying the expected schema type for their page type (B2C: Product/Offer, Review, BreadcrumbList, LocalBusiness; B2B: Organization, Service or SoftwareApplication, Article, BreadcrumbList) / pages of those page types. Retired types are not counted.'),
     },
-    'Keyword Mapping Coverage': {
-        'has_keyword_mapping': ('Intake', '1 if a keyword-to-URL mapping is in the brand context, else 0'),
-        'keyword_mapping_age_months': ('Intake', 'Age of the keyword mapping in months'),
-        'pct_top200_nonbrand_mapped': ('GSC bulk', 'Top 200 non-brand Search Console queries (90 days) covered by the keyword mapping / 200 (without Search Console access: top 200 non-brand Ahrefs keywords by traffic)'),
-    },
-    'Keyword Cannibalisation': {
-        'pct_top200_nonbrand_cannibalised': ('GSC bulk', 'Top 200 non-brand queries (90 days) where 2 or more URLs each receive at least 20% of the impressions / 200 (without Search Console access: top 200 non-brand Ahrefs keywords for which 2 or more URLs rank)'),
-        'n_semantically_similar_pages': ('SF crawl', 'Pages flagged as Content: Semantically Similar (cosine 0.95 or higher; informational)'),
-    },
     'Content Freshness': {
         'pct_key_pages_updated_12m': ('SF extraction', 'Key content pages (page types in the brand context) with a visible update date within 12 months / key content pages'),
         'pct_key_pages_fresh_and_dated': ('SF extraction', 'Key content pages updated within 12 months whose visible date matches the schema dateModified / key content pages'),
@@ -924,7 +896,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_top20_meet_answer_rubric': ('LLM step', 'Top 20 landing pages that meet the fixed rubric (answers the main question in the first paragraph, plain language, follow-up questions covered) / 20'),
     },
     'FAQ & Question Coverage': {
-        'pct_top50_questions_answered': ('LLM step', 'Top 50 landing pages whose main question-type queries (Search Console; without access: Ahrefs question keywords) and brand questions (reviews, delivery, complaints) are answered in a FAQ block / 50'),
+        'pct_top50_questions_answered': ('LLM step', 'Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions, chosen by the LLM step from the page itself, and the brand questions from the intake (reviews, delivery, complaints) in a FAQ block / 50'),
     },
     'Topic Clusters': {
         'pct_cluster_subpages_linked_both_ways': ('SF crawl', 'Cluster subpages (keyword mapping or Screaming Frog content clusters) that link to and are linked from their pillar page / cluster subpages'),
@@ -962,7 +934,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'median_competitor_pages_10plus': ('Ahrefs', 'Median of the same count for the competitors in the brand context'),
     },
     'Anchor Text Profile': {
-        'pct_refdomains_exact_match_anchor': ('Ahrefs', 'Referring domains using exact-match commercial anchors (classified with the keyword mapping) / referring domains'),
+        'pct_refdomains_exact_match_anchor': ('Ahrefs', 'Referring domains using exact-match commercial anchors (classified with the brand terms in the brand context, and the keyword mapping when available) / referring domains'),
     },
     'Broken Backlinks': {
         'n_refdomains_dr20_to_4xx': ('Ahrefs', 'Referring domains with Domain Rating above 20 that link to 4xx URLs'),
@@ -1014,7 +986,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_training_bot_policy_mismatches': ('Intake', 'Training bots (GPTBot, ClaudeBot, Google-Extended) whose robots.txt rules differ from the AI bot policy in the brand context'),
     },
     'Snippet Directives': {
-        'n_top_urls_nosnippet_undocumented': ('SF crawl', 'Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: top 100 by Ahrefs organic traffic)'),
+        'n_top_urls_nosnippet_undocumented': ('SF crawl', 'Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_top_urls_partial_snippet_undocumented': ('SF extraction', 'Top 100 URLs with data-nosnippet or a max-snippet limit that the brand context does not document'),
     },
     'Agent Accessibility Tree': {
@@ -1072,7 +1044,6 @@ SEO_OPTIONAL_METRICS: dict[str, set[str]] = {
     'Parameters & Faceted Navigation': {'n_demand_facets', 'n_demand_facets_static'},
     'Core Web Vitals': {'has_crux_origin'},
     'Image Weight & Format': {'pct_images_modern_format'},
-    'Keyword Cannibalisation': {'n_semantically_similar_pages'},
     'Content Freshness': {'n_date_refresh_without_change'},
     'Topic Clusters': {'n_low_relevance_pages'},
     'Referring Domain Strength': {'domain_rating'},
@@ -1265,18 +1236,6 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'fail_if': ['n_page_types_with_sd_errors > 0', 'pct_pages_expected_type < 0.60'],
         'warn_if': [],
         'pass_if': ['pct_pages_expected_type >= 0.90'],
-    },
-    'Keyword Mapping Coverage': {
-        'na_if': [],
-        'fail_if': ['has_keyword_mapping == 0', 'keyword_mapping_age_months > 24', 'pct_top200_nonbrand_mapped < 0.40'],
-        'warn_if': [],
-        'pass_if': ['keyword_mapping_age_months < 12', 'pct_top200_nonbrand_mapped >= 0.70'],
-    },
-    'Keyword Cannibalisation': {
-        'na_if': [],
-        'fail_if': ['pct_top200_nonbrand_cannibalised > 0.15'],
-        'warn_if': [],
-        'pass_if': ['pct_top200_nonbrand_cannibalised <= 0.05'],
     },
     'Content Freshness': {
         'na_if': [],
@@ -1548,7 +1507,7 @@ SEO_SF_ISSUE_MAP: list[tuple[str, str, str, str, str]] = [
     ('Content', 'Soft 404 Pages', 'Warning', 'High', 'Error Handling & Soft 404s'),
     ('Content', 'Lorem Ipsum Placeholder', 'Warning', 'High', 'Content Hygiene'),
     ('Content', 'Near Duplicates', 'Warning', 'Medium', 'Duplicate & Thin Content'),
-    ('Content', 'Semantically Similar', 'Warning', 'Medium', 'Keyword Cannibalisation'),
+    ('Content', 'Semantically Similar', 'Warning', 'Medium', 'Duplicate & Thin Content'),
     ('Content', 'Low Relevance Content', 'Warning', 'Low', 'Topic Clusters'),
     ('Content', 'Low Content Pages', 'Opportunity', 'Medium', 'Duplicate & Thin Content'),
     ('Content', 'Readability Difficult', 'Opportunity', 'Low', 'Answer-First Content'),
@@ -2198,8 +2157,8 @@ STATUS RULES:
   topics are excluded from the score. In every other case not_applicable = false.
 - Topics marked REPORT ONLY are evaluated and shown, but excluded from the category score.
 - When crawl_summary.search_console is false, a topic with a "Without Search Console" line was
-  measured on that basis (mostly Ahrefs estimates): say so in the explanation, e.g. "based on
-  Ahrefs traffic estimates". Topics that cannot be measured without Search Console arrive in
+  measured on that basis (mostly the key pages from the XML sitemaps): say so in the explanation,
+  e.g. "key pages from the sitemap". Topics that cannot be measured without Search Console arrive in
   the TOPICS WITH NO DATA SOURCE list; their action is to request Search Console access.
 
 LEVEL: copy the topic's maturity tier from its Ref line, in lower case (Basic -> basic,
@@ -2275,7 +2234,8 @@ Can search engines and AI crawlers reach, render and index the site?
     Metrics:
       n_variants_tested: URL variants tested (http/https, www/non-www, trailing slash,
         uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks
-        (without Search Console access: by Ahrefs organic traffic)
+        (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps
+        ranked by Screaming Frog Unique Inlinks)
       n_variants_ok: Variants that 301-redirect in one hop to, or canonicalise to, the preferred
         URL
       n_variants_200_no_canonical: Variants that return 200 without a canonical to the preferred
@@ -2287,8 +2247,8 @@ Can search engines and AI crawlers reach, render and index the site?
     Warn: between the pass and the fail condition.
     Fail: Any variant returns 200 without a canonical to the preferred URL, or reaches it
       through a chain or a 302.
-    Without Search Console: Top 50 URLs by Ahrefs organic traffic instead of Search Console
-      clicks.
+    Without Search Console: Top 50 key pages instead of the top 50 by Search Console clicks:
+      indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.
     Python rule: fail if n_variants_200_no_canonical > 0 or n_variants_chain_or_302 > 0; pass if
       n_variants_ok == n_variants_tested
 
@@ -2423,7 +2383,8 @@ Can search engines and AI crawlers reach, render and index the site?
       pct_indexable_canonical_issue: Distinct indexable URLs in any Screaming Frog issue mapped
         to this topic / indexable HTML URLs
       n_top100_canonical_issue: Top 100 URLs by Search Console clicks (90 days) with a canonical
-        issue (without Search Console access: top 100 by Ahrefs organic traffic)
+        issue (without Search Console access: the top 100 key pages: indexable URLs in the XML
+        sitemaps ranked by Screaming Frog Unique Inlinks)
       n_top100_canonical_overridden: Top 100 URLs where Google selected a different canonical
         than the declared one
     Pass: At most 1% of indexable URLs have a canonical issue and 0 issues on the top 100 URLs
@@ -2431,8 +2392,9 @@ Can search engines and AI crawlers reach, render and index the site?
     Warn: between the pass and the fail condition.
     Fail: More than 5% of indexable URLs affected, or Google overrides the declared canonical on
       top-100 URLs.
-    Without Search Console: Top 100 URLs by Ahrefs organic traffic; whether Google overrides the
-      declared canonical is not checked.
+    Without Search Console: Top 100 key pages (indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks); whether Google overrides the declared canonical is not
+      checked.
     Python rule: fail if pct_indexable_canonical_issue > 0.05 or n_top100_canonical_overridden >
       0; pass if pct_indexable_canonical_issue <= 0.01 and n_top100_canonical_issue == 0
 
@@ -2635,12 +2597,14 @@ Do URLs and internal links make key pages easy to find and crawl?
       the homepage.
     Metrics:
       n_top100_depth_over_3: Top 100 URLs by Search Console clicks (90 days) more than 3 clicks
-        from the homepage (without Search Console access: top 100 by Ahrefs organic traffic)
+        from the homepage (without Search Console access: the top 100 key pages: indexable URLs
+        in the XML sitemaps ranked by Screaming Frog Unique Inlinks)
       n_top100_depth_over_4: Top 100 URLs more than 4 clicks from the homepage
     Pass: 100% of the top 100 URLs are 3 clicks or fewer from the homepage.
     Warn: between the pass and the fail condition.
     Fail: Any top-100 URL is deeper than 4 clicks.
-    Without Search Console: Top 100 URLs by Ahrefs organic traffic.
+    Without Search Console: Top 100 key pages: indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks.
     Python rule: fail if n_top100_depth_over_4 > 0; pass if n_top100_depth_over_3 == 0
 
 - Orphan Pages:
@@ -2650,14 +2614,14 @@ Do URLs and internal links make key pages easy to find and crawl?
     Metrics:
       pct_click_urls_orphaned: URLs with Search Console clicks (90 days) without internal
         inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search
-        Console access: URLs from the sitemaps and the Ahrefs top pages)
+        Console access: URLs from the XML sitemaps)
       pct_click_urls_weakly_linked: URLs with clicks that are orphaned or only linked from
         non-indexable pages / URLs with clicks
     Pass: At most 1% of URLs with organic clicks are orphaned.
     Warn: between the pass and the fail condition.
     Fail: More than 5% of URLs with clicks are orphaned or only linked from non-indexable pages.
-    Without Search Console: URLs from the sitemaps and the Ahrefs top pages instead of URLs with
-      Search Console clicks.
+    Without Search Console: URLs from the XML sitemaps instead of URLs with Search Console
+      clicks.
     Python rule: fail if pct_click_urls_weakly_linked > 0.05; pass if pct_click_urls_orphaned <=
       0.01
 """.strip(),
@@ -2748,13 +2712,13 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Metrics:
       pct_impressions_missing_or_duplicate_meta: Search Console impressions (90 days) on
         indexable pages with a missing or duplicate meta description / impressions on all
-        crawled indexable pages (without Search Console access: weighted by Ahrefs organic
-        traffic)
+        crawled indexable pages (without Search Console access: share of the indexable URLs in
+        the XML sitemaps, unweighted)
     Pass: At most 10% of impressions land on pages with a missing or duplicate description.
     Warn: between the pass and the fail condition.
     Fail: More than 30% of impressions land on pages with a missing or duplicate description.
-    Without Search Console: Weighted by Ahrefs organic traffic instead of Search Console
-      impressions.
+    Without Search Console: Share of the indexable URLs in the XML sitemaps (unweighted) instead
+      of weighting by Search Console impressions.
     Python rule: fail if pct_impressions_missing_or_duplicate_meta > 0.30; pass if
       pct_impressions_missing_or_duplicate_meta <= 0.10
 
@@ -2850,47 +2814,6 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Python rule: fail if n_page_types_with_sd_errors > 0 or pct_pages_expected_type < 0.60; pass
       if pct_pages_expected_type >= 0.90
 
-- Keyword Mapping Coverage:
-    Ref: SEO-22 · Tier Expert · Impact 4 · Confidence 3 · Ease 4
-    Audit logic: Compare the top 200 non-brand Search Console queries with the keyword-to-URL
-      mapping in the brand context, and use Screaming Frog Semantic Search (Keyword Mapping) to
-      check that the mapped URL is the most relevant page.
-    Metrics:
-      has_keyword_mapping: 1 if a keyword-to-URL mapping is in the brand context, else 0
-      keyword_mapping_age_months: Age of the keyword mapping in months
-      pct_top200_nonbrand_mapped: Top 200 non-brand Search Console queries (90 days) covered by
-        the keyword mapping / 200 (without Search Console access: top 200 non-brand Ahrefs
-        keywords by traffic)
-    Pass: A keyword mapping younger than 12 months exists and covers at least 70% of the top 200
-      non-brand queries.
-    Warn: between the pass and the fail condition.
-    Fail: No keyword mapping in the brand context, or it is older than 24 months or covers less
-      than 40% of the queries.
-    Without Search Console: Top 200 non-brand Ahrefs organic keywords by traffic instead of
-      Search Console queries.
-    Python rule: fail if has_keyword_mapping == 0 or keyword_mapping_age_months > 24 or
-      pct_top200_nonbrand_mapped < 0.40; pass if keyword_mapping_age_months < 12 and
-      pct_top200_nonbrand_mapped >= 0.70
-
-- Keyword Cannibalisation:
-    Ref: SEO-23 · Tier Expert · Impact 3 · Confidence 3 · Ease 4
-    Audit logic: From the Search Console bulk export (90 days, non-brand), find queries where 2
-      or more URLs each receive at least 20% of impressions; add Screaming Frog Content:
-      Semantically Similar (cosine 0.95 or higher).
-    Metrics:
-      pct_top200_nonbrand_cannibalised: Top 200 non-brand queries (90 days) where 2 or more URLs
-        each receive at least 20% of the impressions / 200 (without Search Console access: top
-        200 non-brand Ahrefs keywords for which 2 or more URLs rank)
-      n_semantically_similar_pages: Pages flagged as Content: Semantically Similar (cosine 0.95
-        or higher; informational)
-    Pass: At most 5% of the top 200 non-brand queries are cannibalised.
-    Warn: between the pass and the fail condition.
-    Fail: More than 15% of the top 200 non-brand queries are cannibalised.
-    Without Search Console: Top 200 non-brand Ahrefs keywords for which 2 or more URLs of the
-      site rank.
-    Python rule: fail if pct_top200_nonbrand_cannibalised > 0.15; pass if
-      pct_top200_nonbrand_cannibalised <= 0.05
-
 - Content Freshness:
     Ref: AI-37 · Tier Expert · Impact 3 · Confidence 3 · Ease 4
     Audit logic: Extract the visible update date and the schema dateModified from key content
@@ -2927,18 +2850,21 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
 - FAQ & Question Coverage:
     Ref: AI-32 · Tier Expert · Impact 2 · Confidence 3 · Ease 4
     Audit logic: Detect FAQ blocks and FAQPage markup on the top 50 landing pages (custom
-      extraction) and match question-type Search Console queries and brand questions (reviews,
-      delivery, complaints) against them.
+      extraction) and check with a fixed LLM step whether each page answers its 3 main questions
+      (chosen from the page itself) and the brand questions from the intake (reviews, delivery,
+      complaints). Keyword research is not part of the pulse.
     Metrics:
-      pct_top50_questions_answered: Top 50 landing pages whose main question-type queries
-        (Search Console; without access: Ahrefs question keywords) and brand questions (reviews,
-        delivery, complaints) are answered in a FAQ block / 50
+      pct_top50_questions_answered: Top 50 landing pages by Search Console clicks (without
+        access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming
+        Frog Unique Inlinks) that answer their 3 main questions, chosen by the LLM step from the
+        page itself, and the brand questions from the intake (reviews, delivery, complaints) in
+        a FAQ block / 50
     Pass: At least 50% of the top 50 landing pages answer their main questions in a FAQ,
       including brand questions.
     Warn: between the pass and the fail condition.
     Fail: Less than 20% of the top 50 landing pages answer their main questions.
-    Without Search Console: Question keywords from Ahrefs instead of Search Console question
-      queries.
+    Without Search Console: Top 50 key pages (indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks) instead of the top landing pages by clicks.
     Python rule: fail if pct_top50_questions_answered < 0.20; pass if
       pct_top50_questions_answered >= 0.50
 
@@ -3084,10 +3010,12 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
 - Anchor Text Profile:
     Ref: SEO-26 · Tier Advanced · Impact 2 · Confidence 3 · Ease 1
     Audit logic: Classify the anchors of referring domains (Ahrefs) as brand, URL, generic or
-      exact-match commercial, using the keyword mapping in the brand context.
+      exact-match commercial, using the brand terms in the brand context (and the keyword
+      mapping when available).
     Metrics:
       pct_refdomains_exact_match_anchor: Referring domains using exact-match commercial anchors
-        (classified with the keyword mapping) / referring domains
+        (classified with the brand terms in the brand context, and the keyword mapping when
+        available) / referring domains
     Pass: At most 10% of referring domains use exact-match commercial anchors.
     Warn: between the pass and the fail condition.
     Fail: More than 25% of referring domains use exact-match commercial anchors.
@@ -3199,8 +3127,8 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
 
 - Wikipedia & Wikidata:
     Ref: AI-20 · Tier Champion · Impact 2 · Confidence 2 · Ease 1
-    Audit logic: Check backlinks from *.wikipedia.org (Ahrefs) and a Wikidata item whose
-      official website is the domain.
+    Audit logic: Check Wikipedia articles that link to the domain (Wikipedia API) and a Wikidata
+      item whose official website is the domain.
     Metrics:
       is_notable: 1 if the brand meets Wikipedia's notability rules, else 0
       has_wikidata_item: 1 if a Wikidata item lists the domain as official website, else 0
@@ -3286,7 +3214,8 @@ Can AI search bots and agents access, quote and act on the site?
     Metrics:
       n_top_urls_nosnippet_undocumented: Top 100 URLs by Search Console clicks with nosnippet or
         max-snippet:0 that the brand context does not document (without Search Console access:
-        top 100 by Ahrefs organic traffic)
+        the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog
+        Unique Inlinks)
       n_top_urls_partial_snippet_undocumented: Top 100 URLs with data-nosnippet or a max-snippet
         limit that the brand context does not document
     Pass: No unintended snippet restrictions on top URLs; any restriction matches the brand
@@ -3294,7 +3223,8 @@ Can AI search bots and agents access, quote and act on the site?
     Warn: between the pass and the fail condition.
     Fail: nosnippet or max-snippet:0 on valuable pages without a documented reason, which also
       removes them from AI Overviews and AI Mode.
-    Without Search Console: Top 100 URLs by Ahrefs organic traffic.
+    Without Search Console: Top 100 key pages: indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks.
     Python rule: fail if n_top_urls_nosnippet_undocumented > 0; pass if
       n_top_urls_partial_snippet_undocumented == 0
 
