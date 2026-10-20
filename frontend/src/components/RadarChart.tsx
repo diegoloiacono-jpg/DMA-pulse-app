@@ -17,6 +17,8 @@ interface Props {
   noDataIndices?: number[];
   /** Indices of categories boosted by expert manual verification */
   expertVerifiedIndices?: number[];
+  /** Hide the score -> maturity legend (SEO derives its maturity from a staircase, not the score) */
+  hideMaturityScale?: boolean;
 }
 
 const CORPORATE_MAGENTA = "hsl(336, 100%, 50%)";
@@ -36,7 +38,7 @@ const CONFIDENCE_STYLES: Record<ConfidenceLevel, { color: string; label: string;
 const escapeXml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export default function RadarChart({ categories, label, showBenchmark = true, benchmarkScore = 50, confidence, noDataIndices = [], expertVerifiedIndices = [] }: Props) {
+export default function RadarChart({ categories, label, showBenchmark = true, benchmarkScore = 50, confidence, noDataIndices = [], expertVerifiedIndices = [], hideMaturityScale = false }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const size = 500;
   const cx = size / 2;
@@ -384,6 +386,7 @@ export default function RadarChart({ categories, label, showBenchmark = true, be
       </div>
 
       {/* Maturity scale */}
+      {!hideMaturityScale && (
       <div className="text-center text-[10px] text-muted-foreground border border-border rounded-lg px-4 py-2">
         <p className="font-medium mb-0.5">Maturity score levels:</p>
         <div className="flex gap-6 justify-center">
@@ -393,6 +396,7 @@ export default function RadarChart({ categories, label, showBenchmark = true, be
           <span>76-100 Champion</span>
         </div>
       </div>
+      )}
     </div>
   );
 }

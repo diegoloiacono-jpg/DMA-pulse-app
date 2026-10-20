@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Literal
 
@@ -60,6 +60,17 @@ class ScoringOutput(BaseModel):
     omnichannel_score: float | None = None
     maturity_label: Literal["Basic", "Advanced", "Expert", "Champion"]
     quick_wins: list[PrioritizedWin]
+    # SEO only: maturity staircase detail (tiers reached, basic_complete) from seo_maturity()
+    maturity: dict | None = None
+
+
+class SeoAuditParams(BaseModel):
+    """Which site and data an SEO audit reads from BigQuery (dataset SEO_BQ_DATASET)."""
+    domain: str                     # host of the site, e.g. www.client.nl (www. is ignored when matching)
+    market: str = ""                # e.g. NL; empty = all markets of the domain
+    as_of: date | None = None       # read the latest data on or before this date; default today
+    max_age_days: int = 90          # ignore metrics and crawls older than this
+    search_console: bool = False    # the first pulse usually runs without the client's Search Console
 
 
 class AuditRunRequest(BaseModel):
@@ -67,6 +78,8 @@ class AuditRunRequest(BaseModel):
     account_id: str | None = None   # ACCOUNT_ID row filter; overrides DEFAULT_ACCOUNT_ID from env if provided
     dataset: str | None = None      # overrides BQ_DATASET env var if provided
     lookback_days: int = 30         # stats window; shorten while the Supermetrics connector backfills
+    platform: Literal["sea-google", "seo"] = "sea-google"
+    seo: SeoAuditParams | None = None   # required when platform == "seo"
 
 
 class AuditState(BaseModel):

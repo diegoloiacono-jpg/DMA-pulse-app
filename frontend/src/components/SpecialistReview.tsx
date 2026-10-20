@@ -11,12 +11,15 @@ import {
 } from "@/components/ui/select";
 import { apiClient, SpecialistResult } from "@/lib/apiClient";
 import { categoryLabel } from "@/lib/categoryLabel";
+import { SEO_PLATFORM_ID } from "@/data/seoPulse";
 
 interface Props {
   auditId: string;
   results: SpecialistResult[];
   onScoringStarted: () => void;
   skipValidation?: boolean;
+  /** "seo": per-topic N/A in the status menu, and the level column shows the fixed tier */
+  platformId?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,7 +30,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 const LEVEL_ORDER = ["basic", "advanced", "expert", "champion"] as const;
 
-export default function SpecialistReview({ auditId, results, onScoringStarted, skipValidation }: Props) {
+export default function SpecialistReview({ auditId, results, onScoringStarted, skipValidation, platformId }: Props) {
+  const isSeo = platformId === SEO_PLATFORM_ID;
   const [edited, setEdited] = useState<Record<string, SpecialistResult>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -81,7 +85,9 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                 {categoryLabel(cat)}
               </h3>
               <Badge variant="outline" className="text-xs">N/A</Badge>
-              <span className="text-xs text-muted-foreground">Not applicable for B2B brands</span>
+              <span className="text-xs text-muted-foreground">
+                {isSeo ? "Not applicable to this site" : "Not applicable for B2B brands"}
+              </span>
             </div>
           );
         }
@@ -96,7 +102,7 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Topic</th>
                   <th className="px-3 py-2 text-left font-medium">Status</th>
-                  <th className="px-3 py-2 text-left font-medium">Level</th>
+                  <th className="px-3 py-2 text-left font-medium">{isSeo ? "Tier" : "Level"}</th>
                   <th className="px-3 py-2 text-left font-medium">Action</th>
                   <th className="px-3 py-2 text-left font-medium">Explanation</th>
                 </tr>
@@ -112,6 +118,32 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
 
                         {/* Status selector */}
                         <td className="px-3 py-2">
+                          {isSeo ? (
+                            <Select
+                              value={cur.not_applicable ? "na" : cur.status}
+                              onValueChange={(v) =>
+                                update(r, v === "na"
+                                  ? { status: "pass", not_applicable: true }
+                                  : { status: v as SpecialistResult["status"], not_applicable: false })
+                              }
+                            >
+                              <SelectTrigger className="h-7 w-24 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(["pass", "warn", "fail", "na"] as const).map((s) => (
+                                  <SelectItem key={s} value={s}>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${STATUS_COLORS[s] ?? "text-muted-foreground"}`}
+                                    >
+                                      {s === "na" ? "n/a" : s}
+                                    </Badge>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
                           <Select
                             value={cur.status}
                             onValueChange={(v) =>
@@ -134,10 +166,14 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                               ))}
                             </SelectContent>
                           </Select>
+                          )}
                         </td>
 
-                        {/* Level selector */}
+                        {/* Level selector (SEO: the topic's fixed tier, not editable) */}
                         <td className="px-3 py-2">
+                          {isSeo ? (
+                            <Badge variant="outline" className="text-xs capitalize">{cur.level}</Badge>
+                          ) : (
                           <Select
                             value={cur.level}
                             onValueChange={(v) =>
@@ -155,6 +191,7 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                               ))}
                             </SelectContent>
                           </Select>
+                          )}
                         </td>
 
                         <td className="px-3 py-2 text-muted-foreground max-w-xs text-xs">

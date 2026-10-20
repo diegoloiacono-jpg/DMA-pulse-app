@@ -3,15 +3,18 @@ import { AlertTriangle, ArrowRight, Check, ChevronDown, X } from "lucide-react";
 import { getMaturityColor, getScoreStatus, type MaturityLevel } from "@/data/auditData";
 import type { CategoryScore, SpecialistResult } from "@/lib/apiClient";
 import { categoryLabel } from "@/lib/categoryLabel";
+import { SEO_REPORT_ONLY, SEO_UNSCORED_SOURCES } from "@/data/seoPulse";
 
 interface Props {
   categoryScores: CategoryScore[];
   specialistResults: SpecialistResult[];
+  /** SEO: "passed" counts status pass (level is the topic's fixed tier) and n/a topics are left out */
+  statusBased?: boolean;
 }
 
 const PASSING_LEVELS = new Set(["advanced", "expert", "champion"]);
 
-export default function ScoringCategoryBreakdown({ categoryScores, specialistResults }: Props) {
+export default function ScoringCategoryBreakdown({ categoryScores, specialistResults, statusBased }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const byCategory = useMemo(() => {
@@ -34,13 +37,18 @@ export default function ScoringCategoryBreakdown({ categoryScores, specialistRes
         <div key={name} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-3">
           <span className="font-mono text-base font-bold text-muted-foreground shrink-0">N/A</span>
           <span className="text-xs font-semibold text-foreground truncate">{categoryLabel(name)}</span>
-          <span className="text-[10px] text-muted-foreground">not applicable for B2B</span>
+          <span className="text-[10px] text-muted-foreground">{statusBased ? "not applicable to this site" : "not applicable for B2B"}</span>
         </div>
       ))}
       {categoryScores.map((cat) => {
         const topics = byCategory.get(cat.name) ?? [];
-        const total = topics.length;
-        const passed = topics.filter(t => PASSING_LEVELS.has(t.level)).length;
+        const scoredTopics = statusBased
+          ? topics.filter(t => !t.not_applicable && !SEO_REPORT_ONLY.includes(t.topic) && !SEO_UNSCORED_SOURCES.includes(t.source))
+          : topics;
+        const total = scoredTopics.length;
+        const passed = statusBased
+          ? scoredTopics.filter(t => t.status === "pass").length
+          : topics.filter(t => PASSING_LEVELS.has(t.level)).length;
         const pct = Math.round(cat.pass_rate);
         const status = getScoreStatus(pct);
         const isExpanded = expanded === cat.name;
@@ -103,7 +111,8 @@ export default function ScoringCategoryBreakdown({ categoryScores, specialistRes
                             {t.topic}
                           </td>
                           <td className="py-1.5 px-2 text-center">
-                            {t.status === "pass" ? <Check className="w-3.5 h-3.5 text-score-excellent mx-auto" />
+                            {t.not_applicable ? <span className="text-[10px] text-muted-foreground">n/a</span>
+                              : t.status === "pass" ? <Check className="w-3.5 h-3.5 text-score-excellent mx-auto" />
                               : t.status === "fail" ? <X className="w-3.5 h-3.5 text-score-poor mx-auto" />
                               : <AlertTriangle className="w-3.5 h-3.5 text-score-warning mx-auto" />}
                           </td>

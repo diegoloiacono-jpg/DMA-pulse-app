@@ -14,6 +14,9 @@ import { categoryLabel } from "@/lib/categoryLabel";
 import { platforms } from "@/data/auditData";
 import ScoringCategoryBreakdown from "@/components/ScoringCategoryBreakdown";
 import RadarChart from "@/components/RadarChart";
+import SeoStaircase from "@/components/SeoStaircase";
+import { seoMaturityText } from "@/utils/seo";
+import { SEO_PLATFORM_ID, SEO_PLATFORM_LABEL } from "@/data/seoPulse";
 
 interface Props {
   auditId: string;
@@ -22,6 +25,8 @@ interface Props {
   benchmarkScore: number;
   onComplete: (output: ScoringOutput) => void;
   onBack?: () => void;
+  /** Demo: approve locally, without calling the backend */
+  skipValidation?: boolean;
 }
 
 const MATURITY_COLORS: Record<string, string> = {
@@ -31,13 +36,16 @@ const MATURITY_COLORS: Record<string, string> = {
   Basic: "text-score-poor",
 };
 
-export default function ScoringReview({ auditId, output, specialistResults, benchmarkScore, onComplete, onBack }: Props) {
+export default function ScoringReview({ auditId, output, specialistResults, benchmarkScore, onComplete, onBack, skipValidation }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [edited, setEdited] = useState<Record<string, PrioritizedWin>>({});
 
+  const isSeo = output.platform_id === SEO_PLATFORM_ID;
   const platformLabel = useMemo(
-    () => platforms.find(p => p.id === output.platform_id)?.shortName ?? output.platform_id,
-    [output.platform_id]
+    () => isSeo
+      ? SEO_PLATFORM_LABEL
+      : platforms.find(p => p.id === output.platform_id)?.shortName ?? output.platform_id,
+    [output.platform_id, isSeo]
   );
 
   const winKey = (w: PrioritizedWin) => `${w.category}::${w.topic}`;
@@ -60,6 +68,10 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
   };
 
   const handleApprove = async () => {
+    if (skipValidation) {
+      onComplete({ ...output, quick_wins: wins });
+      return;
+    }
     setSubmitting(true);
     try {
       const overrides = Object.values(edited);
@@ -89,7 +101,9 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
             <span className={`text-2xl font-bold tabular-nums ${MATURITY_COLORS[output.maturity_label] ?? ""}`}>
               {output.platform_score.toFixed(0)}
             </span>
-            <span className="text-[10px] text-muted-foreground leading-tight">{output.maturity_label}</span>
+            <span className="text-[10px] text-muted-foreground leading-tight">
+              {seoMaturityText(output.maturity, output.maturity_label)}
+            </span>
           </div>
           <Button onClick={handleApprove} disabled={submitting}>
             {submitting ? (
@@ -102,6 +116,14 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
         </div>
       </div>
 
+      {/* SEO: maturity staircase behind the label */}
+      {isSeo && output.maturity && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold">Maturity staircase</h3>
+          <SeoStaircase maturity={output.maturity} />
+        </div>
+      )}
+
       {/* Category radar */}
       <div className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -113,6 +135,7 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
           showBenchmark
           benchmarkScore={benchmarkScore}
           confidence="high"
+          hideMaturityScale={isSeo}
         />
       </div>
 
@@ -184,7 +207,7 @@ export default function ScoringReview({ auditId, output, specialistResults, benc
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <TrendingUp className="h-4 w-4" /> Category Breakdown
         </h3>
-        <ScoringCategoryBreakdown categoryScores={output.category_scores} specialistResults={specialistResults} />
+        <ScoringCategoryBreakdown categoryScores={output.category_scores} specialistResults={specialistResults} statusBased={isSeo} />
       </div>
     </div>
   );

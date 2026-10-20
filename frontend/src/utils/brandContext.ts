@@ -3,6 +3,8 @@
  * dashboardLogic and every component can read the same values.
  */
 
+import type { SeoContextPayload } from "@/lib/apiClient";
+
 export type BusinessModel = "B2B" | "B2C" | "D2C" | "";
 
 /** Platform option keys shown in Brand Context platform selector.
@@ -46,6 +48,8 @@ export interface BrandContext {
   hasCrmData?: boolean;
   /** Whether the brand has a product feed (Shopping / PMax feed campaigns) */
   hasProductFeed?: boolean;
+  /** SEO tab only: SEO brand context fields (pages/SeoAudit.tsx) */
+  seo?: SeoContextPayload;
 }
 
 export const DEFAULT_BRAND_CONTEXT: BrandContext = {

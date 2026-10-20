@@ -1,0 +1,19 @@
+# Who must approve what. With a ruleset on master ("Require a pull request", 0 required approvals,
+# "Require review from Code Owners"), a pull request that changes a file with an owner can only be
+# merged after that owner approved it. The last matching line wins.
+
+# Paid media and the shared app code: Diego approves every change
+*                                               @diegoloiacono-jpg
+
+# SEO & AI Search (Wouter): deliberately no owner, so SEO-only pull requests need no approval and
+# Wouter merges them himself. Anything outside these paths still needs Diego (see seo/SEO_HANDOFF.md).
+/seo/
+/backend/app/services/seo_criteria.py
+/backend/app/services/seo_pipeline.py
+/frontend/src/pages/SeoAudit.tsx
+/frontend/src/components/Seo*.tsx
+/frontend/src/components/OrganicGroupCard.tsx
+/frontend/src/data/seoPulse.ts
+/frontend/src/data/seoDemo.ts
+/frontend/src/utils/seo.ts
+/frontend/src/utils/seoSummary.ts

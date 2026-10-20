@@ -12,6 +12,44 @@ export interface BrandContextPayload {
   industry?: string;
   hasCrmData?: boolean;
   hasProductFeed?: boolean;
+  /** SEO platform only (backend models/brand.py SeoContext) */
+  seo?: SeoContextPayload;
+}
+
+/** Brand context fields used by the SEO platform only (see seo/SEO_METRICS.md). */
+export interface SeoContextPayload {
+  siteUrl: string;
+  brandTerms: string[];
+  competitors: string[];
+  pageTypes: Record<string, string>;
+  keywordMappingUrl: string;
+  keywordMappingDate: string;
+  hasOnlineSales: boolean;
+  lowSearchVolume: boolean;
+  locations: number;
+  reviewPlatforms: string[];
+  expectedProfiles: string[];
+  aiBotPolicy: Record<string, string>;
+  snippetExceptions: string[];
+  aiShoppingPlatforms: string[];
+}
+
+/** Which site and data an SEO audit reads from BigQuery (backend SeoAuditParams). */
+export interface SeoAuditParams {
+  domain: string;
+  market?: string;
+  as_of?: string;          // YYYY-MM-DD; default today
+  max_age_days?: number;   // default 90
+  search_console?: boolean;
+}
+
+/** SEO maturity staircase (seo_criteria.seo_maturity). */
+export interface SeoMaturity {
+  level: "Basic" | "Advanced" | "Expert" | "Champion";
+  basic_complete: boolean;
+  tiers: Record<string, { pass: number; warn: number; fail: number; score: number | null; reached: boolean }>;
+  threshold: number;
+  warn_weight: number;
 }
 
 export interface SpecialistResult {
@@ -52,6 +90,8 @@ export interface ScoringOutput {
   omnichannel_score: number | null;
   maturity_label: "Basic" | "Advanced" | "Expert" | "Champion";
   quick_wins: PrioritizedWin[];
+  /** SEO only: staircase detail behind maturity_label */
+  maturity?: SeoMaturity | null;
 }
 
 export type AuditStatus =
@@ -131,6 +171,27 @@ export const apiClient = {
         lookback_days: lookbackDays ?? undefined,
       }),
     });
+  },
+
+  runSeoAudit(brandContext: BrandContextPayload, seo: SeoAuditParams) {
+    return request<{ audit_id: string; status: AuditStatus }>("/api/audit/run", {
+      method: "POST",
+      body: JSON.stringify({ brand_context: brandContext, platform: "seo", seo }),
+    });
+  },
+
+  /** True when the backend runs SEO audits (branch SEO-feature). Never throws and never reloads. */
+  async seoSupport(): Promise<boolean> {
+    try {
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/api/audit/seo/support`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return false;
+      return (await res.json())?.seo === true;
+    } catch {
+      return false;
+    }
   },
 
   getAudit(auditId: string) {

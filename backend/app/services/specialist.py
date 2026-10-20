@@ -900,21 +900,27 @@ def _normalise_topics(
     return output
 
 
-def _build_response_schema(topics: list[str]) -> types.Schema:
-    """Build a JSON schema that constrains topic names, status, and level."""
+def _build_response_schema(topics: list[str], allow_not_applicable: bool = False) -> types.Schema:
+    """Build a JSON schema that constrains topic names, status, and level.
+
+    allow_not_applicable adds an optional per-topic not_applicable flag (used by SEO).
+    """
+    properties = {
+        "topic": types.Schema(type=types.Type.STRING, enum=topics),
+        "category": types.Schema(type=types.Type.STRING),
+        "status": types.Schema(type=types.Type.STRING, enum=["pass", "fail", "warn"]),
+        "level": types.Schema(type=types.Type.STRING, enum=["basic", "advanced", "expert", "champion"]),
+        "source": types.Schema(type=types.Type.STRING),
+        "action": types.Schema(type=types.Type.STRING),
+        "explanation": types.Schema(type=types.Type.STRING),
+    }
+    if allow_not_applicable:
+        properties["not_applicable"] = types.Schema(type=types.Type.BOOLEAN)
     return types.Schema(
         type=types.Type.ARRAY,
         items=types.Schema(
             type=types.Type.OBJECT,
-            properties={
-                "topic": types.Schema(type=types.Type.STRING, enum=topics),
-                "category": types.Schema(type=types.Type.STRING),
-                "status": types.Schema(type=types.Type.STRING, enum=["pass", "fail", "warn"]),
-                "level": types.Schema(type=types.Type.STRING, enum=["basic", "advanced", "expert", "champion"]),
-                "source": types.Schema(type=types.Type.STRING),
-                "action": types.Schema(type=types.Type.STRING),
-                "explanation": types.Schema(type=types.Type.STRING),
-            },
+            properties=properties,
             required=["topic", "category", "status", "level", "source", "action", "explanation"],
         ),
     )
@@ -925,13 +931,23 @@ def _call_gemini(
     data_json: str,
     topics: list[str],
     brand_context: "BrandContext | None" = None,
+    *,
+    system_prompt: str | None = None,
+    gaps: list[str] | None = None,
+    brand_block: str | None = None,
+    allow_not_applicable: bool = False,
 ) -> list[SpecialistResult]:
-    """Send one Gemini request for a single category and parse the result."""
+    """Send one Gemini request for a single category and parse the result.
+
+    The keyword arguments let another platform (SEO, see seo_pipeline.py) pass its own
+    system prompt, data gaps and brand context block; left out, Google Ads is used.
+    """
     topic_list = "\n".join(f"  - {t}" for t in topics)
     # Topics with no data source at all in the current schema. Naming them here
     # keeps the stub decision in one place (data_extraction.DATA_GAPS) instead of
     # relying on the model to infer it from the criteria text alone.
-    gaps = DATA_GAPS.get(category, [])
+    if gaps is None:
+        gaps = DATA_GAPS.get(category, [])
     gap_block = ""
     if gaps:
         gap_lines = "\n".join(f"  - {t}" for t in gaps)
@@ -948,8 +964,9 @@ def _call_gemini(
         f"Data (JSON):\n{data_json}"
     )
 
-    brand_block = _format_brand_context(brand_context) if brand_context else ""
-    full_prompt = _SYSTEM_PROMPT + "\n\n" + brand_block + user_prompt
+    if brand_block is None:
+        brand_block = _format_brand_context(brand_context) if brand_context else ""
+    full_prompt = (system_prompt or _SYSTEM_PROMPT) + "\n\n" + brand_block + user_prompt
 
     response = _get_client().models.generate_content(
         model=_GEMINI_MODEL,
@@ -958,7 +975,7 @@ def _call_gemini(
             temperature=0.1,
             max_output_tokens=8192,
             response_mime_type="application/json",
-            response_schema=_build_response_schema(topics),
+            response_schema=_build_response_schema(topics, allow_not_applicable),
             thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
