@@ -36,7 +36,7 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 |---|---|---|
 | 1 | Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (authority: backlinks and Domain Rating) | 47 |
 | 2 | GA4 BigQuery export & Admin API, Merchant Center data transfer, SEO intake form | 5 |
-| 3 | Fixed-prompt LLM steps, Ahrefs Brand Radar, Business Profile API, Bing Webmaster API, review platforms, Wikidata, verified-agent tests | 12 |
+| 3 | Fixed-prompt LLM steps, Ahrefs Brand Radar, Business Profile API, Bing Webmaster API, review platforms, Wikidata, verified-agent tests | 13 |
 
 Topics outside phase 1 start in `SEO_DATA_GAPS`.
 
@@ -111,7 +111,7 @@ Each topic has a fixed tier (`SEO_TOPIC_TIER`). `seo_maturity()` turns the statu
 | Basic | Foundation. Search engines and AI crawlers can reach, render and index the site, the core on-page elements are in place and measurement works. Without these, nothing else pays off. | 20 |
 | Advanced | In order at scale. Technique, structure, performance and on-page are clean across the whole site, including the long tail. | 25 |
 | Expert | Managed. Content is steered by search demand and questions, authority is actively built and AI visibility is measured. | 11 |
-| Champion | Leading. Ahead of competitors on authority, a recognised entity, and ready for AI agents and agentic commerce. | 8 |
+| Champion | Leading. Ahead of competitors on authority, a recognised entity, and ready for AI agents and agentic commerce. | 9 |
 
 ## Metrics per topic
 
@@ -770,3 +770,18 @@ Rule: `na if is_agentic_checkout_eligible == 0`; `fail if n_agentic_checkout_sur
 | `is_agent_policy_documented` | Intake | 1 if the CDN/WAF policy for verified agents is documented in the brand context, else 0 |
 
 Rule: `fail if n_verified_agent_blocks > 0`; `pass if is_agent_policy_documented == 1`
+
+**Agent Catalog Access (UCP)** (AI-N13 · I2 C2 E2 · tier Champion, phase 3)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `has_online_sales` | Intake | 1 if the site sells online (brand context), else 0 |
+| `has_ucp_profile` | Site check | 1 if /.well-known/ucp returns a valid Universal Commerce Protocol profile, else 0 |
+| `has_ucp_catalog_search` | Site check | 1 if the profile offers dev.ucp.shopping.catalog.search (any transport), else 0 |
+| `has_ucp_catalog_rest` *(optional)* | Site check | 1 if catalog search is offered over the REST binding, which the agent test uses, else 0 (MCP only) |
+| `pct_test_products_found` *(optional)* | Agent test | Test products (product pages from the sitemap or the intake, max. 5) found through UCP catalog search as Artefact's read-only audit agent / test products searched |
+| `n_ucp_price_availability_mismatches` *(optional)* | Agent test | Found test products whose UCP price, currency or availability differs from the Product/Offer markup on the page |
+
+Rule: `na if has_online_sales == 0`; `fail if has_ucp_profile == 0 or has_ucp_catalog_search == 0 or pct_test_products_found < 0.50`; `warn if has_ucp_catalog_rest == 0`; `pass if pct_test_products_found >= 0.80 and n_ucp_price_availability_mismatches == 0`
+
+Note: UCP spec 2026-08-25. The agent profile only declares catalog search and lookup; the test never creates carts, checkouts or orders. MCP-only catalogs are not searched yet (warn).

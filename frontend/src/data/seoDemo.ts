@@ -743,6 +743,17 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "explanation": "[demo] n_verified_agent_blocks = 0.0, is_agent_policy_documented = 0.0; rule: pass condition not met: is_agent_policy_documented == 1.",
     "human_override": false,
     "not_applicable": false
+  },
+  {
+    "topic": "Agent Catalog Access (UCP)",
+    "category": "agentic_commerce",
+    "status": "warn",
+    "level": "champion",
+    "source": "no_data_source",
+    "action": "Verify manually — this data is not in BigQuery yet",
+    "explanation": "[demo] No data source for this topic yet.",
+    "human_override": false,
+    "not_applicable": false
   }
 ];
 

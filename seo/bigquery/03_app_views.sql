@@ -57,6 +57,7 @@ WITH n8n_audits AS (
     UNION ALL SELECT audit_id, client, market, domain, fetched_at FROM `YOUR_GCP_PROJECT.seo_raw.wikipedia_links`
     UNION ALL SELECT audit_id, client, market, domain, fetched_at FROM `YOUR_GCP_PROJECT.seo_raw.llm_page_scores`
     UNION ALL SELECT audit_id, client, market, domain, tested_at FROM `YOUR_GCP_PROJECT.seo_raw.verified_agent_tests`
+    UNION ALL SELECT audit_id, client, market, domain, tested_at FROM `YOUR_GCP_PROJECT.seo_raw.ucp_agent_tests`
   )
   GROUP BY audit_id
 ),

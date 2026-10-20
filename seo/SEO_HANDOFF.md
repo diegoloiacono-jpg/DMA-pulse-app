@@ -2,7 +2,7 @@
 
 From: Wouter Visser (SEO, Artefact Benelux) · 6 October 2026, updated 20 October 2026 · for: Diego
 
-This adds **SEO & AI for SEO** as a second platform next to Google Ads. The criteria are the 2026 SEO DMA pulse (64 criteria, 8 sections, same house format as the Paid Search pulse). Everything here except this handoff is generated from that sheet. To change a criterion, I change the sheet and regenerate. Please don't edit the generated files by hand.
+This adds **SEO & AI for SEO** as a second platform next to Google Ads. The criteria are the 2026 SEO DMA pulse (65 criteria, 8 sections, same house format as the Paid Search pulse). Everything here except this handoff is generated from that sheet. To change a criterion, I change the sheet and regenerate. Please don't edit the generated files by hand.
 
 **Checked against master `055c951` (15 October).** That covers your `criteria_ice.py` with `get_ice()`, `ice_priority()`, the ICE overrides and `SpecialistResult.not_applicable`. The module now uses all four, so SEO needs fewer app changes than in the first version of this handoff.
 
@@ -29,7 +29,7 @@ Still open: the Screaming Frog → BigQuery load job and the SQL that turns the 
 
 | Google Ads (yours) | SEO (this module) |
 |---|---|
-| `_CATEGORY_TOPICS` | `SEO_CATEGORY_TOPICS` (8 categories, 64 topics) |
+| `_CATEGORY_TOPICS` | `SEO_CATEGORY_TOPICS` (8 categories, 65 topics) |
 | `CRITERIA_ICE` / `get_ice()` in `criteria_ice.py` | `SEO_CRITERIA_ICE`: same `category::topic` keys, same (impact, confidence, ease) tuples. The values per dimension are also in `SEO_TOPIC_IMPACT`, `SEO_TOPIC_CONFIDENCE` and `SEO_TOPIC_EASE` |
 | `_BASE_WEIGHTS`, multipliers | `SEO_BASE_WEIGHTS`, `SEO_B2B_MULTIPLIERS`, `SEO_B2C_D2C_MULTIPLIERS` |
 | `DATA_GAPS` | `SEO_DATA_GAPS` (all topics outside phase 1) |
@@ -97,14 +97,15 @@ Screaming Frog runs as a scheduled headless crawl with fixed exports to Cloud St
 |---|---|---|
 | 1 | Screaming Frog crawl (+ list mode, JS rendering, custom extraction, accessibility), Search Console bulk export & API, PageSpeed Insights / CrUX, Ahrefs API (authority: backlinks and Domain Rating) | 47 |
 | 2 | GA4 export & Admin API, Merchant Center transfer, SEO intake form | 5 |
-| 3 | Fixed-prompt LLM steps, Brand Radar, Business Profile, Bing Webmaster, review platforms, Wikidata, verified-agent tests | 12 |
+| 3 | Fixed-prompt LLM steps, Brand Radar, Business Profile, Bing Webmaster, review platforms, Wikidata, verified-agent tests, UCP agent test | 13 |
 
 ## Agreed
 
 - **No measurement and tooling section** (Wouter, 6 October 2026). The pulse measures the site, not the tooling. AI referral tracking moves to the Web Analytics DMA. Rank tracking, crawl monitoring and AI visibility monitoring are dropped, because they check the agency's tooling. Search Console and GA4 access become preconditions. Bing Webmaster Tools & IndexNow moves to Crawling & Indexing. This also removes the proposed Visibility Tracking thresholds.
-- **Maturity tiers.** Agreed by Wouter on 6 October 2026, with a threshold of 80% per tier and a warn weight of 0.5. With Rendering Strategy (added 9 October, Advanced) the totals are 20 Basic, 25 Advanced, 11 Expert, 8 Champion (after the keyword topics left the pulse on 20 October).
+- **Maturity tiers.** Agreed by Wouter on 6 October 2026, with a threshold of 80% per tier and a warn weight of 0.5. With Rendering Strategy (added 9 October, Advanced) the totals are 20 Basic, 25 Advanced, 11 Expert, 9 Champion (after the keyword topics left and Agent Catalog Access (UCP) joined on 20 October).
 - **First pulse without Search Console** (Wouter, 9 October 2026). Search Console access is recommended, not required. The topics that use it have a fallback from the sitemap and the crawl (since 20 October; before that Ahrefs).
 - **Keyword research is a separate, later track** (Wouter, 20 October 2026). Keyword Mapping Coverage and Keyword Cannibalisation left the pulse. FAQ & Question Coverage stays, with the main questions chosen by the LLM step from the page itself plus the brand questions from the intake. Without Search Console, "top N pages" are the key pages from the XML sitemaps ranked by Screaming Frog Unique Inlinks, so the pulse needs Ahrefs only for authority (backlinks and Domain Rating). The SF issue Content: Semantically Similar now counts for Duplicate & Thin Content.
+- **Agent Catalog Access (UCP), AI-N13** (Wouter, 20 October 2026). New scored criterion in Agentic Commerce, tier Champion. n8n checks /.well-known/ucp and searches the catalog as Artefact's read-only audit agent (profile https://woutervisser-lab.github.io/ucp-agent-profile/agent.json, catalog search and lookup only), then compares price and availability with the product page. Raw table `ucp_agent_tests`; metrics in `v_topic_metrics_n8n`. MCP-only catalogs give warn.
 - **JavaScript & rendering** (checklist from a colleague in the DMA Global edition, 9 October 2026). The checks are folded into the pulse:
   - Raw-HTML checks for head elements, headings, structured data and links: Content Without JavaScript.
   - Content loaded on click, JavaScript lazy-loading, dynamic rendering parity and client-side-only page types: the new Rendering Strategy (SEO-N15).

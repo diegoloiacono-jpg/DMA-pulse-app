@@ -25,7 +25,7 @@ export const SEO_CATEGORY_TOPIC_COUNT: Record<string, number> = {
   "authority_entity": 12,
   "reputation_local": 2,
   "ai_search_readiness": 5,
-  "agentic_commerce": 5
+  "agentic_commerce": 6
 };
 
 /** Maturity tiers, lowest first, with their definitions (sheet 'Maturity'). */
@@ -113,7 +113,8 @@ export const SEO_TOPIC_TIER: Record<string, string> = {
   "Product Data Consistency": "Advanced",
   "AI Shopping Feed Distribution": "Champion",
   "Agentic Checkout Readiness": "Champion",
-  "Verified Agent Access": "Expert"
+  "Verified Agent Access": "Expert",
+  "Agent Catalog Access (UCP)": "Champion"
 };
 
 /** Evaluated and shown, but left out of the scores while the standards mature. */

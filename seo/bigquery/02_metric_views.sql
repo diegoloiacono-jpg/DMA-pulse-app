@@ -34,6 +34,18 @@ agent AS (
   SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.verified_agent_tests`
   WHERE method = 'cloudflare_browser_run' AND browser_run_ok
   QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, url ORDER BY tested_at DESC) = 1
+),
+ucp_profile AS (
+  -- a network error is no measurement; a 404 is (no profile)
+  SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ucp_agent_tests`
+  WHERE test = 'profile' AND error IS NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id ORDER BY tested_at DESC) = 1
+),
+ucp_search AS (
+  -- searches that returned a response; failed searches and unreadable product pages are left out
+  SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ucp_agent_tests`
+  WHERE test = 'search' AND error IS NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, url ORDER BY tested_at DESC) = 1
 )
 
 -- Agent Accessibility Tree: key templates where the Lighthouse audit does not fully pass
@@ -96,4 +108,22 @@ FROM llm WHERE task = 'brand_consistency' AND n_claims_without_evidence IS NOT N
 -- Verified Agent Access: product, cart and checkout URLs where the signed agent got a block or challenge
 UNION ALL
 SELECT audit_id, 'Verified Agent Access', 'n_verified_agent_blocks', CAST(COUNTIF(blocked) AS FLOAT64)
-FROM agent GROUP BY audit_id;
+FROM agent GROUP BY audit_id
+
+-- Agent Catalog Access (UCP): profile, catalog search, and the agent search for the test products
+UNION ALL
+SELECT audit_id, 'Agent Catalog Access (UCP)', 'has_ucp_profile', IF(http_status = 200 AND ucp_version IS NOT NULL, 1.0, 0.0)
+FROM ucp_profile
+UNION ALL
+SELECT audit_id, 'Agent Catalog Access (UCP)', 'has_ucp_catalog_search', IF(IFNULL(has_catalog_search, FALSE), 1.0, 0.0)
+FROM ucp_profile
+UNION ALL
+SELECT audit_id, 'Agent Catalog Access (UCP)', 'has_ucp_catalog_rest', IF(IFNULL(has_catalog_search, FALSE) AND endpoint IS NOT NULL, 1.0, 0.0)
+FROM ucp_profile WHERE http_status = 200 AND ucp_version IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Agent Catalog Access (UCP)', 'pct_test_products_found', AVG(IF(IFNULL(found, FALSE), 1.0, 0.0))
+FROM ucp_search GROUP BY audit_id
+UNION ALL
+SELECT audit_id, 'Agent Catalog Access (UCP)', 'n_ucp_price_availability_mismatches',
+       CAST(COUNTIF(IFNULL(found, FALSE) AND (IFNULL(price_mismatch, FALSE) OR IFNULL(availability_mismatch, FALSE))) AS FLOAT64)
+FROM ucp_search GROUP BY audit_id;

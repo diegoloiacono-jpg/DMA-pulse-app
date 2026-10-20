@@ -63,3 +63,16 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.verified_agent_tests` (
   blocked BOOL, block_signal STRING,
   plain_status INT64, plain_blocked BOOL, error STRING
 ) PARTITION BY DATE(tested_at) CLUSTER BY client, domain;
+
+-- UCP agent test (Agent Catalog Access (UCP)): one 'profile' row (/.well-known/ucp) and one 'search' row per test product,
+-- searched as Artefact's read-only audit agent (UCP-Agent profile in agent_profile). Prices in major units (19.99).
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.ucp_agent_tests` (
+  audit_id STRING, client STRING, market STRING, domain STRING,
+  test STRING, tested_at TIMESTAMP, agent_profile STRING, url STRING, http_status INT64,
+  ucp_version STRING, transports STRING, endpoint STRING,
+  has_catalog_search BOOL, has_catalog_lookup BOOL, has_checkout BOOL,
+  query STRING, n_results INT64, found BOOL, matched_by STRING,
+  page_price FLOAT64, ucp_price FLOAT64, page_currency STRING, ucp_currency STRING,
+  page_available BOOL, ucp_available BOOL, price_mismatch BOOL, availability_mismatch BOOL,
+  messages STRING, error STRING
+) PARTITION BY DATE(tested_at) CLUSTER BY client, domain;

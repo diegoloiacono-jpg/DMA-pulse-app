@@ -134,6 +134,7 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'AI Shopping Feed Distribution',
         'Agentic Checkout Readiness',
         'Verified Agent Access',
+        'Agent Catalog Access (UCP)',
     ],
 }
 
@@ -203,6 +204,7 @@ SEO_TOPIC_IDS: dict[str, str] = {
     'AI Shopping Feed Distribution': 'AI-N10',
     'Agentic Checkout Readiness': 'AI-N11',
     'Verified Agent Access': 'AI-N12',
+    'Agent Catalog Access (UCP)': 'AI-N13',
 }
 
 # Impact 1–5: highest Screaming Frog issue type × priority behind the topic (Impact matrix), or an assigned SF-style type/priority. Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -271,6 +273,7 @@ SEO_TOPIC_IMPACT: dict[str, float] = {
     'agentic_commerce::ai shopping feed distribution': 3.0,
     'agentic_commerce::agentic checkout readiness': 2.0,
     'agentic_commerce::verified agent access': 4.0,
+    'agentic_commerce::agent catalog access (ucp)': 2.0,
 }
 
 # Confidence 1–5: evidence level (Required 5, Google guideline 4, Industry practice 3, Emerging 2, Experimental 1). Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -339,6 +342,7 @@ SEO_TOPIC_CONFIDENCE: dict[str, float] = {
     'agentic_commerce::ai shopping feed distribution': 2.0,
     'agentic_commerce::agentic checkout readiness': 2.0,
     'agentic_commerce::verified agent access': 2.0,
+    'agentic_commerce::agent catalog access (ucp)': 2.0,
 }
 
 # Ease 1–5: implementation type (Setting 5, Team work 4, Developer ticket 3, Development project 2, Off-site/long-term 1). Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -407,6 +411,7 @@ SEO_TOPIC_EASE: dict[str, float] = {
     'agentic_commerce::ai shopping feed distribution': 4.0,
     'agentic_commerce::agentic checkout readiness': 2.0,
     'agentic_commerce::verified agent access': 3.0,
+    'agentic_commerce::agent catalog access (ucp)': 2.0,
 }
 
 # Impact, Confidence and Ease per topic in the shape of criteria_ice.CRITERIA_ICE: same keys, same
@@ -477,6 +482,7 @@ SEO_CRITERIA_ICE: dict[str, tuple[float, float, float]] = {
     'agentic_commerce::ai shopping feed distribution': (3.0, 2.0, 4.0),
     'agentic_commerce::agentic checkout readiness': (2.0, 2.0, 2.0),
     'agentic_commerce::verified agent access': (4.0, 2.0, 3.0),
+    'agentic_commerce::agent catalog access (ucp)': (2.0, 2.0, 2.0),
 }
 
 # Base category weights (mirror scoring._BASE_WEIGHTS)
@@ -596,6 +602,7 @@ SEO_TOPIC_TIER: dict[str, str] = {
     'AI Shopping Feed Distribution': 'Champion',
     'Agentic Checkout Readiness': 'Champion',
     'Verified Agent Access': 'Expert',
+    'Agent Catalog Access (UCP)': 'Champion',
 }
 
 # Staircase inputs from the Maturity sheet: share that must pass per tier, and the credit for a warn
@@ -671,6 +678,7 @@ SEO_TOPIC_PHASE: dict[str, int] = {
     'AI Shopping Feed Distribution': 3,
     'Agentic Checkout Readiness': 3,
     'Verified Agent Access': 3,
+    'Agent Catalog Access (UCP)': 3,
 }
 
 # Topics with no BigQuery source in phase 1. specialist.py injects these into the prompt
@@ -702,6 +710,7 @@ SEO_DATA_GAPS: dict[str, list[str]] = {
         'AI Shopping Feed Distribution',
         'Agentic Checkout Readiness',
         'Verified Agent Access',
+        'Agent Catalog Access (UCP)',
     ],
 }
 
@@ -1034,6 +1043,14 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_verified_agent_blocks': ('Agent test', 'Product, cart and checkout URLs where a verified/signed agent gets a 403 or a challenge'),
         'is_agent_policy_documented': ('Intake', '1 if the CDN/WAF policy for verified agents is documented in the brand context, else 0'),
     },
+    'Agent Catalog Access (UCP)': {
+        'has_online_sales': ('Intake', '1 if the site sells online (brand context), else 0'),
+        'has_ucp_profile': ('Site check', '1 if /.well-known/ucp returns a valid Universal Commerce Protocol profile, else 0'),
+        'has_ucp_catalog_search': ('Site check', '1 if the profile offers dev.ucp.shopping.catalog.search (any transport), else 0'),
+        'has_ucp_catalog_rest': ('Site check', '1 if catalog search is offered over the REST binding, which the agent test uses, else 0 (MCP only)'),
+        'pct_test_products_found': ('Agent test', "Test products (product pages from the sitemap or the intake, max. 5) found through UCP catalog search as Artefact's read-only audit agent / test products searched"),
+        'n_ucp_price_availability_mismatches': ('Agent test', 'Found test products whose UCP price, currency or availability differs from the Product/Offer markup on the page'),
+    },
 }
 
 # Metrics that may be absent without blocking a verdict (informational or not always measurable)
@@ -1047,6 +1064,7 @@ SEO_OPTIONAL_METRICS: dict[str, set[str]] = {
     'Content Freshness': {'n_date_refresh_without_change'},
     'Topic Clusters': {'n_low_relevance_pages'},
     'Referring Domain Strength': {'domain_rating'},
+    'Agent Catalog Access (UCP)': {'has_ucp_catalog_rest', 'n_ucp_price_availability_mismatches', 'pct_test_products_found'},
 }
 
 # Thresholds from the pulse sheet as evaluable conditions (see evaluate_topic)
@@ -1434,6 +1452,12 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'fail_if': ['n_verified_agent_blocks > 0'],
         'warn_if': [],
         'pass_if': ['is_agent_policy_documented == 1'],
+    },
+    'Agent Catalog Access (UCP)': {
+        'na_if': ['has_online_sales == 0'],
+        'fail_if': ['has_ucp_profile == 0', 'has_ucp_catalog_search == 0', 'pct_test_products_found < 0.50'],
+        'warn_if': ['has_ucp_catalog_rest == 0'],
+        'pass_if': ['pct_test_products_found >= 0.80', 'n_ucp_price_availability_mismatches == 0'],
     },
 }
 
@@ -3400,6 +3424,41 @@ Are products discoverable and purchasable through AI shopping surfaces and agent
     Fail: Verified agents receive 403 responses or challenges on product, cart or checkout
       pages.
     Python rule: fail if n_verified_agent_blocks > 0; pass if is_agent_policy_documented == 1
+
+- Agent Catalog Access (UCP):
+    Ref: AI-N13 · Tier Champion · Impact 2 · Confidence 2 · Ease 2
+    Audit logic: Fetch /.well-known/ucp and check that the Universal Commerce Protocol profile
+      is valid and offers catalog search (dev.ucp.shopping.catalog.search). Then search the
+      catalog as Artefact's read-only audit agent (UCP-Agent header with
+      https://woutervisser-lab.github.io/ucp-agent-profile/agent.json; catalog search and lookup
+      only, never carts or orders) for 5 products taken from product pages, and compare price,
+      currency and availability with the Product/Offer markup on the page.
+    Metrics:
+      has_online_sales: 1 if the site sells online (brand context), else 0
+      has_ucp_profile: 1 if /.well-known/ucp returns a valid Universal Commerce Protocol
+        profile, else 0
+      has_ucp_catalog_search: 1 if the profile offers dev.ucp.shopping.catalog.search (any
+        transport), else 0
+      has_ucp_catalog_rest: 1 if catalog search is offered over the REST binding, which the
+        agent test uses, else 0 (MCP only)
+      pct_test_products_found: Test products (product pages from the sitemap or the intake, max.
+        5) found through UCP catalog search as Artefact's read-only audit agent / test products
+        searched
+      n_ucp_price_availability_mismatches: Found test products whose UCP price, currency or
+        availability differs from the Product/Offer markup on the page
+    Pass: A valid UCP profile with catalog search over REST; at least 4 of the 5 test products
+      are found and their price and availability match the product page.
+    Warn: between the pass and the fail condition.
+    Fail: No UCP profile at /.well-known/ucp, the profile offers no catalog search, or less than
+      half of the test products are found.
+    N/A: for sites without online sales.
+    Python rule: na if has_online_sales == 0; fail if has_ucp_profile == 0 or
+      has_ucp_catalog_search == 0 or pct_test_products_found < 0.50; warn if
+      has_ucp_catalog_rest == 0; pass if pct_test_products_found >= 0.80 and
+      n_ucp_price_availability_mismatches == 0
+    Note: UCP spec 2026-08-25. The agent profile only declares catalog search and lookup; the
+      test never creates carts, checkouts or orders. MCP-only catalogs are not searched yet
+      (warn).
 """.strip(),
 }
 
