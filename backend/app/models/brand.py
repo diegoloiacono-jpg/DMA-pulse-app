@@ -10,9 +10,10 @@ class SeoContext(BaseModel):
     pageTypes: dict[str, str] = {}
     keywordMappingUrl: str = ""
     keywordMappingDate: str = ""
-    hasOnlineSales: bool = False
-    lowSearchVolume: bool = False
-    locations: int = 0
+    # Not asked in the SEO form: None = unknown (False/0 would make topics not applicable)
+    hasOnlineSales: bool | None = None
+    lowSearchVolume: bool | None = None
+    locations: int | None = None
     reviewPlatforms: list[str] = []
     expectedProfiles: list[str] = []
     aiBotPolicy: dict[str, str] = {}

@@ -24,9 +24,10 @@ export interface SeoContextPayload {
   pageTypes: Record<string, string>;
   keywordMappingUrl: string;
   keywordMappingDate: string;
-  hasOnlineSales: boolean;
-  lowSearchVolume: boolean;
-  locations: number;
+  /** Not asked in the SEO form: absent = unknown */
+  hasOnlineSales?: boolean | null;
+  lowSearchVolume?: boolean | null;
+  locations?: number | null;
   reviewPlatforms: string[];
   expectedProfiles: string[];
   aiBotPolicy: Record<string, string>;

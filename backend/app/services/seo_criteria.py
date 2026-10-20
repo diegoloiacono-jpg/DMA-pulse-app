@@ -930,8 +930,8 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_templates_high_violations': ('SF accessibility', 'Key templates with high-priority violations'),
     },
     'Referring Domain Strength': {
-        'refdomains_vs_median_competitor': ('Ahrefs', 'Client dofollow referring domains with organic traffic / median of the competitors in the brand context'),
-        'refdomains_growth_12m': ('Ahrefs', 'Change in those referring domains over 12 months, as a fraction (0.10 = +10%)'),
+        'refdomains_vs_median_competitor': ('Ahrefs', 'Client dofollow referring domains / median of the competitors in the brand context (Ahrefs batch analysis)'),
+        'refdomains_growth_12m': ('Ahrefs', "Change in the client's referring domains over 12 months (Ahrefs referring domains history), as a fraction (0.10 = +10%)"),
         'domain_rating': ('Ahrefs', 'Client Domain Rating (informational)'),
     },
     'Fresh Authoritative Links': {
@@ -2010,6 +2010,15 @@ def seo_topic_level(topic: str) -> str:
     return SEO_TOPIC_TIER[topic].lower()
 
 
+def seo_has_evidence(topic: str, metrics) -> bool:
+    """True when the topic has at least one measured metric. Intake metrics (brand context, e.g.
+    has_online_sales) are context, not evidence: a topic with only those still counts as no data."""
+    if not isinstance(metrics, dict):
+        return False
+    origins = SEO_TOPIC_METRICS.get(topic, {})
+    return any(v is not None and origins.get(k, ("",))[0] != "Intake" for k, v in metrics.items())
+
+
 def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
     """Python decides the status, Gemini explains it. Call after the Gemini call for one category,
     with the frame from seo_category_frame().
@@ -2025,7 +2034,7 @@ def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
     has_source = "_source" in frame.columns
     rows = frame[frame["_source"] == "topic_results"] if has_source else frame.iloc[0:0]
     computed = dict(zip(rows["topic"], rows["status_computed"])) if len(rows) else {}
-    measured = {t for t, m in zip(rows["topic"], rows["metrics"]) if isinstance(m, dict) and m} if len(rows) else set()
+    measured = {t for t, m in zip(rows["topic"], rows["metrics"]) if seo_has_evidence(t, m)} if len(rows) else set()
     with_issues = set(frame.loc[frame["_source"] == "issue_detail", "topic"]) if has_source else set()
     for r in results:
         topic = _get(r, "topic")
@@ -2985,14 +2994,14 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
 
 - Referring Domain Strength:
     Ref: SEO-25 · Tier Champion · Impact 5 · Confidence 4 · Ease 1
-    Audit logic: Pull Domain Rating and dofollow referring domains with organic traffic (Ahrefs
-      API) for the client and the competitors in the brand context, and calculate 12-month
-      growth.
+    Audit logic: Pull Domain Rating and dofollow referring domains for the client and the
+      competitors in the brand context in one Ahrefs batch request, and the 12-month growth of
+      the client's referring domains (Ahrefs referring domains history).
     Metrics:
-      refdomains_vs_median_competitor: Client dofollow referring domains with organic traffic /
-        median of the competitors in the brand context
-      refdomains_growth_12m: Change in those referring domains over 12 months, as a fraction
-        (0.10 = +10%)
+      refdomains_vs_median_competitor: Client dofollow referring domains / median of the
+        competitors in the brand context (Ahrefs batch analysis)
+      refdomains_growth_12m: Change in the client's referring domains over 12 months (Ahrefs
+        referring domains history), as a fraction (0.10 = +10%)
       domain_rating: Client Domain Rating (informational)
     Pass: The client is at or above the median competitor and referring domains grew over the
       last 12 months.

@@ -59,7 +59,7 @@ def _run_seo_pipeline(audit_id: str, params: SeoAuditParams) -> None:
     try:
         state.status = AuditStatus.EXTRACTING
         state.updated_at = _now()
-        audit_data = extract_seo_audit_data(params)
+        audit_data = extract_seo_audit_data(params, state.brand_context)
 
         state.status = AuditStatus.SPECIALIST_RUNNING
         state.updated_at = _now()

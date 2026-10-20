@@ -533,8 +533,8 @@ Note: Violations also feed the separate accessibility action list (agent-blockin
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `refdomains_vs_median_competitor` | Ahrefs | Client dofollow referring domains with organic traffic / median of the competitors in the brand context |
-| `refdomains_growth_12m` | Ahrefs | Change in those referring domains over 12 months, as a fraction (0.10 = +10%) |
+| `refdomains_vs_median_competitor` | Ahrefs | Client dofollow referring domains / median of the competitors in the brand context (Ahrefs batch analysis) |
+| `refdomains_growth_12m` | Ahrefs | Change in the client's referring domains over 12 months (Ahrefs referring domains history), as a fraction (0.10 = +10%) |
 | `domain_rating` *(optional)* | Ahrefs | Client Domain Rating (informational) |
 
 Rule: `fail if refdomains_vs_median_competitor < 0.5 or refdomains_growth_12m < 0`; `pass if refdomains_vs_median_competitor >= 1 and refdomains_growth_12m > 0`

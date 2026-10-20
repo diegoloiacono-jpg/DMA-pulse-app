@@ -28,9 +28,11 @@ from app.services import specialist
 from app.services.bigquery import run_query
 from app.services.seo_criteria import (
     SEO_CATEGORY_TOPICS,
+    SEO_TOPIC_METRICS,
     seo_category_frame,
     seo_data_gaps,
     seo_finalise_results,
+    seo_has_evidence,
     seo_system_prompt,
     seo_topic_level,
 )
@@ -74,12 +76,37 @@ def _metrics_by_topic(df: pd.DataFrame) -> dict[str, dict[str, float]]:
     return out
 
 
-def extract_seo_audit_data(params: SeoAuditParams) -> dict[str, pd.DataFrame]:
+def intake_metrics(bc: BrandContext | None) -> dict[str, dict[str, float]]:
+    """Intake metrics that follow from the SEO brand context, per topic. Only when the SEO context
+    is filled in; a value in BigQuery (e.g. from metric_values) wins over these."""
+    if not bc or not bc.seo:
+        return {}
+    seo = bc.seo
+    values = {
+        # quarterly target (pulse sheet): 3, or 1 when the site is marked as low search volume
+        "target_new_refdomains": 1.0 if seo.lowSearchVolume else 3.0,
+        "n_ai_shopping_platforms": float(len(seo.aiShoppingPlatforms)),
+    }
+    # Only when set explicitly (not asked in the SEO form): unknown stays unknown
+    if seo.hasOnlineSales is not None:
+        values["has_online_sales"] = 1.0 if seo.hasOnlineSales else 0.0
+    if seo.locations is not None:
+        values["n_locations"] = float(seo.locations)
+    out: dict[str, dict[str, float]] = {}
+    for topic, metrics in SEO_TOPIC_METRICS.items():
+        for metric, (origin, _) in metrics.items():
+            if origin == "Intake" and metric in values:
+                out.setdefault(topic, {})[metric] = values[metric]
+    return out
+
+
+def extract_seo_audit_data(params: SeoAuditParams, brand_context: BrandContext | None = None) -> dict[str, pd.DataFrame]:
     """One frame per SEO category, in the _source convention of the specialist.
 
     Reads the latest value of every metric for the site within max_age_days before as_of, the
-    latest Screaming Frog crawl in that window, and that crawl's issues. Topics without metrics
-    still get a row, so the specialist sees every topic.
+    latest Screaming Frog crawl in that window, and that crawl's issues, and adds the intake
+    metrics from the brand context. Topics without metrics still get a row, so the specialist
+    sees every topic.
     """
     site = normalise_site(params.domain)
     if not site:
@@ -135,6 +162,9 @@ def extract_seo_audit_data(params: SeoAuditParams) -> dict[str, pd.DataFrame]:
         """, [bigquery.ScalarQueryParameter("crawl_id", "STRING", str(crawl["crawl_id"]))])
 
     by_topic = _metrics_by_topic(metrics)
+    for topic, values in intake_metrics(brand_context).items():
+        for metric, value in values.items():
+            by_topic.setdefault(topic, {}).setdefault(metric, value)
     logger.warning(
         "SEO extraction for %s (market %s, as of %s): %d metrics on %d topics, crawl %s, %d issue rows",
         site, market or "all", as_of, len(metrics), len(by_topic),
@@ -161,11 +191,12 @@ def _format_seo_brand_context(bc: BrandContext | None, params: SeoAuditParams) -
             lines.append(f"Industry: {bc.industry}")
     lines.append(f"Site: {params.domain}" + (f" (market {params.market})" if params.market else ""))
     if bc and bc.seo:
-        for field, value in bc.seo.model_dump().items():
+        for field, value in bc.seo.model_dump(exclude_none=True).items():
             lines.append(f"{field}: {json.dumps(value, ensure_ascii=False)}")
     else:
-        lines.append("SEO brand context not provided: treat hasOnlineSales, lowSearchVolume, locations and "
-                     "the other SEO fields as unknown, not as false or 0.")
+        lines.append("SEO brand context not provided.")
+    lines.append("SEO fields not listed here (e.g. hasOnlineSales, lowSearchVolume, locations) are unknown, not false or 0: "
+                 "judge those topics on the data.")
     lines.append("---")
     return "\n".join(lines) + "\n\n"
 
@@ -213,7 +244,7 @@ def run_seo_specialist(
         # SEO_DATA_GAPS is per rollout phase; a gap topic that already has metrics (e.g. from
         # n8n) is measured, so only topics without any metric are sent as "no data source".
         rows = _topic_rows(frame)
-        category_gaps = [t for t in gaps.get(category, []) if not rows.get(t, {}).get("metrics")]
+        category_gaps = [t for t in gaps.get(category, []) if not seo_has_evidence(t, rows.get(t, {}).get("metrics"))]
         # One row per topic plus at most 5 issues per topic: give every source enough rows that
         # _summarise_df cuts nothing off (its default of 50 drops topics in the larger categories).
         data_json = specialist._summarise_df(frame, max_rows=3 * max(len(frame), 1))

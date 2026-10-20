@@ -46,6 +46,24 @@ ucp_search AS (
   SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ucp_agent_tests`
   WHERE test = 'search' AND error IS NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, url ORDER BY tested_at DESC) = 1
+),
+ah AS (
+  SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ahrefs_authority`
+  WHERE error IS NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, call, target ORDER BY fetched_at DESC) = 1
+),
+ah_median AS (
+  -- medians of the competitors (exact, also for an even number of competitors)
+  SELECT DISTINCT audit_id, call,
+         PERCENTILE_CONT(IF(call = 'batch', refdomains_dofollow, n_pages_10plus), 0.5) OVER (PARTITION BY audit_id, call) AS median
+  FROM ah
+  WHERE role = 'competitor' AND call IN ('batch', 'best_links')
+    AND IF(call = 'batch', refdomains_dofollow, n_pages_10plus) IS NOT NULL
+),
+ah_cite AS (
+  SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ahrefs_citations`
+  WHERE error IS NULL AND cites_dr50 IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, url ORDER BY fetched_at DESC) = 1
 )
 
 -- Agent Accessibility Tree: key templates where the Lighthouse audit does not fully pass
@@ -126,4 +144,34 @@ FROM ucp_search GROUP BY audit_id
 UNION ALL
 SELECT audit_id, 'Agent Catalog Access (UCP)', 'n_ucp_price_availability_mismatches',
        CAST(COUNTIF(IFNULL(found, FALSE) AND (IFNULL(price_mismatch, FALSE) OR IFNULL(availability_mismatch, FALSE))) AS FLOAT64)
-FROM ucp_search GROUP BY audit_id;
+FROM ucp_search GROUP BY audit_id
+
+-- Ahrefs authority: client values, and ratios against the median competitor
+UNION ALL
+SELECT c.audit_id, 'Referring Domain Strength', 'refdomains_vs_median_competitor', SAFE_DIVIDE(c.refdomains_dofollow, m.median)
+FROM ah AS c JOIN ah_median AS m ON m.audit_id = c.audit_id AND m.call = 'batch'
+WHERE c.call = 'batch' AND c.role = 'client' AND c.refdomains_dofollow IS NOT NULL AND m.median > 0
+UNION ALL
+SELECT audit_id, 'Referring Domain Strength', 'refdomains_growth_12m', SAFE_DIVIDE(refdomains - refdomains_12m_ago, refdomains_12m_ago)
+FROM ah WHERE call = 'history' AND role = 'client' AND refdomains IS NOT NULL AND refdomains_12m_ago > 0
+UNION ALL
+SELECT audit_id, 'Referring Domain Strength', 'domain_rating', domain_rating
+FROM ah WHERE call = 'batch' AND role = 'client' AND domain_rating IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Fresh Authoritative Links', 'n_new_refdomains_90d_5k', CAST(n_new_refdomains_5k AS FLOAT64)
+FROM ah WHERE call = 'refdomains' AND role = 'client' AND n_new_refdomains_5k IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Link-Earning Pages', 'n_pages_10plus_refdomains', CAST(n_pages_10plus AS FLOAT64)
+FROM ah WHERE call = 'best_links' AND role = 'client' AND n_pages_10plus IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Link-Earning Pages', 'median_competitor_pages_10plus', median
+FROM ah_median WHERE call = 'best_links'
+UNION ALL
+SELECT audit_id, 'Anchor Text Profile', 'pct_refdomains_exact_match_anchor', SAFE_DIVIDE(anchor_refdomains_keyword, anchor_refdomains_total)
+FROM ah WHERE call = 'anchors' AND role = 'client' AND anchor_refdomains_total > 0
+UNION ALL
+SELECT audit_id, 'Broken Backlinks', 'n_refdomains_dr20_to_4xx', CAST(n_refdomains_dr20_to_4xx AS FLOAT64)
+FROM ah WHERE call = 'broken' AND role = 'client' AND n_refdomains_dr20_to_4xx IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Source Citations', 'pct_info_pages_citing_dr50', AVG(IF(cites_dr50, 1.0, 0.0))
+FROM ah_cite GROUP BY audit_id;

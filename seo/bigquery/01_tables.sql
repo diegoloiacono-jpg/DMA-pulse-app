@@ -76,3 +76,24 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.ucp_agent_tests` (
   page_available BOOL, ucp_available BOOL, price_mismatch BOOL, availability_mismatch BOOL,
   messages STRING, error STRING
 ) PARTITION BY DATE(tested_at) CLUSTER BY client, domain;
+
+-- Ahrefs authority: one row per Ahrefs request (call 'batch' has one row per site: client and competitors).
+-- Only the columns of that call are filled. units_estimate = max(50, cost per row x rows), for cost tracking.
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.ahrefs_authority` (
+  audit_id STRING, client STRING, market STRING, domain STRING, fetched_at TIMESTAMP,
+  call STRING,                 -- batch | history | refdomains | best_links | anchors | broken
+  target STRING, role STRING,  -- role: client | competitor
+  http_status INT64, n_rows INT64, capped BOOL, units_estimate INT64,
+  domain_rating FLOAT64, refdomains INT64, refdomains_dofollow INT64, refdomains_12m_ago INT64,
+  n_new_refdomains_5k INT64, n_pages_10plus INT64, n_refdomains_dr20_to_4xx INT64,
+  anchor_refdomains_total INT64, anchor_refdomains_keyword INT64, anchor_refdomains_brand INT64,
+  anchor_refdomains_url INT64, anchor_refdomains_generic INT64,
+  details STRING, error STRING
+) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
+
+-- Source Citations: per informational page, the external domains in the main content and their Domain Rating.
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.ahrefs_citations` (
+  audit_id STRING, client STRING, market STRING, domain STRING, fetched_at TIMESTAMP,
+  url STRING, http_status INT64, n_external_links INT64, n_external_domains INT64,
+  max_cited_dr FLOAT64, cites_dr50 BOOL, cited_domains STRING, units_estimate INT64, error STRING
+) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;

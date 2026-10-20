@@ -90,36 +90,6 @@ export default function SeoContextFields({ value, onChange }: Props) {
         onCommit={t => set("competitors", toList(t))}
       />
 
-      <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={value.hasOnlineSales}
-            onChange={e => set("hasOnlineSales", e.target.checked)}
-            className="w-4 h-4 rounded border-input accent-primary"
-          />
-          <span className="text-xs font-medium text-foreground">Sells online</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer" title="Mostly B2B: lower link targets, Lighthouse lab data when CrUX is missing">
-          <input
-            type="checkbox"
-            checked={value.lowSearchVolume}
-            onChange={e => set("lowSearchVolume", e.target.checked)}
-            className="w-4 h-4 rounded border-input accent-primary"
-          />
-          <span className="text-xs font-medium text-foreground">Low search volume</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="text-xs font-medium text-foreground">Physical locations</span>
-          <input
-            type="number"
-            min={0}
-            value={value.locations}
-            onChange={e => set("locations", Math.max(0, Number(e.target.value) || 0))}
-            className="w-20 px-2 py-1 text-sm rounded-lg border border-input bg-background"
-          />
-        </label>
-      </div>
 
       <button
         type="button"
