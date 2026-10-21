@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.llm_page_scores` (
   result_json STRING, prompt_tokens INT64, output_tokens INT64, error STRING
 ) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
 
+-- AI bots: robots.txt per bot and a fetch of the tested URLs with each bot's user agent (one row per URL and bot).
+-- bot_type: 'search' | 'user' (retrieval for answers) | 'training'. http_status NULL = robots.txt token only.
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.ai_bot_tests` (
+  audit_id STRING, client STRING, market STRING, domain STRING, tested_at TIMESTAMP,
+  bot STRING, bot_type STRING, url STRING, robots_allowed BOOL, http_status INT64,
+  blocked BOOL, block_signal STRING, error STRING
+) PARTITION BY DATE(tested_at) CLUSTER BY client, domain;
+
 -- Workflow seo_verified_agent: product, cart and checkout URLs requested as a signed agent (Cloudflare Browser Run)
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.verified_agent_tests` (
   audit_id STRING, client STRING, market STRING, domain STRING,

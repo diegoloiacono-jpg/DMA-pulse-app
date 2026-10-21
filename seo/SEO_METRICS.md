@@ -28,6 +28,7 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 | Bing | Bing Webmaster Tools API |
 | Reviews | Review platform APIs or exports (Google, Trustpilot, G2, Clutch) |
 | Wikidata | Wikidata Query Service and the Wikipedia API (n8n workflow seo_pulse, Wikidata & Wikipedia branch) |
+| Bot test | robots.txt per AI bot and a fetch of the homepage and key pages with each bot's user agent (n8n workflow seo_pulse, verified-agent branch) |
 | Agent test | Request as a signed agent (n8n workflow seo_pulse, verified-agent branch: Cloudflare Browser Run, Web Bot Auth), or CDN/WAF configuration check |
 
 ## Rollout phases
@@ -666,8 +667,8 @@ Rule: `fail if n_reviews_12m == 0`; `pass if n_platforms_active_rated_4 >= 1`
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_retrieval_bots_blocked_robots` | SF list | Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Claude-SearchBot) disallowed in robots.txt for the tested URLs |
-| `n_retrieval_bot_fetches_blocked` | SF list | Fetches of 5 top URLs with those user agents that get 403, 429 or a challenge page |
+| `n_retrieval_bots_blocked_robots` | Bot test | Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt for the tested URLs |
+| `n_retrieval_bot_fetches_blocked` | Bot test | Fetches of the homepage and up to 2 key pages with those user agents that get 401, 403, 429, 503 or a challenge page |
 | `is_waf_result_confirmed` | Agent test | 1 if the CDN/WAF behaviour for these bots is confirmed (configuration or a fetch from the bot's published IP ranges), else 0 |
 | `n_training_bot_policy_mismatches` | Intake | Training bots (GPTBot, ClaudeBot, Google-Extended) whose robots.txt rules differ from the AI bot policy in the brand context |
 

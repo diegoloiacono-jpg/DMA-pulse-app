@@ -30,6 +30,11 @@ llm AS (
   WHERE error IS NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, task, IFNULL(url, '') ORDER BY fetched_at DESC) = 1
 ),
+bots AS (
+  SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ai_bot_tests`
+  WHERE error IS NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, bot, url ORDER BY tested_at DESC) = 1
+),
 agent AS (
   SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.verified_agent_tests`
   WHERE method = 'cloudflare_browser_run' AND browser_run_ok
@@ -123,6 +128,18 @@ FROM llm WHERE task = 'brand_consistency' AND n_usps_contradicting IS NOT NULL
 UNION ALL
 SELECT audit_id, 'Brand Consistency', 'n_claims_without_evidence', CAST(n_claims_without_evidence AS FLOAT64)
 FROM llm WHERE task = 'brand_consistency' AND n_claims_without_evidence IS NOT NULL
+
+-- AI Crawler Access: search and retrieval bots (types search and user) disallowed in robots.txt for a tested URL, and
+-- fetches with their user agent that got 401/403/429/503 or a challenge page
+UNION ALL
+SELECT audit_id, 'AI Crawler Access', 'n_retrieval_bots_blocked_robots',
+       CAST(COUNT(DISTINCT IF(robots_allowed = FALSE, bot, NULL)) AS FLOAT64)
+FROM bots WHERE bot_type IN ('search', 'user') AND robots_allowed IS NOT NULL
+GROUP BY audit_id
+UNION ALL
+SELECT audit_id, 'AI Crawler Access', 'n_retrieval_bot_fetches_blocked', CAST(COUNTIF(blocked) AS FLOAT64)
+FROM bots WHERE bot_type IN ('search', 'user') AND http_status IS NOT NULL
+GROUP BY audit_id
 
 -- Verified Agent Access: product, cart and checkout URLs where the signed agent got a block or challenge
 UNION ALL

@@ -989,8 +989,8 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_platforms_active_rated_4': ('Reviews', 'Review platforms with reviews in the last 3 months and an average rating of 4.0 or higher'),
     },
     'AI Crawler Access': {
-        'n_retrieval_bots_blocked_robots': ('SF list', 'Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Claude-SearchBot) disallowed in robots.txt for the tested URLs'),
-        'n_retrieval_bot_fetches_blocked': ('SF list', 'Fetches of 5 top URLs with those user agents that get 403, 429 or a challenge page'),
+        'n_retrieval_bots_blocked_robots': ('Bot test', 'Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt for the tested URLs'),
+        'n_retrieval_bot_fetches_blocked': ('Bot test', 'Fetches of the homepage and up to 2 key pages with those user agents that get 401, 403, 429, 503 or a challenge page'),
         'is_waf_result_confirmed': ('Agent test', "1 if the CDN/WAF behaviour for these bots is confirmed (configuration or a fetch from the bot's published IP ranges), else 0"),
         'n_training_bot_policy_mismatches': ('Intake', 'Training bots (GPTBot, ClaudeBot, Google-Extended) whose robots.txt rules differ from the AI bot policy in the brand context'),
     },
@@ -3220,14 +3220,17 @@ Can AI search bots and agents access, quote and act on the site?
 
 - AI Crawler Access:
     Ref: AI-03 · Tier Basic · Impact 5 · Confidence 5 · Ease 3
-    Audit logic: Parse robots.txt per user agent and fetch 5 top URLs with the user agents of
-      OAI-SearchBot, ChatGPT-User, PerplexityBot and Claude-SearchBot (Screaming Frog custom
-      user agent); compare with the AI bot policy in the brand context.
+    Audit logic: Parse robots.txt per user agent and fetch the homepage and up to 2 key pages
+      with the user agents of OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User,
+      Claude-SearchBot and Claude-User (n8n workflow; the training bots GPTBot, ClaudeBot,
+      Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent and Bytespider are reported
+      too); compare with the AI bot policy in the brand context.
     Metrics:
       n_retrieval_bots_blocked_robots: Search and retrieval bots (OAI-SearchBot, ChatGPT-User,
-        PerplexityBot, Claude-SearchBot) disallowed in robots.txt for the tested URLs
-      n_retrieval_bot_fetches_blocked: Fetches of 5 top URLs with those user agents that get
-        403, 429 or a challenge page
+        PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt
+        for the tested URLs
+      n_retrieval_bot_fetches_blocked: Fetches of the homepage and up to 2 key pages with those
+        user agents that get 401, 403, 429, 503 or a challenge page
       is_waf_result_confirmed: 1 if the CDN/WAF behaviour for these bots is confirmed
         (configuration or a fetch from the bot's published IP ranges), else 0
       n_training_bot_policy_mismatches: Training bots (GPTBot, ClaudeBot, Google-Extended) whose
