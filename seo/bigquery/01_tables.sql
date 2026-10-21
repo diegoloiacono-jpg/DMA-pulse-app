@@ -1,5 +1,6 @@
 -- Raw tables written by the SEO n8n workflows (one row per check, never aggregated in n8n).
 -- Replace YOUR_GCP_PROJECT. Every row carries audit_id (from the DMA Pulse app), client, market and domain.
+-- market is one code ('NL') or, when one run covers several markets, a list ('NL,BE'; the first is the primary market).
 -- Metrics are computed from these tables in 02_metric_views.sql, so a definition change can be re-run on old data.
 
 CREATE SCHEMA IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw` OPTIONS (location = "EU");
@@ -50,7 +51,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.llm_page_scores` (
   model STRING, prompt_version STRING, input_chars INT64,
   answers_first_paragraph BOOL, plain_language BOOL, follow_ups_covered BOOL, meets_rubric BOOL,
   has_faq_block BOOL, question_source STRING, questions_total INT64, questions_answered_in_faq INT64,
-  main_questions_answered BOOL,
+  questions_answered_on_page INT64, main_questions_answered BOOL,
   n_core_claims INT64, n_usps_contradicting INT64, n_claims_without_evidence INT64,
   result_json STRING, prompt_tokens INT64, output_tokens INT64, error STRING
 ) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;

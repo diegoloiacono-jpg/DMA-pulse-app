@@ -109,7 +109,8 @@ SELECT audit_id, 'Answer-First Content', 'pct_top20_meet_answer_rubric', AVG(IF(
 FROM llm WHERE task = 'answer_first' AND meets_rubric IS NOT NULL
 GROUP BY audit_id
 
--- FAQ & Question Coverage: share of the scored landing pages whose main questions are answered in a FAQ block
+-- FAQ & Question Coverage: share of the scored landing pages that answer their main questions on the page (a FAQ block
+-- is not required); the FAQ / customer service page counts when it answers them, brand questions included, in its FAQ
 UNION ALL
 SELECT audit_id, 'FAQ & Question Coverage', 'pct_top50_questions_answered', AVG(IF(main_questions_answered, 1.0, 0.0))
 FROM llm WHERE task = 'faq_coverage' AND main_questions_answered IS NOT NULL

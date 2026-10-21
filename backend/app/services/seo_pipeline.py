@@ -55,8 +55,10 @@ def _view(name: str) -> str:
 
 
 # Market filter shared by the queries: an empty market reads all markets of the site, and rows
-# without a market (site-wide data) always count.
-_MARKET_FILTER = "(@market = '' OR market IS NULL OR market = '' OR UPPER(market) = @market)"
+# without a market (site-wide data) always count. One n8n run can cover several markets: its rows
+# carry a list such as 'NL,BE', and count for each market in it.
+_MARKET_FILTER = ("(@market = '' OR market IS NULL OR market = '' "
+                  "OR @market IN UNNEST(SPLIT(REPLACE(UPPER(market), ' ', ''), ',')))")
 
 
 def _query(label: str, sql: str, params: list) -> pd.DataFrame:

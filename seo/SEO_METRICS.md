@@ -469,7 +469,7 @@ Rule: `fail if pct_top20_meet_answer_rubric < 0.50`; `pass if pct_top20_meet_ans
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_top50_questions_answered` | LLM step | Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions, chosen by the LLM step from the page itself, and the brand questions from the intake (reviews, delivery, complaints) in a FAQ block / 50 |
+| `pct_top50_questions_answered` | LLM step | Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions (from search data, or chosen by the LLM step from the page itself) on the page; a FAQ block is not required. The FAQ or customer service page counts when it answers them, and the brand questions from the intake, in its FAQ / 50 |
 
 Rule: `fail if pct_top50_questions_answered < 0.20`; `pass if pct_top50_questions_answered >= 0.50`
 

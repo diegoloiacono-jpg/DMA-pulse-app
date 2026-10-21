@@ -905,7 +905,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_top20_meet_answer_rubric': ('LLM step', 'Top 20 landing pages that meet the fixed rubric (answers the main question in the first paragraph, plain language, follow-up questions covered) / 20'),
     },
     'FAQ & Question Coverage': {
-        'pct_top50_questions_answered': ('LLM step', 'Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions, chosen by the LLM step from the page itself, and the brand questions from the intake (reviews, delivery, complaints) in a FAQ block / 50'),
+        'pct_top50_questions_answered': ('LLM step', 'Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions (from search data, or chosen by the LLM step from the page itself) on the page; a FAQ block is not required. The FAQ or customer service page counts when it answers them, and the brand questions from the intake, in its FAQ / 50'),
     },
     'Topic Clusters': {
         'pct_cluster_subpages_linked_both_ways': ('SF crawl', 'Cluster subpages (keyword mapping or Screaming Frog content clusters) that link to and are linked from their pillar page / cluster subpages'),
@@ -2882,20 +2882,22 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
 
 - FAQ & Question Coverage:
     Ref: AI-32 · Tier Expert · Impact 2 · Confidence 3 · Ease 4
-    Audit logic: Detect FAQ blocks and FAQPage markup on the top 50 landing pages (custom
-      extraction) and check with a fixed LLM step whether each page answers its 3 main questions
-      (chosen from the page itself) and the brand questions from the intake (reviews, delivery,
-      complaints). Keyword research is not part of the pulse.
+    Audit logic: Check with a fixed LLM step whether each of the top 50 landing pages answers
+      its 3 main questions (from search data, or chosen from the page itself) on the page, and
+      whether the FAQ or customer service page answers the brand questions in its FAQ. A FAQ
+      block is not required on every page; FAQ blocks and FAQPage markup are reported. Keyword
+      research is not part of the pulse.
     Metrics:
       pct_top50_questions_answered: Top 50 landing pages by Search Console clicks (without
         access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming
-        Frog Unique Inlinks) that answer their 3 main questions, chosen by the LLM step from the
-        page itself, and the brand questions from the intake (reviews, delivery, complaints) in
-        a FAQ block / 50
-    Pass: At least 50% of the top 50 landing pages answer their main questions in a FAQ,
-      including brand questions.
+        Frog Unique Inlinks) that answer their 3 main questions (from search data, or chosen by
+        the LLM step from the page itself) on the page; a FAQ block is not required. The FAQ or
+        customer service page counts when it answers them, and the brand questions from the
+        intake, in its FAQ / 50
+    Pass: At least 50% of the top 50 landing pages answer their main questions on the page (the
+      FAQ or customer service page: in its FAQ, brand questions included).
     Warn: between the pass and the fail condition.
-    Fail: Less than 20% of the top 50 landing pages answer their main questions.
+    Fail: Less than 20% of the top 50 landing pages answer their main questions on the page.
     Without Search Console: Top 50 key pages (indexable URLs in the XML sitemaps ranked by
       Screaming Frog Unique Inlinks) instead of the top landing pages by clicks.
     Python rule: fail if pct_top50_questions_answered < 0.20; pass if
