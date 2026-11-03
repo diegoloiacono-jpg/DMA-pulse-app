@@ -116,24 +116,34 @@ def extract_seo_audit_data(params: SeoAuditParams, brand_context: BrandContext |
     as_of = params.as_of or date.today()
     oldest = as_of - timedelta(days=params.max_age_days)
     market = (params.market or "").strip().upper()
+    crawl_id = (params.crawl_id or "").strip()
+    n8n_audit_id = (params.n8n_audit_id or "").strip()
     base = [
         bigquery.ScalarQueryParameter("site", "STRING", site),
         bigquery.ScalarQueryParameter("market", "STRING", market),
         bigquery.ScalarQueryParameter("as_of", "DATE", as_of),
         bigquery.ScalarQueryParameter("oldest", "DATE", oldest),
+        bigquery.ScalarQueryParameter("crawl_id", "STRING", crawl_id),
+        bigquery.ScalarQueryParameter("n8n_audit_id", "STRING", n8n_audit_id),
     ]
 
+    # A chosen n8n run or crawl replaces the other runs or crawls of that source, also outside the window
     metrics = _query("v_seo_metrics", f"""
         SELECT topic, metric, value
         FROM {_view("v_seo_metrics")}
-        WHERE site = @site AND {_MARKET_FILTER} AND measured_on BETWEEN @oldest AND @as_of
+        WHERE site = @site AND {_MARKET_FILTER}
+          AND CASE
+            WHEN source = 'n8n' AND @n8n_audit_id != '' THEN source_id = @n8n_audit_id
+            WHEN source = 'sf_crawl' AND @crawl_id != '' THEN source_id = @crawl_id
+            ELSE measured_on BETWEEN @oldest AND @as_of END
         QUALIFY ROW_NUMBER() OVER (PARTITION BY topic, metric ORDER BY measured_on DESC) = 1
     """, base)
 
     crawls = _query("v_seo_crawl_summary", f"""
         SELECT crawl_id, crawl_date, user_agent, js_rendering, internal_html, indexable_html
         FROM {_view("v_seo_crawl_summary")}
-        WHERE site = @site AND {_MARKET_FILTER} AND crawl_date BETWEEN @oldest AND @as_of
+        WHERE site = @site AND (crawl_id = @crawl_id
+          OR (@crawl_id = '' AND {_MARKET_FILTER} AND crawl_date BETWEEN @oldest AND @as_of))
         ORDER BY crawl_date DESC, loaded_at DESC  -- the same crawl uploaded again: the last upload
         LIMIT 1
     """, base)
@@ -176,6 +186,78 @@ def extract_seo_audit_data(params: SeoAuditParams, brand_context: BrandContext |
         category: seo_category_frame(category, by_topic, issues, crawl_summary)
         for category in SEO_CATEGORY_TOPICS
     }
+
+
+def list_seo_sources(domain: str, market: str = "", limit: int = 20) -> dict:
+    """The Screaming Frog crawls and n8n runs of a site in BigQuery, newest first: the choice of the data an
+    SEO audit reads (SeoAuditParams.crawl_id / n8n_audit_id)."""
+    site = normalise_site(domain)
+    if not site:
+        return {"site": "", "crawls": [], "n8n_runs": []}
+    params = [bigquery.ScalarQueryParameter("site", "STRING", site),
+              bigquery.ScalarQueryParameter("market", "STRING", (market or "").strip().upper())]
+    crawls = _query("v_seo_crawl_summary", f"""
+        SELECT crawl_id, crawl_date, market, internal_html, indexable_html, external_urls, js_rendering, loaded_at
+        FROM {_view("v_seo_crawl_summary")}
+        WHERE site = @site AND {_MARKET_FILTER}
+        ORDER BY crawl_date DESC, loaded_at DESC
+        LIMIT {int(limit)}
+    """, params)
+    runs = _query("v_seo_n8n_runs", f"""
+        SELECT audit_id, run_date, market, checks, n_metrics, first_write, last_write
+        FROM {_view("v_seo_n8n_runs")}
+        WHERE site = @site AND {_MARKET_FILTER}
+        ORDER BY last_write DESC
+        LIMIT {int(limit)}
+    """, params)
+    try:
+        links = _query("pulse_runs", f"""
+            SELECT audit_id, crawl_id FROM {_view("pulse_runs")}
+            WHERE REGEXP_REPLACE(LOWER(domain), r'^www\\.', '') = @site AND crawl_id IS NOT NULL
+        """, params)
+    except RuntimeError as exc:   # a dataset made before pulse_runs existed
+        logger.warning("pulse_runs not read: %s", exc)
+        links = pd.DataFrame(columns=["audit_id", "crawl_id"])
+
+    def plain(v):
+        if v is None or (isinstance(v, float) and pd.isna(v)) or v is pd.NaT:
+            return None
+        if hasattr(v, "isoformat"):
+            return v.isoformat()
+        return v.item() if hasattr(v, "item") else v
+
+    rows = lambda df: [{k: plain(v) for k, v in r.items()} for r in df.to_dict("records")]
+    crawl_list, run_list = rows(crawls), rows(runs)
+    return {"site": site, "pulses": pair_pulses(run_list, crawl_list, dict(zip(links["audit_id"], links["crawl_id"]))),
+            "crawls": crawl_list, "n8n_runs": run_list}
+
+
+def pair_pulses(runs: list[dict], crawls: list[dict], links: dict[str, str]) -> list[dict]:
+    """One SEO pulse per submit of the n8n form: the run and the crawl uploaded with it, newest first. The crawl comes
+    from pulse_runs (linked_by "form"); for runs from before that table, the crawl of the site uploaded in the 30
+    minutes before the run's first write (linked_by "time"). Crawls no run used are pulses of their own (crawl only)."""
+    ts = lambda iso: pd.Timestamp(iso) if iso else None
+    by_id = {c["crawl_id"]: c for c in crawls}
+    pulses, used = [], set()
+    for r in runs:
+        cid, how = links.get(r["audit_id"]), "form"
+        if not cid:
+            start, cid, how = ts(r.get("first_write")), None, None
+            near = [c for c in crawls if start is not None and c.get("loaded_at") and c["crawl_id"] not in used
+                    and start - pd.Timedelta(minutes=30) <= ts(c["loaded_at"]) <= start]
+            if near:
+                cid, how = max(near, key=lambda c: ts(c["loaded_at"]))["crawl_id"], "time"
+        c = by_id.get(cid, {})
+        used.add(cid)
+        pulses.append({"audit_id": r["audit_id"], "crawl_id": cid, "at": r.get("first_write") or r.get("last_write"),
+                       "checks": r.get("checks"), "n_metrics": r.get("n_metrics"), "linked_by": how,
+                       "crawl_date": c.get("crawl_date"), "internal_html": c.get("internal_html"), "js_rendering": c.get("js_rendering")})
+    for c in crawls:
+        if c["crawl_id"] not in used:
+            pulses.append({"audit_id": None, "crawl_id": c["crawl_id"], "at": c.get("loaded_at"), "checks": None, "n_metrics": None,
+                           "linked_by": None, "crawl_date": c.get("crawl_date"), "internal_html": c.get("internal_html"),
+                           "js_rendering": c.get("js_rendering")})
+    return sorted(pulses, key=lambda p: ts(p["at"]) or pd.Timestamp(0, tz="UTC"), reverse=True)
 
 
 # ---------------------------------------------------------------------------

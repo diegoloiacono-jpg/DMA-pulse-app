@@ -71,6 +71,9 @@ class SeoAuditParams(BaseModel):
     as_of: date | None = None       # read the latest data on or before this date; default today
     max_age_days: int = 90          # ignore metrics and crawls older than this
     search_console: bool = False    # the first pulse usually runs without the client's Search Console
+    # The data the audit reads, chosen in the SEO tab (GET /api/audit/seo/sources); empty = the latest in the window
+    crawl_id: str | None = None      # one Screaming Frog crawl: its issues and its metrics
+    n8n_audit_id: str | None = None  # one n8n run: only its metrics (other n8n runs are left out)
 
 
 class AuditRunRequest(BaseModel):

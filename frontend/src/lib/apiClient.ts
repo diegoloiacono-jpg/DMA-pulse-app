@@ -42,6 +42,20 @@ export interface SeoAuditParams {
   as_of?: string;          // YYYY-MM-DD; default today
   max_age_days?: number;   // default 90
   search_console?: boolean;
+  /** One Screaming Frog crawl / one n8n run (GET /api/audit/seo/sources); empty = the latest in the window. */
+  crawl_id?: string;
+  n8n_audit_id?: string;
+}
+
+/** What BigQuery holds for a site: its crawls and n8n runs, newest first (backend list_seo_sources). */
+export interface SeoSources {
+  site: string;
+  /** One per submit of the n8n form: the run and the crawl uploaded with it (audit_id null: a crawl without a run). */
+  pulses: { audit_id: string | null; crawl_id: string | null; at: string | null; checks: string | null; n_metrics: number | null;
+            linked_by: "form" | "time" | null; crawl_date: string | null; internal_html: number | null; js_rendering: boolean | null }[];
+  crawls: { crawl_id: string; crawl_date: string; market: string | null; internal_html: number | null;
+            indexable_html: number | null; external_urls: number | null; js_rendering: boolean | null; loaded_at: string }[];
+  n8n_runs: { audit_id: string; run_date: string; market: string | null; checks: string; n_metrics: number; last_write: string }[];
 }
 
 /** SEO maturity staircase (seo_criteria.seo_maturity). */
@@ -179,6 +193,11 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify({ brand_context: brandContext, platform: "seo", seo }),
     });
+  },
+
+  getSeoSources(domain: string, market?: string) {
+    const q = new URLSearchParams({ domain, ...(market ? { market } : {}) });
+    return request<SeoSources>(`/api/audit/seo/sources?${q}`);
   },
 
   /** True when the backend runs SEO audits (branch SEO-feature). Never throws and never reloads. */

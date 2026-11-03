@@ -15,7 +15,7 @@ from app.models.audit import (
 )
 from app.services.bigquery import resolve_account_id
 from app.services.data_extraction import extract_audit_data
-from app.services.seo_pipeline import extract_seo_audit_data, normalise_site, run_seo_specialist
+from app.services.seo_pipeline import extract_seo_audit_data, list_seo_sources, normalise_site, run_seo_specialist
 from app.services.specialist import run_specialist_agent
 
 router = APIRouter()
@@ -96,6 +96,15 @@ def _start_seo_audit(payload: AuditRunRequest, background_tasks: BackgroundTasks
 def seo_support() -> dict:
     """Lets the SEO tab check that this backend runs SEO audits (older ones would ignore platform)."""
     return {"seo": True, "dataset": SEO_BQ_DATASET}
+
+
+@router.get("/seo/sources")
+def seo_sources(domain: str, market: str = "") -> dict:
+    """The Screaming Frog crawls and n8n runs of a site in BigQuery, for the SEO tab's choice of what an audit reads."""
+    try:
+        return list_seo_sources(domain, market)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/run", response_model=dict)

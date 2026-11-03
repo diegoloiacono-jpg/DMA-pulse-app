@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Play, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { apiClient, AuditState, AuditStatus, BrandContextPayload } from "@/lib/apiClient";
+import { apiClient, AuditState, AuditStatus, BrandContextPayload, SeoSources } from "@/lib/apiClient";
 import { SavedContext } from "@/utils/savedContexts";
 
 interface Props {
@@ -32,6 +32,10 @@ const FIELD =
 /** Host without scheme or path, as the backend matches it (www. is ignored there). */
 const cleanDomain = (v: string) => v.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
 
+const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "");
+const time = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
+const num = (n?: number | null) => (n == null ? "?" : n.toLocaleString("en-GB"));
+
 export default function SeoAuditRunner({ brandContext, savedContexts, activeContextId, onSelectContext, onSpecialistReady }: Props) {
   const [status, setStatus] = useState<AuditStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,11 +48,34 @@ export default function SeoAuditRunner({ brandContext, savedContexts, activeCont
   const [maxAgeDays, setMaxAgeDays] = useState(90);
   // The first pulse usually runs without the client's Search Console
   const [searchConsole, setSearchConsole] = useState(false);
+  // What BigQuery holds for the domain, and the crawl and n8n run the audit reads ("" = the latest in the window)
+  const [sources, setSources] = useState<SeoSources | null>(null);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
+  // The chosen SEO pulse as "audit_id|crawl_id" ("" = the latest crawl and metrics in the window)
+  const [pulse, setPulse] = useState("");
+  const pulseKey = (p: SeoSources["pulses"][number]) => `${p.audit_id ?? ""}|${p.crawl_id ?? ""}`;
   // null = checking; false = this backend cannot run SEO audits (e.g. master, or no backend at all)
   const [seoBackend, setSeoBackend] = useState<boolean | null>(null);
   useEffect(() => {
     apiClient.seoSupport().then(setSeoBackend);
   }, []);
+
+  // The crawls and n8n runs of the domain, read again when the domain or market changes
+  useEffect(() => {
+    const host = cleanDomain(domain);
+    if (!seoBackend || !host) { setSources(null); return; }
+    let live = true;
+    const t = setTimeout(() => {
+      apiClient.getSeoSources(host, market.trim().toUpperCase() || undefined)
+        .then(s => {
+          if (!live) return;
+          setSources(s); setSourcesError(null);
+          setPulse(k => (s.pulses.some(p => pulseKey(p) === k) ? k : ""));
+        })
+        .catch(e => { if (live) { setSources(null); setSourcesError(e instanceof Error ? e.message : "Could not read BigQuery"); } });
+    }, 500);
+    return () => { live = false; clearTimeout(t); };
+  }, [domain, market, seoBackend]);
 
   // Follow the site URL of the selected client context
   const siteUrl = brandContext.seo?.siteUrl ?? "";
@@ -101,6 +128,8 @@ export default function SeoAuditRunner({ brandContext, savedContexts, activeCont
           as_of: asOf || undefined,
           max_age_days: maxAgeDays,
           search_console: searchConsole,
+          n8n_audit_id: pulse.split("|")[0] || undefined,
+          crawl_id: pulse.split("|")[1] || undefined,
         },
       );
       pollRef.current = setInterval(() => poll(audit_id), 3000);
@@ -177,6 +206,32 @@ export default function SeoAuditRunner({ brandContext, savedContexts, activeCont
         Reads the latest crawl and metrics of this site in BigQuery (dataset seo_raw) up to the chosen date,
         no older than the maximum age. Empty date = today; empty market = all markets of the site.
       </p>
+
+      {sources && (
+        <div className="flex flex-col gap-2 rounded-md border px-2 py-2">
+          <label className="text-xs font-medium">SEO pulse the audit runs on</label>
+          {sources.pulses.length ? (
+            <select value={pulse} onChange={e => setPulse(e.target.value)} disabled={!!isActive} className={FIELD}>
+              <option value="">Latest crawl and metrics in the window</option>
+              {sources.pulses.map(p => (
+                <option key={pulseKey(p)} value={pulseKey(p)}>
+                  {day(p.at)} {time(p.at)} · {p.audit_id ? `${p.checks} (${p.n_metrics ?? 0} metrics)` : "crawl only"}
+                  {p.crawl_id
+                    ? ` · crawl of ${day(p.crawl_date)}, ${num(p.internal_html)} pages, JS rendering ${p.js_rendering ? "yes" : "no"}`
+                    : " · no crawl uploaded: the latest crawl in the window"}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-xs text-muted-foreground">Nothing of {sources.site} in BigQuery yet: run the SEO pulse checks first.</p>
+          )}
+          <p className="text-[10px] text-muted-foreground">
+            One pulse is one submit of the SEO pulse form: its checks and the crawl uploaded with them. A chosen pulse is used
+            even when it is older than the maximum age, and replaces the other runs.
+          </p>
+        </div>
+      )}
+      {sourcesError && <p className="text-[10px] text-destructive">Could not list the data in BigQuery: {sourcesError}</p>}
 
       <label className="flex items-center gap-2 cursor-pointer">
         <input

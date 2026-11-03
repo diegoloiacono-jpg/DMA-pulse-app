@@ -106,3 +106,9 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.ahrefs_citations` (
   url STRING, http_status INT64, n_external_links INT64, n_external_domains INT64,
   max_cited_dr FLOAT64, cites_dr50 BOOL, cited_domains STRING, units_estimate INT64, error STRING
 ) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
+
+-- One row per run of the SEO pulse checks, written first: the crawl uploaded with it in the same form (crawl_id, NULL
+-- without a crawl) and the checks selected. The DMA Pulse app offers a run and its crawl as one choice.
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.pulse_runs` (
+  audit_id STRING, crawl_id STRING, client STRING, market STRING, domain STRING, checks STRING, started_at TIMESTAMP
+) PARTITION BY DATE(started_at) CLUSTER BY domain;

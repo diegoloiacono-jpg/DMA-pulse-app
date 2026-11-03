@@ -308,17 +308,18 @@ other AS (
   QUALIFY ROW_NUMBER() OVER (PARTITION BY client, market, domain, measured_on, topic, metric
                              ORDER BY loaded_at DESC) = 1
 )
+-- source_id: the n8n audit_id or the Screaming Frog crawl_id the value comes from (the app can pick one run or crawl)
 SELECT a.client, a.market, REGEXP_REPLACE(LOWER(a.domain), r'^www\.', '') AS site, a.measured_on,
-       'n8n' AS source, m.topic, m.metric, m.value
+       'n8n' AS source, m.topic, m.metric, m.value, a.audit_id AS source_id
 FROM `YOUR_GCP_PROJECT.seo_raw.v_topic_metrics_n8n` AS m
 JOIN n8n_audits AS a USING (audit_id)
 UNION ALL
 SELECT client, market, REGEXP_REPLACE(LOWER(domain), r'^www\.', ''), measured_on,
-       source, topic, metric, value
+       source, topic, metric, value, crawl_id
 FROM other
 UNION ALL
 SELECT client, market, REGEXP_REPLACE(LOWER(domain), r'^www\.', ''), crawl_date,
-       'sf_crawl', topic, metric, value
+       'sf_crawl', topic, metric, value, crawl_id
 FROM `YOUR_GCP_PROJECT.seo_raw.v_sf_metrics`;
 
 CREATE OR REPLACE VIEW `YOUR_GCP_PROJECT.seo_raw.v_seo_crawl_summary` AS
@@ -326,6 +327,31 @@ SELECT crawl_id, client, market, REGEXP_REPLACE(LOWER(domain), r'^www\.', '') AS
        user_agent, js_rendering, internal_html, indexable_html, external_urls, loaded_at
 FROM `YOUR_GCP_PROJECT.seo_raw.sf_crawls`
 QUALIFY ROW_NUMBER() OVER (PARTITION BY crawl_id ORDER BY loaded_at DESC) = 1;
+
+-- The n8n runs per site, for the app's choice of the run an audit reads: date, the checks that wrote rows, metrics
+CREATE OR REPLACE VIEW `YOUR_GCP_PROJECT.seo_raw.v_seo_n8n_runs` AS
+WITH written AS (
+  SELECT audit_id, client, market, domain, fetched_at AS ts, 'PageSpeed agentic browsing' AS check_name FROM `YOUR_GCP_PROJECT.seo_raw.psi_agentic`
+  UNION ALL SELECT audit_id, client, market, domain, fetched_at, 'PageSpeed agentic browsing' FROM `YOUR_GCP_PROJECT.seo_raw.site_file_checks`
+  UNION ALL SELECT audit_id, client, market, domain, fetched_at, 'Wikidata & Wikipedia' FROM `YOUR_GCP_PROJECT.seo_raw.wikidata_items`
+  UNION ALL SELECT audit_id, client, market, domain, fetched_at, 'Wikidata & Wikipedia' FROM `YOUR_GCP_PROJECT.seo_raw.wikipedia_links`
+  UNION ALL SELECT audit_id, client, market, domain, fetched_at, 'LLM page scores' FROM `YOUR_GCP_PROJECT.seo_raw.llm_page_scores`
+  UNION ALL SELECT audit_id, client, market, domain, tested_at, 'Verified agent access' FROM `YOUR_GCP_PROJECT.seo_raw.verified_agent_tests`
+  UNION ALL SELECT audit_id, client, market, domain, tested_at, 'Verified agent access' FROM `YOUR_GCP_PROJECT.seo_raw.ai_bot_tests`
+  UNION ALL SELECT audit_id, client, market, domain, tested_at, 'UCP agent test' FROM `YOUR_GCP_PROJECT.seo_raw.ucp_agent_tests`
+  UNION ALL SELECT audit_id, client, market, domain, fetched_at, 'Ahrefs authority' FROM `YOUR_GCP_PROJECT.seo_raw.ahrefs_authority`
+  UNION ALL SELECT audit_id, client, market, domain, fetched_at, 'Ahrefs authority' FROM `YOUR_GCP_PROJECT.seo_raw.ahrefs_citations`
+),
+metrics AS (
+  SELECT audit_id, COUNT(*) AS n_metrics FROM `YOUR_GCP_PROJECT.seo_raw.v_topic_metrics_n8n` WHERE value IS NOT NULL GROUP BY audit_id
+)
+SELECT w.audit_id, ANY_VALUE(w.client) AS client, ANY_VALUE(w.market) AS market,
+       REGEXP_REPLACE(LOWER(ANY_VALUE(w.domain)), r'^www\.', '') AS site, DATE(MAX(w.ts)) AS run_date, MAX(w.ts) AS last_write,
+       MIN(w.ts) AS first_write,
+       STRING_AGG(DISTINCT w.check_name, ', ' ORDER BY w.check_name) AS checks, IFNULL(ANY_VALUE(m.n_metrics), 0) AS n_metrics
+FROM written AS w
+LEFT JOIN metrics AS m USING (audit_id)
+GROUP BY w.audit_id;
 
 CREATE OR REPLACE VIEW `YOUR_GCP_PROJECT.seo_raw.v_seo_issue_detail` AS
 SELECT i.crawl_id, REGEXP_REPLACE(LOWER(i.domain), r'^www\.', '') AS site, i.crawl_date,
