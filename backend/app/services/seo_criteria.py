@@ -786,7 +786,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     'Error Handling & Soft 404s': {
         'nonexistent_url_status': ('SF list', 'HTTP status code of a random non-existent URL (first response, before redirects)'),
         'n_soft_404_pages': ('SF crawl', 'Content: Soft 404 Pages'),
-        'pct_pages_linking_4xx': ('SF crawl', 'Internal HTML pages linking to an internal 4xx URL / internal HTML pages'),
+        'pct_pages_linking_4xx': ('SF crawl', 'Internal HTML pages linking to an internal 4xx URL (source_pages of Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML pages'),
     },
     'Canonical Tags': {
         'pct_indexable_canonical_issue': ('SF crawl', 'Distinct indexable URLs in any Screaming Frog issue mapped to this topic / indexable HTML URLs'),
@@ -834,7 +834,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_forced_geo_redirects': ('SF list', 'Key URLs that redirect based on IP or Accept-Language'),
     },
     'URL Structure': {
-        'pct_indexable_url_issue': ('SF crawl', 'Distinct indexable URLs in any URL issue mapped to this topic / indexable HTML URLs'),
+        'pct_indexable_url_issue': ('SF crawl', 'Distinct indexable URLs in any URL issue mapped to this topic except Uppercase and Underscores (locale folders such as /nl_NL/; they stay listed as issues) / indexable HTML URLs'),
         'n_session_id_urls': ('SF crawl', 'URLs containing session IDs (regex: sid=, sessionid, jsessionid, phpsessid)'),
     },
     'Internal Link Health': {
@@ -913,7 +913,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     },
     'Source Citations': {
         'pct_info_pages_citing_dr50': ('Ahrefs', 'Informational pages with at least one external link inside <main> to a domain with Domain Rating 50 or higher / informational pages'),
-        'pct_external_links_broken': ('SF crawl', 'External links returning 4xx, 5xx or no response / external links'),
+        'pct_external_links_broken': ('SF crawl', 'External URLs returning 4xx, 5xx or no response (the Response Codes issues) / external URLs (External export, tab External, filter All)'),
     },
     'Structured Formatting': {
         'pct_content_pages_list_or_table': ('SF extraction', 'Content pages with a list or table inside <main> / content pages'),
@@ -2026,14 +2026,17 @@ def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
     Per result: level = the topic's fixed tier. When status_computed is pass, warn or fail, that
     is the status, and the topic counts as measured even when Gemini labelled it as having no
     data. When it is "na", the topic gets not_applicable = True (status "pass", like the B2B feed
-    stubs), so scoring skips it. When it is None, Gemini's judgement stands, unless the topic has
-    no evidence at all (no metric and no Screaming Frog issue): then it counts as no data
-    (source no_data_source), so a guess does not enter the score. Works on SpecialistResult
-    objects and dicts; changes them in place and returns the same list.
+    stubs), so scoring skips it. When it is None, no fail condition is met and not every pass
+    condition is: a "fail" or "pass" of Gemini becomes "warn" (it keeps its action and
+    explanation, with the rule that is unknown), unless Gemini marks the topic N/A. A topic with no
+    evidence at all (no metric and no Screaming Frog issue) counts as no data (source
+    no_data_source), so a guess does not enter the score. Works on SpecialistResult objects and
+    dicts; changes them in place and returns the same list.
     """
     has_source = "_source" in frame.columns
     rows = frame[frame["_source"] == "topic_results"] if has_source else frame.iloc[0:0]
     computed = dict(zip(rows["topic"], rows["status_computed"])) if len(rows) else {}
+    rule_of = dict(zip(rows["topic"], rows["rule"])) if len(rows) and "rule" in rows.columns else {}
     measured = {t for t, m in zip(rows["topic"], rows["metrics"]) if seo_has_evidence(t, m)} if len(rows) else set()
     with_issues = set(frame.loc[frame["_source"] == "issue_detail", "topic"]) if has_source else set()
     for r in results:
@@ -2050,9 +2053,21 @@ def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
             _set(r, "status", "pass")
             _set(r, "not_applicable", True)
             _set(r, "action", "None")
-        elif (topic not in measured and topic not in with_issues and not _is_na(r)
-              and _get(r, "source") not in _UNSCORED_SOURCES):
-            _set(r, "source", "no_data_source")
+        else:
+            # The metrics do not decide, so Gemini may not either (Wouter, 3 Nov 2026: Gemini failed
+            # Authority Pages on an unknown metric): its fail or pass becomes warn
+            rules = SEO_RULES.get(topic, {})
+            if (_get(r, "status") in ("pass", "fail") and not _is_na(r)
+                    and (rules.get("fail_if") or rules.get("pass_if"))):
+                _set(r, "status", "warn")
+                why = rule_of.get(topic) if isinstance(rule_of.get(topic), str) else "a deciding metric is missing"
+                expl = str(_get(r, "explanation") or "").strip()
+                _set(r, "explanation", (expl + " " if expl else "") + f"Status warn: the metrics do not decide it ({why}).")
+                if str(_get(r, "action") or "None") == "None":
+                    _set(r, "action", f"Verify manually: {why}.")
+            if (topic not in measured and topic not in with_issues and not _is_na(r)
+                    and _get(r, "source") not in _UNSCORED_SOURCES):
+                _set(r, "source", "no_data_source")
     return results
 
 
@@ -2165,7 +2180,9 @@ these fields:
 
 DATA LAYOUT (same for every SEO category):
 crawl_summary row (_source="crawl_summary", _summary=true) has: crawl_date, crawl_age_days,
-  user_agent, js_rendering, internal_html, indexable_html, search_console. The counts are the
+  user_agent, js_rendering, internal_html, indexable_html, search_console. user_agent is often
+  null (not in the exports); js_rendering is true when the crawl rendered JavaScript and null when
+  unknown, then the JavaScript issues were not measured (not zero). The counts are the
   denominators behind the percentages; search_console is true when the client's Search
   Console data was available for this audit.
 topic_results rows (_source="topic_results") have: topic, status_computed, rule, metrics.
@@ -2184,6 +2201,12 @@ STATUS RULES:
 - When status_computed is null, evaluate the Pass / Warn / Fail conditions below on the metrics
   that are present, and name the missing metrics in the explanation. Warn = the result sits
   between the pass and the fail condition.
+- A condition on a metric that is missing is unknown, never met: a missing metric is never the
+  reason for "fail" (nor for "pass"). When the metrics that would decide are missing, return
+  "warn", say which metric is missing and what to verify.
+- Never compute a metric yourself from issue_detail: its urls are URL counts per issue, not link
+  occurrences or percentages of the site. Use issue_detail to name the issues in the action and as
+  evidence next to the metrics; a threshold is only met by a metric value in topic_results.
 - Not applicable: when status_computed is "na", or when status_computed is null and the brand
   context clearly meets the N/A condition of the topic, return not_applicable = true,
   status = "pass" and action = "None", and name the N/A condition in the explanation. These
@@ -2395,7 +2418,8 @@ Can search engines and AI crawlers reach, render and index the site?
       nonexistent_url_status: HTTP status code of a random non-existent URL (first response,
         before redirects)
       n_soft_404_pages: Content: Soft 404 Pages
-      pct_pages_linking_4xx: Internal HTML pages linking to an internal 4xx URL / internal HTML
+      pct_pages_linking_4xx: Internal HTML pages linking to an internal 4xx URL (source_pages of
+        Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML
         pages
     Pass: Non-existent URLs return a real 404 or 410, 0 soft 404s, and at most 0.5% of pages
       link to 4xx URLs.
@@ -2594,8 +2618,9 @@ Do URLs and internal links make key pages easy to find and crawl?
       Space, Non ASCII Characters, Multiple Slashes, Repetitive Path, Over 115 Characters) and
       match session IDs with a regex.
     Metrics:
-      pct_indexable_url_issue: Distinct indexable URLs in any URL issue mapped to this topic /
-        indexable HTML URLs
+      pct_indexable_url_issue: Distinct indexable URLs in any URL issue mapped to this topic
+        except Uppercase and Underscores (locale folders such as /nl_NL/; they stay listed as
+        issues) / indexable HTML URLs
       n_session_id_urls: URLs containing session IDs (regex: sid=, sessionid, jsessionid,
         phpsessid)
     Pass: At most 2% of indexable URLs have a URL issue and 0 URLs contain session IDs.
@@ -2603,6 +2628,9 @@ Do URLs and internal links make key pages easy to find and crawl?
     Fail: More than 10% of indexable URLs affected, or session IDs in URLs.
     Python rule: fail if pct_indexable_url_issue > 0.10 or n_session_id_urls > 0; pass if
       pct_indexable_url_issue <= 0.02
+    Note: Uppercase and Underscores are not counted: locale folders such as /nl_NL/ put them in
+      nearly every URL, which is no problem. Do not recommend changing locale folders; name
+      Uppercase or Underscores only for URLs outside them.
 
 - Internal Link Health:
     Ref: SEO-12 · Tier Advanced · Impact 5 · Confidence 4 · Ease 4
@@ -2926,8 +2954,8 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Metrics:
       pct_info_pages_citing_dr50: Informational pages with at least one external link inside
         <main> to a domain with Domain Rating 50 or higher / informational pages
-      pct_external_links_broken: External links returning 4xx, 5xx or no response / external
-        links
+      pct_external_links_broken: External URLs returning 4xx, 5xx or no response (the Response
+        Codes issues) / external URLs (External export, tab External, filter All)
     Pass: At least 50% of informational pages cite a source with DR 50 or higher, and at most 2%
       of external links are broken.
     Warn: between the pass and the fail condition.

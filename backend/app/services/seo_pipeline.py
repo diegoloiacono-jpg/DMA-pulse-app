@@ -134,7 +134,7 @@ def extract_seo_audit_data(params: SeoAuditParams, brand_context: BrandContext |
         SELECT crawl_id, crawl_date, user_agent, js_rendering, internal_html, indexable_html
         FROM {_view("v_seo_crawl_summary")}
         WHERE site = @site AND {_MARKET_FILTER} AND crawl_date BETWEEN @oldest AND @as_of
-        ORDER BY crawl_date DESC
+        ORDER BY crawl_date DESC, loaded_at DESC  -- the same crawl uploaded again: the last upload
         LIMIT 1
     """, base)
 

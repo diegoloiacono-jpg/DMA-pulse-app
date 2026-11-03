@@ -8,7 +8,7 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 
 | Origin | What it is |
 |---|---|
-| SF crawl | Screaming Frog scheduled crawl exports (Internal All, Issues overview, Bulk export Issues > All, All Outlinks, All Redirects, Sitemaps, Hreflang, Structured data) loaded into BigQuery |
+| SF crawl | Screaming Frog crawl exports (Internal, Bulk export Issues > All; later All Outlinks, All Redirects, Sitemaps, Hreflang, Structured data), uploaded through the n8n form (or a scheduled crawl) into BigQuery |
 | SF list | Screaming Frog list-mode crawl of generated URLs or with a custom user agent / Accept-Language |
 | SF extraction | Screaming Frog custom extraction or custom search on the same crawl |
 | SF accessibility | Screaming Frog accessibility audit (axe-core, JavaScript rendering) |
@@ -214,7 +214,7 @@ Note: Whether a 302/307 is a permanent move cannot be detected automatically: me
 |---|---|---|
 | `nonexistent_url_status` | SF list | HTTP status code of a random non-existent URL (first response, before redirects) |
 | `n_soft_404_pages` | SF crawl | Content: Soft 404 Pages |
-| `pct_pages_linking_4xx` | SF crawl | Internal HTML pages linking to an internal 4xx URL / internal HTML pages |
+| `pct_pages_linking_4xx` | SF crawl | Internal HTML pages linking to an internal 4xx URL (source_pages of Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML pages |
 
 Rule: `fail if nonexistent_url_status == 200 or nonexistent_url_status in (301, 302, 303, 307, 308) or pct_pages_linking_4xx > 0.02`; `pass if nonexistent_url_status in (404, 410) and n_soft_404_pages == 0 and pct_pages_linking_4xx <= 0.005`
 
@@ -308,10 +308,12 @@ Rule: `na if n_market_languages <= 1`; `fail if pct_urls_hreflang_errors > 0.05 
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_indexable_url_issue` | SF crawl | Distinct indexable URLs in any URL issue mapped to this topic / indexable HTML URLs |
+| `pct_indexable_url_issue` | SF crawl | Distinct indexable URLs in any URL issue mapped to this topic except Uppercase and Underscores (locale folders such as /nl_NL/; they stay listed as issues) / indexable HTML URLs |
 | `n_session_id_urls` | SF crawl | URLs containing session IDs (regex: sid=, sessionid, jsessionid, phpsessid) |
 
 Rule: `fail if pct_indexable_url_issue > 0.10 or n_session_id_urls > 0`; `pass if pct_indexable_url_issue <= 0.02`
+
+Note: Uppercase and Underscores are not counted: locale folders such as /nl_NL/ put them in nearly every URL, which is no problem. Do not recommend changing locale folders; name Uppercase or Underscores only for URLs outside them.
 
 **Internal Link Health** (SEO-12 · I5 C4 E4 · tier Advanced, phase 1)
 
@@ -488,7 +490,7 @@ Rule: `fail if pct_cluster_subpages_linked_both_ways < 0.50`; `pass if pct_clust
 | Metric | Origin | Definition |
 |---|---|---|
 | `pct_info_pages_citing_dr50` | Ahrefs | Informational pages with at least one external link inside <main> to a domain with Domain Rating 50 or higher / informational pages |
-| `pct_external_links_broken` | SF crawl | External links returning 4xx, 5xx or no response / external links |
+| `pct_external_links_broken` | SF crawl | External URLs returning 4xx, 5xx or no response (the Response Codes issues) / external URLs (External export, tab External, filter All) |
 
 Rule: `fail if pct_info_pages_citing_dr50 < 0.20 or pct_external_links_broken > 0.05`; `pass if pct_info_pages_citing_dr50 >= 0.50 and pct_external_links_broken <= 0.02`
 
