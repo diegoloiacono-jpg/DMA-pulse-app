@@ -48,7 +48,6 @@ SEO_CATEGORY_LABELS: dict[str, str] = {
     'performance_mobile': 'Performance & Mobile',
     'onpage_content': 'On-page & Content',
     'authority_entity': 'Authority & Entity',
-    'reputation_local': 'Reputation & Local',
     'ai_search_readiness': 'AI Readiness',
     'agentic_commerce': 'Agentic Commerce',
 }
@@ -93,12 +92,9 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'Index Bloat',
         'Content Hygiene',
         'Structured Data',
-        'Keyword Mapping Coverage',
-        'Keyword Cannibalisation',
         'Content Freshness',
         'Answer-First Content',
         'FAQ & Question Coverage',
-        'Topic Clusters',
         'Source Citations',
         'Structured Formatting',
         'Semantic HTML',
@@ -119,10 +115,6 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'Authority Pages',
         'Wikipedia & Wikidata',
     ],
-    'reputation_local': [
-        'Google Business Profile',
-        'Review Collection',
-    ],
     'ai_search_readiness': [
         'AI Crawler Access',
         'Snippet Directives',
@@ -131,11 +123,9 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'WebMCP Readiness',
     ],
     'agentic_commerce': [
-        'Merchant Center Feed & Free Listings',
         'Product Data Consistency',
-        'AI Shopping Feed Distribution',
-        'Agentic Checkout Readiness',
         'Verified Agent Access',
+        'Agent Catalog Access (UCP)',
     ],
 }
 
@@ -172,12 +162,9 @@ SEO_TOPIC_IDS: dict[str, str] = {
     'Index Bloat': 'SEO-N5',
     'Content Hygiene': 'SEO-N10',
     'Structured Data': 'SEO-24',
-    'Keyword Mapping Coverage': 'SEO-22',
-    'Keyword Cannibalisation': 'SEO-23',
     'Content Freshness': 'AI-37',
     'Answer-First Content': 'AI-29',
     'FAQ & Question Coverage': 'AI-32',
-    'Topic Clusters': 'AI-30',
     'Source Citations': 'AI-34',
     'Structured Formatting': 'AI-33',
     'Semantic HTML': 'AI-06',
@@ -195,18 +182,14 @@ SEO_TOPIC_IDS: dict[str, str] = {
     'Brand Consistency': 'AI-13',
     'Authority Pages': 'AI-18',
     'Wikipedia & Wikidata': 'AI-20',
-    'Google Business Profile': 'AI-21',
-    'Review Collection': 'AI-23',
     'AI Crawler Access': 'AI-03',
     'Snippet Directives': 'AI-N5',
     'Agent Accessibility Tree': 'AI-N6',
     'llms.txt & ai-catalog.json Hygiene': 'AI-N4',
     'WebMCP Readiness': 'AI-N7',
-    'Merchant Center Feed & Free Listings': 'AI-N8',
     'Product Data Consistency': 'AI-N9',
-    'AI Shopping Feed Distribution': 'AI-N10',
-    'Agentic Checkout Readiness': 'AI-N11',
     'Verified Agent Access': 'AI-N12',
+    'Agent Catalog Access (UCP)': 'AI-N13',
 }
 
 # Impact 1–5: highest Screaming Frog issue type × priority behind the topic (Impact matrix), or an assigned SF-style type/priority. Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -242,12 +225,9 @@ SEO_TOPIC_IMPACT: dict[str, float] = {
     'onpage_content::index bloat': 2.0,
     'onpage_content::content hygiene': 4.0,
     'onpage_content::structured data': 5.0,
-    'onpage_content::keyword mapping coverage': 4.0,
-    'onpage_content::keyword cannibalisation': 3.0,
     'onpage_content::content freshness': 3.0,
     'onpage_content::answer-first content': 2.0,
     'onpage_content::faq & question coverage': 2.0,
-    'onpage_content::topic clusters': 2.0,
     'onpage_content::source citations': 2.0,
     'onpage_content::structured formatting': 2.0,
     'onpage_content::semantic html': 1.0,
@@ -265,18 +245,14 @@ SEO_TOPIC_IMPACT: dict[str, float] = {
     'authority_entity::brand consistency': 3.0,
     'authority_entity::authority pages': 2.0,
     'authority_entity::wikipedia & wikidata': 2.0,
-    'reputation_local::google business profile': 4.0,
-    'reputation_local::review collection': 3.0,
     'ai_search_readiness::ai crawler access': 5.0,
     'ai_search_readiness::snippet directives': 2.0,
     'ai_search_readiness::agent accessibility tree': 4.0,
     'ai_search_readiness::llms.txt & ai-catalog.json hygiene': 2.0,
     'ai_search_readiness::webmcp readiness': 2.0,
-    'agentic_commerce::merchant center feed & free listings': 4.0,
     'agentic_commerce::product data consistency': 4.0,
-    'agentic_commerce::ai shopping feed distribution': 3.0,
-    'agentic_commerce::agentic checkout readiness': 2.0,
     'agentic_commerce::verified agent access': 4.0,
+    'agentic_commerce::agent catalog access (ucp)': 2.0,
 }
 
 # Confidence 1–5: evidence level (Required 5, Google guideline 4, Industry practice 3, Emerging 2, Experimental 1). Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -312,12 +288,9 @@ SEO_TOPIC_CONFIDENCE: dict[str, float] = {
     'onpage_content::index bloat': 3.0,
     'onpage_content::content hygiene': 3.0,
     'onpage_content::structured data': 4.0,
-    'onpage_content::keyword mapping coverage': 3.0,
-    'onpage_content::keyword cannibalisation': 3.0,
     'onpage_content::content freshness': 3.0,
     'onpage_content::answer-first content': 2.0,
     'onpage_content::faq & question coverage': 3.0,
-    'onpage_content::topic clusters': 3.0,
     'onpage_content::source citations': 3.0,
     'onpage_content::structured formatting': 2.0,
     'onpage_content::semantic html': 2.0,
@@ -335,18 +308,14 @@ SEO_TOPIC_CONFIDENCE: dict[str, float] = {
     'authority_entity::brand consistency': 2.0,
     'authority_entity::authority pages': 3.0,
     'authority_entity::wikipedia & wikidata': 2.0,
-    'reputation_local::google business profile': 4.0,
-    'reputation_local::review collection': 3.0,
     'ai_search_readiness::ai crawler access': 5.0,
     'ai_search_readiness::snippet directives': 4.0,
     'ai_search_readiness::agent accessibility tree': 2.0,
     'ai_search_readiness::llms.txt & ai-catalog.json hygiene': 2.0,
     'ai_search_readiness::webmcp readiness': 1.0,
-    'agentic_commerce::merchant center feed & free listings': 4.0,
     'agentic_commerce::product data consistency': 4.0,
-    'agentic_commerce::ai shopping feed distribution': 2.0,
-    'agentic_commerce::agentic checkout readiness': 2.0,
     'agentic_commerce::verified agent access': 2.0,
+    'agentic_commerce::agent catalog access (ucp)': 2.0,
 }
 
 # Ease 1–5: implementation type (Setting 5, Team work 4, Developer ticket 3, Development project 2, Off-site/long-term 1). Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -382,12 +351,9 @@ SEO_TOPIC_EASE: dict[str, float] = {
     'onpage_content::index bloat': 3.0,
     'onpage_content::content hygiene': 4.0,
     'onpage_content::structured data': 3.0,
-    'onpage_content::keyword mapping coverage': 4.0,
-    'onpage_content::keyword cannibalisation': 4.0,
     'onpage_content::content freshness': 4.0,
     'onpage_content::answer-first content': 4.0,
     'onpage_content::faq & question coverage': 4.0,
-    'onpage_content::topic clusters': 4.0,
     'onpage_content::source citations': 4.0,
     'onpage_content::structured formatting': 4.0,
     'onpage_content::semantic html': 3.0,
@@ -405,18 +371,14 @@ SEO_TOPIC_EASE: dict[str, float] = {
     'authority_entity::brand consistency': 4.0,
     'authority_entity::authority pages': 4.0,
     'authority_entity::wikipedia & wikidata': 1.0,
-    'reputation_local::google business profile': 5.0,
-    'reputation_local::review collection': 1.0,
     'ai_search_readiness::ai crawler access': 3.0,
     'ai_search_readiness::snippet directives': 3.0,
     'ai_search_readiness::agent accessibility tree': 3.0,
     'ai_search_readiness::llms.txt & ai-catalog.json hygiene': 3.0,
     'ai_search_readiness::webmcp readiness': 2.0,
-    'agentic_commerce::merchant center feed & free listings': 4.0,
     'agentic_commerce::product data consistency': 3.0,
-    'agentic_commerce::ai shopping feed distribution': 4.0,
-    'agentic_commerce::agentic checkout readiness': 2.0,
     'agentic_commerce::verified agent access': 3.0,
+    'agentic_commerce::agent catalog access (ucp)': 2.0,
 }
 
 # Impact, Confidence and Ease per topic in the shape of criteria_ice.CRITERIA_ICE: same keys, same
@@ -454,12 +416,9 @@ SEO_CRITERIA_ICE: dict[str, tuple[float, float, float]] = {
     'onpage_content::index bloat': (2.0, 3.0, 3.0),
     'onpage_content::content hygiene': (4.0, 3.0, 4.0),
     'onpage_content::structured data': (5.0, 4.0, 3.0),
-    'onpage_content::keyword mapping coverage': (4.0, 3.0, 4.0),
-    'onpage_content::keyword cannibalisation': (3.0, 3.0, 4.0),
     'onpage_content::content freshness': (3.0, 3.0, 4.0),
     'onpage_content::answer-first content': (2.0, 2.0, 4.0),
     'onpage_content::faq & question coverage': (2.0, 3.0, 4.0),
-    'onpage_content::topic clusters': (2.0, 3.0, 4.0),
     'onpage_content::source citations': (2.0, 3.0, 4.0),
     'onpage_content::structured formatting': (2.0, 2.0, 4.0),
     'onpage_content::semantic html': (1.0, 2.0, 3.0),
@@ -477,18 +436,14 @@ SEO_CRITERIA_ICE: dict[str, tuple[float, float, float]] = {
     'authority_entity::brand consistency': (3.0, 2.0, 4.0),
     'authority_entity::authority pages': (2.0, 3.0, 4.0),
     'authority_entity::wikipedia & wikidata': (2.0, 2.0, 1.0),
-    'reputation_local::google business profile': (4.0, 4.0, 5.0),
-    'reputation_local::review collection': (3.0, 3.0, 1.0),
     'ai_search_readiness::ai crawler access': (5.0, 5.0, 3.0),
     'ai_search_readiness::snippet directives': (2.0, 4.0, 3.0),
     'ai_search_readiness::agent accessibility tree': (4.0, 2.0, 3.0),
     'ai_search_readiness::llms.txt & ai-catalog.json hygiene': (2.0, 2.0, 3.0),
     'ai_search_readiness::webmcp readiness': (2.0, 1.0, 2.0),
-    'agentic_commerce::merchant center feed & free listings': (4.0, 4.0, 4.0),
     'agentic_commerce::product data consistency': (4.0, 4.0, 3.0),
-    'agentic_commerce::ai shopping feed distribution': (3.0, 2.0, 4.0),
-    'agentic_commerce::agentic checkout readiness': (2.0, 2.0, 2.0),
     'agentic_commerce::verified agent access': (4.0, 2.0, 3.0),
+    'agentic_commerce::agent catalog access (ucp)': (2.0, 2.0, 2.0),
 }
 
 # Base category weights (mirror scoring._BASE_WEIGHTS)
@@ -498,7 +453,6 @@ SEO_BASE_WEIGHTS: dict[str, float] = {
     'performance_mobile': 1.0,
     'onpage_content': 1.0,
     'authority_entity': 1.0,
-    'reputation_local': 1.0,
     'ai_search_readiness': 1.0,
     'agentic_commerce': 1.0,
 }
@@ -508,7 +462,7 @@ SEO_B2B_MULTIPLIERS: dict[str, float] = {}
 SEO_B2C_D2C_MULTIPLIERS: dict[str, float] = {}
 
 # Evaluated and shown, but excluded from the category score while the standards mature
-SEO_REPORT_ONLY: set[str] = {'WebMCP Readiness', 'Agentic Checkout Readiness'}
+SEO_REPORT_ONLY: set[str] = {'WebMCP Readiness'}
 
 # Preconditions: checked before the pulse runs, not scored (old SEO-28 / SEO-29). required=False
 # only produces a warning (e.g. without GA4, Orphan Pages misses analytics-only URLs).
@@ -575,12 +529,9 @@ SEO_TOPIC_TIER: dict[str, str] = {
     'Index Bloat': 'Advanced',
     'Content Hygiene': 'Advanced',
     'Structured Data': 'Advanced',
-    'Keyword Mapping Coverage': 'Expert',
-    'Keyword Cannibalisation': 'Expert',
     'Content Freshness': 'Expert',
     'Answer-First Content': 'Expert',
     'FAQ & Question Coverage': 'Expert',
-    'Topic Clusters': 'Expert',
     'Source Citations': 'Expert',
     'Structured Formatting': 'Advanced',
     'Semantic HTML': 'Advanced',
@@ -598,18 +549,14 @@ SEO_TOPIC_TIER: dict[str, str] = {
     'Brand Consistency': 'Expert',
     'Authority Pages': 'Basic',
     'Wikipedia & Wikidata': 'Champion',
-    'Google Business Profile': 'Basic',
-    'Review Collection': 'Expert',
     'AI Crawler Access': 'Basic',
     'Snippet Directives': 'Basic',
     'Agent Accessibility Tree': 'Champion',
     'llms.txt & ai-catalog.json Hygiene': 'Advanced',
     'WebMCP Readiness': 'Champion',
-    'Merchant Center Feed & Free Listings': 'Basic',
     'Product Data Consistency': 'Advanced',
-    'AI Shopping Feed Distribution': 'Champion',
-    'Agentic Checkout Readiness': 'Champion',
     'Verified Agent Access': 'Expert',
+    'Agent Catalog Access (UCP)': 'Champion',
 }
 
 # Staircase inputs from the Maturity sheet: share that must pass per tier, and the credit for a warn
@@ -617,9 +564,9 @@ SEO_MATURITY_THRESHOLD: float = 0.8
 SEO_WARN_WEIGHT: float = 0.5
 
 # Rollout phase per topic:
-#   1: Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (also the fallback when Search Console access is missing)
-#   2: GA4 BigQuery export & Admin API, Merchant Center data transfer, SEO intake form
-#   3: Fixed-prompt LLM steps, Ahrefs Brand Radar, Business Profile API, Bing Webmaster API, review platforms, Wikidata, verified-agent tests
+#   1: Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (authority: backlinks and Domain Rating)
+#   2: GA4 BigQuery export & Admin API, SEO intake form
+#   3: Fixed-prompt LLM steps, Ahrefs Brand Radar, Bing Webmaster API, Wikidata, verified-agent tests
 SEO_TOPIC_PHASE: dict[str, int] = {
     'Robots.txt Configuration': 1,
     'HTTPS & Mixed Content': 1,
@@ -652,12 +599,9 @@ SEO_TOPIC_PHASE: dict[str, int] = {
     'Index Bloat': 1,
     'Content Hygiene': 1,
     'Structured Data': 1,
-    'Keyword Mapping Coverage': 2,
-    'Keyword Cannibalisation': 1,
     'Content Freshness': 1,
     'Answer-First Content': 3,
     'FAQ & Question Coverage': 3,
-    'Topic Clusters': 2,
     'Source Citations': 1,
     'Structured Formatting': 1,
     'Semantic HTML': 1,
@@ -675,18 +619,14 @@ SEO_TOPIC_PHASE: dict[str, int] = {
     'Brand Consistency': 3,
     'Authority Pages': 1,
     'Wikipedia & Wikidata': 3,
-    'Google Business Profile': 3,
-    'Review Collection': 3,
     'AI Crawler Access': 1,
     'Snippet Directives': 1,
     'Agent Accessibility Tree': 1,
     'llms.txt & ai-catalog.json Hygiene': 1,
     'WebMCP Readiness': 1,
-    'Merchant Center Feed & Free Listings': 2,
     'Product Data Consistency': 2,
-    'AI Shopping Feed Distribution': 3,
-    'Agentic Checkout Readiness': 3,
     'Verified Agent Access': 3,
+    'Agent Catalog Access (UCP)': 3,
 }
 
 # Topics with no BigQuery source in phase 1. specialist.py injects these into the prompt
@@ -696,10 +636,8 @@ SEO_DATA_GAPS: dict[str, list[str]] = {
         'Bing Webmaster Tools & IndexNow',
     ],
     'onpage_content': [
-        'Keyword Mapping Coverage',
         'Answer-First Content',
         'FAQ & Question Coverage',
-        'Topic Clusters',
     ],
     'authority_entity': [
         'Anchor Text Profile',
@@ -709,35 +647,27 @@ SEO_DATA_GAPS: dict[str, list[str]] = {
         'Brand Consistency',
         'Wikipedia & Wikidata',
     ],
-    'reputation_local': [
-        'Google Business Profile',
-        'Review Collection',
-    ],
     'agentic_commerce': [
-        'Merchant Center Feed & Free Listings',
         'Product Data Consistency',
-        'AI Shopping Feed Distribution',
-        'Agentic Checkout Readiness',
         'Verified Agent Access',
+        'Agent Catalog Access (UCP)',
     ],
 }
 
 # What the pulse measures without Search Console access (the first pulse usually runs without it).
 # Topics not listed do not use Search Console. Pass search_console=False to seo_data_gaps().
 SEO_GSC_FALLBACK: dict[str, str] = {
-    'Canonical Host & URL Variants': 'Top 50 URLs by Ahrefs organic traffic instead of Search Console clicks.',
+    'Canonical Host & URL Variants': 'Top 50 key pages instead of the top 50 by Search Console clicks: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.',
     'Server Stability': 'Key URLs are the sitemap URLs only.',
     'XML Sitemap Quality': 'Submission and errors in Search Console are not checked; the sitemap must be referenced in robots.txt or found at /sitemap.xml.',
     'Index Coverage': 'Not measurable without Search Console (URL Inspection API); left out of the score until access is granted.',
-    'Canonical Tags': 'Top 100 URLs by Ahrefs organic traffic; whether Google overrides the declared canonical is not checked.',
-    'Click Depth of Key Pages': 'Top 100 URLs by Ahrefs organic traffic.',
-    'Orphan Pages': 'URLs from the sitemaps and the Ahrefs top pages instead of URLs with Search Console clicks.',
-    'Meta Descriptions': 'Weighted by Ahrefs organic traffic instead of Search Console impressions.',
+    'Canonical Tags': 'Top 100 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks); whether Google overrides the declared canonical is not checked.',
+    'Click Depth of Key Pages': 'Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.',
+    'Orphan Pages': 'URLs from the XML sitemaps instead of URLs with Search Console clicks.',
+    'Meta Descriptions': 'Share of the indexable URLs in the XML sitemaps (unweighted) instead of weighting by Search Console impressions.',
     'Index Bloat': 'Not measurable without Search Console impressions; left out of the score until access is granted.',
-    'Keyword Mapping Coverage': 'Top 200 non-brand Ahrefs organic keywords by traffic instead of Search Console queries.',
-    'Keyword Cannibalisation': 'Top 200 non-brand Ahrefs keywords for which 2 or more URLs of the site rank.',
-    'FAQ & Question Coverage': 'Question keywords from Ahrefs instead of Search Console question queries.',
-    'Snippet Directives': 'Top 100 URLs by Ahrefs organic traffic.',
+    'FAQ & Question Coverage': 'Top 50 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) instead of the top landing pages by clicks.',
+    'Snippet Directives': 'Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.',
 }
 
 # Not measurable at all without Search Console: left out of the score until access is granted
@@ -759,7 +689,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'has_hsts': ('SF crawl', '1 if HTML pages send a Strict-Transport-Security header (Missing HSTS Header = 0), else 0'),
     },
     'Canonical Host & URL Variants': {
-        'n_variants_tested': ('SF list', 'URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: by Ahrefs organic traffic)'),
+        'n_variants_tested': ('SF list', 'URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_variants_ok': ('SF list', 'Variants that 301-redirect in one hop to, or canonicalise to, the preferred URL'),
         'n_variants_200_no_canonical': ('SF list', 'Variants that return 200 without a canonical to the preferred URL'),
         'n_variants_chain_or_302': ('SF list', 'Variants that reach the preferred URL through a redirect chain or a 302/307'),
@@ -796,11 +726,11 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     'Error Handling & Soft 404s': {
         'nonexistent_url_status': ('SF list', 'HTTP status code of a random non-existent URL (first response, before redirects)'),
         'n_soft_404_pages': ('SF crawl', 'Content: Soft 404 Pages'),
-        'pct_pages_linking_4xx': ('SF crawl', 'Internal HTML pages linking to an internal 4xx URL / internal HTML pages'),
+        'pct_pages_linking_4xx': ('SF crawl', 'Internal HTML pages linking to an internal 4xx URL (source_pages of Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML pages'),
     },
     'Canonical Tags': {
         'pct_indexable_canonical_issue': ('SF crawl', 'Distinct indexable URLs in any Screaming Frog issue mapped to this topic / indexable HTML URLs'),
-        'n_top100_canonical_issue': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: top 100 by Ahrefs organic traffic)'),
+        'n_top100_canonical_issue': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_top100_canonical_overridden': ('URL Inspection', 'Top 100 URLs where Google selected a different canonical than the declared one'),
     },
     'Head Integrity & File Size': {
@@ -826,8 +756,6 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_indexable_internal_search': ('SF crawl', 'Indexable internal search result URLs'),
         'n_internal_links_with_tracking': ('SF crawl', 'Internal links carrying UTM/GA tracking parameters'),
         'pct_parameter_urls': ('SF crawl', 'Parameter URLs / all crawled internal URLs'),
-        'n_demand_facets': ('Intake', 'Facets with search demand according to the keyword mapping'),
-        'n_demand_facets_static': ('SF crawl', 'Of those, facets with a static, indexable URL'),
     },
     'Pagination': {
         'has_pagination': ('SF crawl', '1 if the crawl finds rel=next/prev or paginated URLs (Pagination: Contains Pagination), else 0'),
@@ -838,13 +766,13 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_pagination_other_issues': ('SF crawl', 'Unlinked, looping, multiple or out-of-sequence pagination URLs'),
     },
     'Internationalisation': {
-        'n_market_languages': ('Intake', 'Number of market-language versions of the site (brand context markets)'),
+        'n_market_languages': ('SF crawl', 'Market-language versions of the site: distinct locale folders (e.g. /nl-nl/, /en/) with indexable HTML pages, at least 1'),
         'pct_urls_hreflang_errors': ('SF crawl', 'Distinct URLs in any hreflang issue mapped to this topic / indexable HTML URLs'),
         'has_x_default': ('SF crawl', '1 if x-default is set (Hreflang: Missing X-Default = 0), else 0'),
         'n_forced_geo_redirects': ('SF list', 'Key URLs that redirect based on IP or Accept-Language'),
     },
     'URL Structure': {
-        'pct_indexable_url_issue': ('SF crawl', 'Distinct indexable URLs in any URL issue mapped to this topic / indexable HTML URLs'),
+        'pct_indexable_url_issue': ('SF crawl', 'Distinct indexable URLs in any URL issue mapped to this topic except Uppercase and Underscores (locale folders such as /nl_NL/; they stay listed as issues) / indexable HTML URLs'),
         'n_session_id_urls': ('SF crawl', 'URLs containing session IDs (regex: sid=, sessionid, jsessionid, phpsessid)'),
     },
     'Internal Link Health': {
@@ -854,11 +782,11 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_internal_nofollow': ('SF crawl', 'Internal nofollow outlinks, including meta nofollow'),
     },
     'Click Depth of Key Pages': {
-        'n_top100_depth_over_3': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: top 100 by Ahrefs organic traffic)'),
+        'n_top100_depth_over_3': ('SF crawl', 'Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_top100_depth_over_4': ('SF crawl', 'Top 100 URLs more than 4 clicks from the homepage'),
     },
     'Orphan Pages': {
-        'pct_click_urls_orphaned': ('SF crawl', 'URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the sitemaps and the Ahrefs top pages)'),
+        'pct_click_urls_orphaned': ('SF crawl', 'URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the XML sitemaps)'),
         'pct_click_urls_weakly_linked': ('SF crawl', 'URLs with clicks that are orphaned or only linked from non-indexable pages / URLs with clicks'),
     },
     'Core Web Vitals': {
@@ -882,7 +810,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_indexable_title_over_561px': ('SF crawl', 'Indexable URLs with a title over 561 pixels / indexable HTML URLs'),
     },
     'Meta Descriptions': {
-        'pct_impressions_missing_or_duplicate_meta': ('GSC bulk', 'Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: weighted by Ahrefs organic traffic)'),
+        'pct_impressions_missing_or_duplicate_meta': ('GSC bulk', 'Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: share of the indexable URLs in the XML sitemaps, unweighted)'),
     },
     'Heading Structure': {
         'pct_indexable_missing_h1': ('SF crawl', 'Indexable URLs without an H1 / indexable HTML URLs'),
@@ -893,7 +821,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     },
     'Duplicate & Thin Content': {
         'pct_indexable_duplicate_or_thin': ('SF crawl', 'Indexable URLs that are exact duplicates, near duplicates (90% similarity) or low content pages / indexable HTML URLs'),
-        'n_same_language_markets_unlinked': ('SF crawl', 'Same-language market versions (e.g. NL-NL and NL-BE) not connected with hreflang (0 for single-market sites)'),
+        'n_same_language_markets_unlinked': ('SF crawl', 'Same-language market versions (e.g. /nl-nl/ and /nl-be/) whose pages carry no hreflang to each other (0 when the site has one language)'),
     },
     'Index Bloat': {
         'pct_indexable_zero_impressions_90d': ('GSC bulk', 'Indexable URLs with 0 Search Console impressions in the last 90 days / indexable HTML URLs'),
@@ -906,15 +834,6 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_page_types_with_sd_errors': ('SF crawl', 'Page types (templates) with structured data validation, parse or rich result validation errors'),
         'pct_pages_expected_type': ('SF crawl', 'Pages carrying the expected schema type for their page type (B2C: Product/Offer, Review, BreadcrumbList, LocalBusiness; B2B: Organization, Service or SoftwareApplication, Article, BreadcrumbList) / pages of those page types. Retired types are not counted.'),
     },
-    'Keyword Mapping Coverage': {
-        'has_keyword_mapping': ('Intake', '1 if a keyword-to-URL mapping is in the brand context, else 0'),
-        'keyword_mapping_age_months': ('Intake', 'Age of the keyword mapping in months'),
-        'pct_top200_nonbrand_mapped': ('GSC bulk', 'Top 200 non-brand Search Console queries (90 days) covered by the keyword mapping / 200 (without Search Console access: top 200 non-brand Ahrefs keywords by traffic)'),
-    },
-    'Keyword Cannibalisation': {
-        'pct_top200_nonbrand_cannibalised': ('GSC bulk', 'Top 200 non-brand queries (90 days) where 2 or more URLs each receive at least 20% of the impressions / 200 (without Search Console access: top 200 non-brand Ahrefs keywords for which 2 or more URLs rank)'),
-        'n_semantically_similar_pages': ('SF crawl', 'Pages flagged as Content: Semantically Similar (cosine 0.95 or higher; informational)'),
-    },
     'Content Freshness': {
         'pct_key_pages_updated_12m': ('SF extraction', 'Key content pages (page types in the brand context) with a visible update date within 12 months / key content pages'),
         'pct_key_pages_fresh_and_dated': ('SF extraction', 'Key content pages updated within 12 months whose visible date matches the schema dateModified / key content pages'),
@@ -924,15 +843,11 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_top20_meet_answer_rubric': ('LLM step', 'Top 20 landing pages that meet the fixed rubric (answers the main question in the first paragraph, plain language, follow-up questions covered) / 20'),
     },
     'FAQ & Question Coverage': {
-        'pct_top50_questions_answered': ('LLM step', 'Top 50 landing pages whose main question-type queries (Search Console; without access: Ahrefs question keywords) and brand questions (reviews, delivery, complaints) are answered in a FAQ block / 50'),
-    },
-    'Topic Clusters': {
-        'pct_cluster_subpages_linked_both_ways': ('SF crawl', 'Cluster subpages (keyword mapping or Screaming Frog content clusters) that link to and are linked from their pillar page / cluster subpages'),
-        'n_low_relevance_pages': ('SF crawl', 'Content: Low Relevance Content (informational)'),
+        'pct_top50_questions_answered': ('LLM step', 'Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions (from search data, or chosen by the LLM step from the page itself) on the page; a FAQ block is not required. The FAQ or customer service page counts when it answers them, and the brand questions from the intake, in its FAQ / 50'),
     },
     'Source Citations': {
         'pct_info_pages_citing_dr50': ('Ahrefs', 'Informational pages with at least one external link inside <main> to a domain with Domain Rating 50 or higher / informational pages'),
-        'pct_external_links_broken': ('SF crawl', 'External links returning 4xx, 5xx or no response / external links'),
+        'pct_external_links_broken': ('SF crawl', 'External URLs returning 4xx, 5xx or no response (the Response Codes issues) / external URLs (External export, tab External, filter All)'),
     },
     'Structured Formatting': {
         'pct_content_pages_list_or_table': ('SF extraction', 'Content pages with a list or table inside <main> / content pages'),
@@ -949,20 +864,20 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_templates_high_violations': ('SF accessibility', 'Key templates with high-priority violations'),
     },
     'Referring Domain Strength': {
-        'refdomains_vs_median_competitor': ('Ahrefs', 'Client dofollow referring domains with organic traffic / median of the competitors in the brand context'),
-        'refdomains_growth_12m': ('Ahrefs', 'Change in those referring domains over 12 months, as a fraction (0.10 = +10%)'),
+        'refdomains_vs_median_competitor': ('Ahrefs', 'Client dofollow referring domains / median of the competitors in the brand context (Ahrefs batch analysis)'),
+        'refdomains_growth_12m': ('Ahrefs', "Change in the client's referring domains over 12 months (Ahrefs referring domains history), as a fraction (0.10 = +10%)"),
         'domain_rating': ('Ahrefs', 'Client Domain Rating (informational)'),
     },
     'Fresh Authoritative Links': {
         'n_new_refdomains_90d_5k': ('Ahrefs', 'New referring domains (first seen in the last 90 days) with at least 5,000 monthly organic visits'),
-        'target_new_refdomains': ('Intake', 'Quarterly target: 3, or 1 for low-volume B2B sites (brand context)'),
+        'median_competitor_new_refdomains_90d_5k': ('Ahrefs', 'Median of the same count for the competitors in the pulse form'),
     },
     'Link-Earning Pages': {
         'n_pages_10plus_refdomains': ('Ahrefs', 'Client URLs with 10 or more referring domains'),
         'median_competitor_pages_10plus': ('Ahrefs', 'Median of the same count for the competitors in the brand context'),
     },
     'Anchor Text Profile': {
-        'pct_refdomains_exact_match_anchor': ('Ahrefs', 'Referring domains using exact-match commercial anchors (classified with the keyword mapping) / referring domains'),
+        'pct_refdomains_exact_match_anchor': ('Ahrefs', 'Referring domains using exact-match commercial anchors (classified with the brand terms in the brand context, and the keyword mapping when available) / referring domains'),
     },
     'Broken Backlinks': {
         'n_refdomains_dr20_to_4xx': ('Ahrefs', 'Referring domains with Domain Rating above 20 that link to 4xx URLs'),
@@ -998,23 +913,14 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'has_wikidata_item': ('Wikidata', '1 if a Wikidata item lists the domain as official website, else 0'),
         'n_wikipedia_links': ('Wikidata', 'Wikipedia articles (market languages and English) that link to the domain'),
     },
-    'Google Business Profile': {
-        'n_locations': ('Intake', 'Physical locations in the brand context'),
-        'n_locations_unclaimed_or_incomplete': ('Business Profile', 'Locations that are unclaimed or miss name, address, phone, hours, categories or photos'),
-        'n_locations_nap_mismatch': ('Business Profile', 'Locations whose name, address or phone differ from the LocalBusiness markup on the site'),
-    },
-    'Review Collection': {
-        'n_reviews_12m': ('Reviews', 'Reviews in the last 12 months across the review platforms in the brand context'),
-        'n_platforms_active_rated_4': ('Reviews', 'Review platforms with reviews in the last 3 months and an average rating of 4.0 or higher'),
-    },
     'AI Crawler Access': {
-        'n_retrieval_bots_blocked_robots': ('SF list', 'Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Claude-SearchBot) disallowed in robots.txt for the tested URLs'),
-        'n_retrieval_bot_fetches_blocked': ('SF list', 'Fetches of 5 top URLs with those user agents that get 403, 429 or a challenge page'),
+        'n_retrieval_bots_blocked_robots': ('Bot test', 'Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt for the tested URLs'),
+        'n_retrieval_bot_fetches_blocked': ('Bot test', 'Fetches of the homepage and up to 2 key pages with those user agents that get 401, 403, 429, 503 or a challenge page'),
         'is_waf_result_confirmed': ('Agent test', "1 if the CDN/WAF behaviour for these bots is confirmed (configuration or a fetch from the bot's published IP ranges), else 0"),
         'n_training_bot_policy_mismatches': ('Intake', 'Training bots (GPTBot, ClaudeBot, Google-Extended) whose robots.txt rules differ from the AI bot policy in the brand context'),
     },
     'Snippet Directives': {
-        'n_top_urls_nosnippet_undocumented': ('SF crawl', 'Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: top 100 by Ahrefs organic traffic)'),
+        'n_top_urls_nosnippet_undocumented': ('SF crawl', 'Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
         'n_top_urls_partial_snippet_undocumented': ('SF extraction', 'Top 100 URLs with data-nosnippet or a max-snippet limit that the brand context does not document'),
     },
     'Agent Accessibility Tree': {
@@ -1033,34 +939,22 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_key_forms_webmcp': ('SF extraction', 'Of those, forms exposed as WebMCP tools (toolname/tooldescription, or registered tools in Lighthouse webmcp-registered-tools)'),
         'n_webmcp_schema_failures': ('PSI', 'Lighthouse webmcp-schema-validity failures on the key templates'),
     },
-    'Merchant Center Feed & Free Listings': {
-        'has_online_sales': ('Intake', '1 if the site sells online (brand context), else 0'),
-        'is_free_listings_active': ('Merchant Center', '1 if free listings are enabled, else 0'),
-        'pct_products_approved': ('Merchant Center', 'Approved products / products'),
-        'pct_products_disapproved': ('Merchant Center', 'Disapproved products / products'),
-        'n_products_missing_price_or_availability': ('Merchant Center', 'Products without price or availability'),
-        'has_shipping_and_return_policy': ('Merchant Center', '1 if both shipping and return policies are configured, else 0'),
-    },
     'Product Data Consistency': {
         'has_online_sales': ('Intake', '1 if the site sells online (brand context), else 0'),
         'pct_product_pages_complete_offer': ('SF crawl', 'Product pages with complete Product/Offer markup (price, currency, availability, GTIN or brand, shippingDetails, return policy) / product pages'),
         'pct_product_pages_offer_in_raw_html': ('SF extraction', 'Product pages that show price and availability in the raw HTML (not only after rendering) / product pages'),
-        'n_price_availability_mismatches': ('Merchant Center', 'Products whose price or availability differ between page, markup and feed'),
-    },
-    'AI Shopping Feed Distribution': {
-        'has_online_sales': ('Intake', '1 if the site sells online (brand context), else 0'),
-        'n_ai_shopping_platforms': ('Intake', 'AI shopping platforms in scope (brand context), e.g. ChatGPT shopping'),
-        'n_ai_feeds_active': ('Intake', 'Of those, platforms with an active product feed'),
-        'max_feed_refresh_hours': ('Intake', 'Longest feed refresh interval, in hours'),
-        'has_feed_policy_urls': ('Intake', '1 if the feeds include return, privacy and terms URLs, else 0'),
-    },
-    'Agentic Checkout Readiness': {
-        'is_agentic_checkout_eligible': ('Intake', '1 if the merchant is eligible for agentic checkout in its markets (Google UCP: US, Canada, Australia when written; OpenAI/Stripe ACP), else 0'),
-        'n_agentic_checkout_surfaces': ('Merchant Center', 'AI surfaces where agentic checkout is enabled (UCP or ACP, incl. the native_commerce attribute)'),
     },
     'Verified Agent Access': {
         'n_verified_agent_blocks': ('Agent test', 'Product, cart and checkout URLs where a verified/signed agent gets a 403 or a challenge'),
         'is_agent_policy_documented': ('Intake', '1 if the CDN/WAF policy for verified agents is documented in the brand context, else 0'),
+    },
+    'Agent Catalog Access (UCP)': {
+        'has_online_sales': ('Intake', '1 if the site sells online (brand context), else 0'),
+        'has_ucp_profile': ('Site check', '1 if /.well-known/ucp returns a valid Universal Commerce Protocol profile, else 0'),
+        'has_ucp_catalog_search': ('Site check', '1 if the profile offers dev.ucp.shopping.catalog.search (any transport), else 0'),
+        'has_ucp_catalog_rest': ('Site check', '1 if catalog search is offered over the REST binding, which the agent test uses, else 0 (MCP only)'),
+        'pct_test_products_found': ('Agent test', "Test products (product pages from the sitemap or the intake, max. 5) found through UCP catalog search as Artefact's read-only audit agent / test products searched"),
+        'n_ucp_price_availability_mismatches': ('Agent test', 'Found test products whose UCP price, currency or availability differs from the Product/Offer markup on the page'),
     },
 }
 
@@ -1069,13 +963,11 @@ SEO_OPTIONAL_METRICS: dict[str, set[str]] = {
     'XML Sitemap Quality': {'n_sitemap_errors_gsc'},
     'Redirect Hygiene': {'n_temporary_redirects'},
     'Canonical Tags': {'n_top100_canonical_overridden'},
-    'Parameters & Faceted Navigation': {'n_demand_facets', 'n_demand_facets_static'},
     'Core Web Vitals': {'has_crux_origin'},
     'Image Weight & Format': {'pct_images_modern_format'},
-    'Keyword Cannibalisation': {'n_semantically_similar_pages'},
     'Content Freshness': {'n_date_refresh_without_change'},
-    'Topic Clusters': {'n_low_relevance_pages'},
     'Referring Domain Strength': {'domain_rating'},
+    'Agent Catalog Access (UCP)': {'has_ucp_catalog_rest', 'n_ucp_price_availability_mismatches', 'pct_test_products_found'},
 }
 
 # Thresholds from the pulse sheet as evaluable conditions (see evaluate_topic)
@@ -1162,7 +1054,7 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'na_if': [],
         'fail_if': ['n_indexable_parameter_urls > 0', 'n_indexable_internal_search > 0', 'n_internal_links_with_tracking > 0'],
         'warn_if': [],
-        'pass_if': ['pct_parameter_urls < 0.20', 'n_demand_facets_static == n_demand_facets'],
+        'pass_if': ['pct_parameter_urls < 0.20'],
     },
     'Pagination': {
         'na_if': ['has_pagination == 0 and is_load_more_only_listing == 0'],
@@ -1266,18 +1158,6 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'warn_if': [],
         'pass_if': ['pct_pages_expected_type >= 0.90'],
     },
-    'Keyword Mapping Coverage': {
-        'na_if': [],
-        'fail_if': ['has_keyword_mapping == 0', 'keyword_mapping_age_months > 24', 'pct_top200_nonbrand_mapped < 0.40'],
-        'warn_if': [],
-        'pass_if': ['keyword_mapping_age_months < 12', 'pct_top200_nonbrand_mapped >= 0.70'],
-    },
-    'Keyword Cannibalisation': {
-        'na_if': [],
-        'fail_if': ['pct_top200_nonbrand_cannibalised > 0.15'],
-        'warn_if': [],
-        'pass_if': ['pct_top200_nonbrand_cannibalised <= 0.05'],
-    },
     'Content Freshness': {
         'na_if': [],
         'fail_if': ['pct_key_pages_updated_12m < 0.40', 'n_date_refresh_without_change > 0'],
@@ -1295,12 +1175,6 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'fail_if': ['pct_top50_questions_answered < 0.20'],
         'warn_if': [],
         'pass_if': ['pct_top50_questions_answered >= 0.50'],
-    },
-    'Topic Clusters': {
-        'na_if': [],
-        'fail_if': ['pct_cluster_subpages_linked_both_ways < 0.50'],
-        'warn_if': [],
-        'pass_if': ['pct_cluster_subpages_linked_both_ways >= 0.80'],
     },
     'Source Citations': {
         'na_if': [],
@@ -1340,9 +1214,9 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
     },
     'Fresh Authoritative Links': {
         'na_if': [],
-        'fail_if': ['n_new_refdomains_90d_5k == 0'],
+        'fail_if': ['n_new_refdomains_90d_5k == 0 and median_competitor_new_refdomains_90d_5k > 0', 'n_new_refdomains_90d_5k < 0.5 * median_competitor_new_refdomains_90d_5k'],
         'warn_if': [],
-        'pass_if': ['n_new_refdomains_90d_5k >= target_new_refdomains'],
+        'pass_if': ['n_new_refdomains_90d_5k >= median_competitor_new_refdomains_90d_5k', 'n_new_refdomains_90d_5k >= 1'],
     },
     'Link-Earning Pages': {
         'na_if': [],
@@ -1404,18 +1278,6 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'warn_if': [],
         'pass_if': ['has_wikidata_item == 1', 'n_wikipedia_links >= 1'],
     },
-    'Google Business Profile': {
-        'na_if': ['n_locations == 0'],
-        'fail_if': ['n_locations_unclaimed_or_incomplete > 0', 'n_locations_nap_mismatch > 0'],
-        'warn_if': [],
-        'pass_if': ['n_locations_unclaimed_or_incomplete == 0', 'n_locations_nap_mismatch == 0'],
-    },
-    'Review Collection': {
-        'na_if': [],
-        'fail_if': ['n_reviews_12m == 0'],
-        'warn_if': [],
-        'pass_if': ['n_platforms_active_rated_4 >= 1'],
-    },
     'AI Crawler Access': {
         'na_if': [],
         'fail_if': ['n_retrieval_bots_blocked_robots > 0', 'n_retrieval_bot_fetches_blocked > 0 and is_waf_result_confirmed == 1'],
@@ -1446,35 +1308,23 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'warn_if': [],
         'pass_if': ['n_key_forms_webmcp == n_key_task_forms'],
     },
-    'Merchant Center Feed & Free Listings': {
-        'na_if': ['has_online_sales == 0'],
-        'fail_if': ['is_free_listings_active == 0', 'pct_products_disapproved > 0.10'],
-        'warn_if': [],
-        'pass_if': ['pct_products_approved >= 0.95', 'n_products_missing_price_or_availability == 0', 'has_shipping_and_return_policy == 1'],
-    },
     'Product Data Consistency': {
         'na_if': ['has_online_sales == 0'],
-        'fail_if': ['pct_product_pages_complete_offer < 0.70', 'pct_product_pages_offer_in_raw_html < 0.70', 'n_price_availability_mismatches > 0'],
+        'fail_if': ['pct_product_pages_complete_offer < 0.70', 'pct_product_pages_offer_in_raw_html < 0.70'],
         'warn_if': [],
         'pass_if': ['pct_product_pages_complete_offer >= 0.95', 'pct_product_pages_offer_in_raw_html >= 0.95'],
-    },
-    'AI Shopping Feed Distribution': {
-        'na_if': ['has_online_sales == 0'],
-        'fail_if': ['n_ai_feeds_active == 0'],
-        'warn_if': ['max_feed_refresh_hours > 24'],
-        'pass_if': ['n_ai_feeds_active == n_ai_shopping_platforms', 'has_feed_policy_urls == 1'],
-    },
-    'Agentic Checkout Readiness': {
-        'na_if': ['is_agentic_checkout_eligible == 0'],
-        'fail_if': ['n_agentic_checkout_surfaces == 0'],
-        'warn_if': [],
-        'pass_if': ['n_agentic_checkout_surfaces >= 1'],
     },
     'Verified Agent Access': {
         'na_if': [],
         'fail_if': ['n_verified_agent_blocks > 0'],
         'warn_if': [],
         'pass_if': ['is_agent_policy_documented == 1'],
+    },
+    'Agent Catalog Access (UCP)': {
+        'na_if': ['has_online_sales == 0'],
+        'fail_if': ['has_ucp_profile == 0', 'has_ucp_catalog_search == 0', 'pct_test_products_found < 0.50'],
+        'warn_if': ['has_ucp_catalog_rest == 0'],
+        'pass_if': ['pct_test_products_found >= 0.80', 'n_ucp_price_availability_mismatches == 0'],
     },
 }
 
@@ -1548,8 +1398,7 @@ SEO_SF_ISSUE_MAP: list[tuple[str, str, str, str, str]] = [
     ('Content', 'Soft 404 Pages', 'Warning', 'High', 'Error Handling & Soft 404s'),
     ('Content', 'Lorem Ipsum Placeholder', 'Warning', 'High', 'Content Hygiene'),
     ('Content', 'Near Duplicates', 'Warning', 'Medium', 'Duplicate & Thin Content'),
-    ('Content', 'Semantically Similar', 'Warning', 'Medium', 'Keyword Cannibalisation'),
-    ('Content', 'Low Relevance Content', 'Warning', 'Low', 'Topic Clusters'),
+    ('Content', 'Semantically Similar', 'Warning', 'Medium', 'Duplicate & Thin Content'),
     ('Content', 'Low Content Pages', 'Opportunity', 'Medium', 'Duplicate & Thin Content'),
     ('Content', 'Readability Difficult', 'Opportunity', 'Low', 'Answer-First Content'),
     ('Content', 'Readability Very Difficult', 'Opportunity', 'Low', 'Answer-First Content'),
@@ -2027,6 +1876,15 @@ def seo_topic_level(topic: str) -> str:
     return SEO_TOPIC_TIER[topic].lower()
 
 
+def seo_has_evidence(topic: str, metrics) -> bool:
+    """True when the topic has at least one measured metric. Intake metrics (brand context, e.g.
+    has_online_sales) are context, not evidence: a topic with only those still counts as no data."""
+    if not isinstance(metrics, dict):
+        return False
+    origins = SEO_TOPIC_METRICS.get(topic, {})
+    return any(v is not None and origins.get(k, ("",))[0] != "Intake" for k, v in metrics.items())
+
+
 def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
     """Python decides the status, Gemini explains it. Call after the Gemini call for one category,
     with the frame from seo_category_frame().
@@ -2034,15 +1892,18 @@ def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
     Per result: level = the topic's fixed tier. When status_computed is pass, warn or fail, that
     is the status, and the topic counts as measured even when Gemini labelled it as having no
     data. When it is "na", the topic gets not_applicable = True (status "pass", like the B2B feed
-    stubs), so scoring skips it. When it is None, Gemini's judgement stands, unless the topic has
-    no evidence at all (no metric and no Screaming Frog issue): then it counts as no data
-    (source no_data_source), so a guess does not enter the score. Works on SpecialistResult
-    objects and dicts; changes them in place and returns the same list.
+    stubs), so scoring skips it. When it is None, no fail condition is met and not every pass
+    condition is: a "fail" or "pass" of Gemini becomes "warn" (it keeps its action and
+    explanation, with the rule that is unknown), unless Gemini marks the topic N/A. A topic with no
+    evidence at all (no metric and no Screaming Frog issue) counts as no data (source
+    no_data_source), so a guess does not enter the score. Works on SpecialistResult objects and
+    dicts; changes them in place and returns the same list.
     """
     has_source = "_source" in frame.columns
     rows = frame[frame["_source"] == "topic_results"] if has_source else frame.iloc[0:0]
     computed = dict(zip(rows["topic"], rows["status_computed"])) if len(rows) else {}
-    measured = {t for t, m in zip(rows["topic"], rows["metrics"]) if isinstance(m, dict) and m} if len(rows) else set()
+    rule_of = dict(zip(rows["topic"], rows["rule"])) if len(rows) and "rule" in rows.columns else {}
+    measured = {t for t, m in zip(rows["topic"], rows["metrics"]) if seo_has_evidence(t, m)} if len(rows) else set()
     with_issues = set(frame.loc[frame["_source"] == "issue_detail", "topic"]) if has_source else set()
     for r in results:
         topic = _get(r, "topic")
@@ -2058,9 +1919,21 @@ def seo_finalise_results(results: list, frame: pd.DataFrame) -> list:
             _set(r, "status", "pass")
             _set(r, "not_applicable", True)
             _set(r, "action", "None")
-        elif (topic not in measured and topic not in with_issues and not _is_na(r)
-              and _get(r, "source") not in _UNSCORED_SOURCES):
-            _set(r, "source", "no_data_source")
+        else:
+            # The metrics do not decide, so Gemini may not either (Wouter, 3 Nov 2026: Gemini failed
+            # Authority Pages on an unknown metric): its fail or pass becomes warn
+            rules = SEO_RULES.get(topic, {})
+            if (_get(r, "status") in ("pass", "fail") and not _is_na(r)
+                    and (rules.get("fail_if") or rules.get("pass_if"))):
+                _set(r, "status", "warn")
+                why = rule_of.get(topic) if isinstance(rule_of.get(topic), str) else "a deciding metric is missing"
+                expl = str(_get(r, "explanation") or "").strip()
+                _set(r, "explanation", (expl + " " if expl else "") + f"Status warn: the metrics do not decide it ({why}).")
+                if str(_get(r, "action") or "None") == "None":
+                    _set(r, "action", f"Verify manually: {why}.")
+            if (topic not in measured and topic not in with_issues and not _is_na(r)
+                    and _get(r, "source") not in _UNSCORED_SOURCES):
+                _set(r, "source", "no_data_source")
     return results
 
 
@@ -2173,7 +2046,9 @@ these fields:
 
 DATA LAYOUT (same for every SEO category):
 crawl_summary row (_source="crawl_summary", _summary=true) has: crawl_date, crawl_age_days,
-  user_agent, js_rendering, internal_html, indexable_html, search_console. The counts are the
+  user_agent, js_rendering, internal_html, indexable_html, search_console. user_agent is often
+  null (not in the exports); js_rendering is true when the crawl rendered JavaScript and null when
+  unknown, then the JavaScript issues were not measured (not zero). The counts are the
   denominators behind the percentages; search_console is true when the client's Search
   Console data was available for this audit.
 topic_results rows (_source="topic_results") have: topic, status_computed, rule, metrics.
@@ -2192,14 +2067,20 @@ STATUS RULES:
 - When status_computed is null, evaluate the Pass / Warn / Fail conditions below on the metrics
   that are present, and name the missing metrics in the explanation. Warn = the result sits
   between the pass and the fail condition.
+- A condition on a metric that is missing is unknown, never met: a missing metric is never the
+  reason for "fail" (nor for "pass"). When the metrics that would decide are missing, return
+  "warn", say which metric is missing and what to verify.
+- Never compute a metric yourself from issue_detail: its urls are URL counts per issue, not link
+  occurrences or percentages of the site. Use issue_detail to name the issues in the action and as
+  evidence next to the metrics; a threshold is only met by a metric value in topic_results.
 - Not applicable: when status_computed is "na", or when status_computed is null and the brand
   context clearly meets the N/A condition of the topic, return not_applicable = true,
   status = "pass" and action = "None", and name the N/A condition in the explanation. These
   topics are excluded from the score. In every other case not_applicable = false.
 - Topics marked REPORT ONLY are evaluated and shown, but excluded from the category score.
 - When crawl_summary.search_console is false, a topic with a "Without Search Console" line was
-  measured on that basis (mostly Ahrefs estimates): say so in the explanation, e.g. "based on
-  Ahrefs traffic estimates". Topics that cannot be measured without Search Console arrive in
+  measured on that basis (mostly the key pages from the XML sitemaps): say so in the explanation,
+  e.g. "key pages from the sitemap". Topics that cannot be measured without Search Console arrive in
   the TOPICS WITH NO DATA SOURCE list; their action is to request Search Console access.
 
 LEVEL: copy the topic's maturity tier from its Ref line, in lower case (Basic -> basic,
@@ -2275,7 +2156,8 @@ Can search engines and AI crawlers reach, render and index the site?
     Metrics:
       n_variants_tested: URL variants tested (http/https, www/non-www, trailing slash,
         uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks
-        (without Search Console access: by Ahrefs organic traffic)
+        (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps
+        ranked by Screaming Frog Unique Inlinks)
       n_variants_ok: Variants that 301-redirect in one hop to, or canonicalise to, the preferred
         URL
       n_variants_200_no_canonical: Variants that return 200 without a canonical to the preferred
@@ -2287,8 +2169,8 @@ Can search engines and AI crawlers reach, render and index the site?
     Warn: between the pass and the fail condition.
     Fail: Any variant returns 200 without a canonical to the preferred URL, or reaches it
       through a chain or a 302.
-    Without Search Console: Top 50 URLs by Ahrefs organic traffic instead of Search Console
-      clicks.
+    Without Search Console: Top 50 key pages instead of the top 50 by Search Console clicks:
+      indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks.
     Python rule: fail if n_variants_200_no_canonical > 0 or n_variants_chain_or_302 > 0; pass if
       n_variants_ok == n_variants_tested
 
@@ -2402,7 +2284,8 @@ Can search engines and AI crawlers reach, render and index the site?
       nonexistent_url_status: HTTP status code of a random non-existent URL (first response,
         before redirects)
       n_soft_404_pages: Content: Soft 404 Pages
-      pct_pages_linking_4xx: Internal HTML pages linking to an internal 4xx URL / internal HTML
+      pct_pages_linking_4xx: Internal HTML pages linking to an internal 4xx URL (source_pages of
+        Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML
         pages
     Pass: Non-existent URLs return a real 404 or 410, 0 soft 404s, and at most 0.5% of pages
       link to 4xx URLs.
@@ -2423,7 +2306,8 @@ Can search engines and AI crawlers reach, render and index the site?
       pct_indexable_canonical_issue: Distinct indexable URLs in any Screaming Frog issue mapped
         to this topic / indexable HTML URLs
       n_top100_canonical_issue: Top 100 URLs by Search Console clicks (90 days) with a canonical
-        issue (without Search Console access: top 100 by Ahrefs organic traffic)
+        issue (without Search Console access: the top 100 key pages: indexable URLs in the XML
+        sitemaps ranked by Screaming Frog Unique Inlinks)
       n_top100_canonical_overridden: Top 100 URLs where Google selected a different canonical
         than the declared one
     Pass: At most 1% of indexable URLs have a canonical issue and 0 issues on the top 100 URLs
@@ -2431,8 +2315,9 @@ Can search engines and AI crawlers reach, render and index the site?
     Warn: between the pass and the fail condition.
     Fail: More than 5% of indexable URLs affected, or Google overrides the declared canonical on
       top-100 URLs.
-    Without Search Console: Top 100 URLs by Ahrefs organic traffic; whether Google overrides the
-      declared canonical is not checked.
+    Without Search Console: Top 100 key pages (indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks); whether Google overrides the declared canonical is not
+      checked.
     Python rule: fail if pct_indexable_canonical_issue > 0.05 or n_top100_canonical_overridden >
       0; pass if pct_indexable_canonical_issue <= 0.01 and n_top100_canonical_issue == 0
 
@@ -2526,22 +2411,21 @@ Can search engines and AI crawlers reach, render and index the site?
     Ref: SEO-14 · Tier Advanced · Impact 2 · Confidence 4 · Ease 2
     Audit logic: Scan URL: Parameters, URL: Internal Search and URL: GA Tracking Parameters, and
       cross-reference parameter URLs with indexability and canonical targets. Facets with search
-      demand come from the keyword mapping in the brand context.
+      demand are part of keyword research, a separate track, and are not checked in the pulse.
     Metrics:
       n_indexable_parameter_urls: Indexable parameter URLs without a canonical to the clean URL
       n_indexable_internal_search: Indexable internal search result URLs
       n_internal_links_with_tracking: Internal links carrying UTM/GA tracking parameters
       pct_parameter_urls: Parameter URLs / all crawled internal URLs
-      n_demand_facets: Facets with search demand according to the keyword mapping
-      n_demand_facets_static: Of those, facets with a static, indexable URL
-    Pass: 0 indexable parameter duplicates, 0 indexable internal search pages, less than 20% of
-      crawled URLs are parameter URLs, and facets with search demand have static indexable URLs.
+    Pass: 0 indexable parameter duplicates, 0 indexable internal search pages, and less than 20%
+      of crawled URLs are parameter URLs.
     Warn: between the pass and the fail condition.
     Fail: Indexable parameter or internal search URLs without a canonical to the clean URL, or
       internal links carrying UTM/GA parameters.
     Python rule: fail if n_indexable_parameter_urls > 0 or n_indexable_internal_search > 0 or
-      n_internal_links_with_tracking > 0; pass if pct_parameter_urls < 0.20 and
-      n_demand_facets_static == n_demand_facets
+      n_internal_links_with_tracking > 0; pass if pct_parameter_urls < 0.20
+    Note: Facets with search demand are part of keyword research, a separate track; the pulse
+      does not check them.
 
 - Pagination:
     Ref: SEO-13 · Tier Advanced · Impact 5 · Confidence 4 · Ease 3
@@ -2571,10 +2455,11 @@ Can search engines and AI crawlers reach, render and index the site?
     Ref: SEO-15 · Tier Basic · Impact 5 · Confidence 4 · Ease 2
     Audit logic: Scan the hreflang filters (Missing Return Links, Non-200, Incorrect Codes,
       Inconsistent Return Links, Non-Canonical or Noindex Return Links, Missing Self Reference,
-      Missing X-Default) and request key URLs with different Accept-Language headers. Markets
-      come from the brand context.
+      Missing X-Default) and request key URLs with different Accept-Language headers. The
+      market-language versions are the locale folders in the crawl (e.g. /nl-nl/, /en/).
     Metrics:
-      n_market_languages: Number of market-language versions of the site (brand context markets)
+      n_market_languages: Market-language versions of the site: distinct locale folders (e.g.
+        /nl-nl/, /en/) with indexable HTML pages, at least 1
       pct_urls_hreflang_errors: Distinct URLs in any hreflang issue mapped to this topic /
         indexable HTML URLs
       has_x_default: 1 if x-default is set (Hreflang: Missing X-Default = 0), else 0
@@ -2599,8 +2484,9 @@ Do URLs and internal links make key pages easy to find and crawl?
       Space, Non ASCII Characters, Multiple Slashes, Repetitive Path, Over 115 Characters) and
       match session IDs with a regex.
     Metrics:
-      pct_indexable_url_issue: Distinct indexable URLs in any URL issue mapped to this topic /
-        indexable HTML URLs
+      pct_indexable_url_issue: Distinct indexable URLs in any URL issue mapped to this topic
+        except Uppercase and Underscores (locale folders such as /nl_NL/; they stay listed as
+        issues) / indexable HTML URLs
       n_session_id_urls: URLs containing session IDs (regex: sid=, sessionid, jsessionid,
         phpsessid)
     Pass: At most 2% of indexable URLs have a URL issue and 0 URLs contain session IDs.
@@ -2608,6 +2494,9 @@ Do URLs and internal links make key pages easy to find and crawl?
     Fail: More than 10% of indexable URLs affected, or session IDs in URLs.
     Python rule: fail if pct_indexable_url_issue > 0.10 or n_session_id_urls > 0; pass if
       pct_indexable_url_issue <= 0.02
+    Note: Uppercase and Underscores are not counted: locale folders such as /nl_NL/ put them in
+      nearly every URL, which is no problem. Do not recommend changing locale folders; name
+      Uppercase or Underscores only for URLs outside them.
 
 - Internal Link Health:
     Ref: SEO-12 · Tier Advanced · Impact 5 · Confidence 4 · Ease 4
@@ -2635,12 +2524,14 @@ Do URLs and internal links make key pages easy to find and crawl?
       the homepage.
     Metrics:
       n_top100_depth_over_3: Top 100 URLs by Search Console clicks (90 days) more than 3 clicks
-        from the homepage (without Search Console access: top 100 by Ahrefs organic traffic)
+        from the homepage (without Search Console access: the top 100 key pages: indexable URLs
+        in the XML sitemaps ranked by Screaming Frog Unique Inlinks)
       n_top100_depth_over_4: Top 100 URLs more than 4 clicks from the homepage
     Pass: 100% of the top 100 URLs are 3 clicks or fewer from the homepage.
     Warn: between the pass and the fail condition.
     Fail: Any top-100 URL is deeper than 4 clicks.
-    Without Search Console: Top 100 URLs by Ahrefs organic traffic.
+    Without Search Console: Top 100 key pages: indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks.
     Python rule: fail if n_top100_depth_over_4 > 0; pass if n_top100_depth_over_3 == 0
 
 - Orphan Pages:
@@ -2650,14 +2541,14 @@ Do URLs and internal links make key pages easy to find and crawl?
     Metrics:
       pct_click_urls_orphaned: URLs with Search Console clicks (90 days) without internal
         inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search
-        Console access: URLs from the sitemaps and the Ahrefs top pages)
+        Console access: URLs from the XML sitemaps)
       pct_click_urls_weakly_linked: URLs with clicks that are orphaned or only linked from
         non-indexable pages / URLs with clicks
     Pass: At most 1% of URLs with organic clicks are orphaned.
     Warn: between the pass and the fail condition.
     Fail: More than 5% of URLs with clicks are orphaned or only linked from non-indexable pages.
-    Without Search Console: URLs from the sitemaps and the Ahrefs top pages instead of URLs with
-      Search Console clicks.
+    Without Search Console: URLs from the XML sitemaps instead of URLs with Search Console
+      clicks.
     Python rule: fail if pct_click_urls_weakly_linked > 0.05; pass if pct_click_urls_orphaned <=
       0.01
 """.strip(),
@@ -2676,8 +2567,8 @@ Is the site fast and equivalent on mobile (Google indexes mobile-first)?
         INP > 200 ms, CLS > 0.1); without CrUX data, from Lighthouse lab data on the key
         templates (TBT as the INP proxy)
     Pass: The origin passes the Core Web Vitals assessment on mobile (LCP 2.5 s or less, INP 200
-      ms or less, CLS 0.1 or less at p75). Low-volume B2B sites without CrUX data: Lighthouse
-      lab data passes on the key templates.
+      ms or less, CLS 0.1 or less at p75). Sites without CrUX field data: Lighthouse lab data
+      passes on the key templates.
     Warn: 1 metric fails.
     Fail: The origin fails 2 or more of the 3 metrics on mobile.
     Python rule: fail if n_cwv_failed_mobile >= 2; warn if n_cwv_failed_mobile == 1; pass if
@@ -2748,13 +2639,13 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Metrics:
       pct_impressions_missing_or_duplicate_meta: Search Console impressions (90 days) on
         indexable pages with a missing or duplicate meta description / impressions on all
-        crawled indexable pages (without Search Console access: weighted by Ahrefs organic
-        traffic)
+        crawled indexable pages (without Search Console access: share of the indexable URLs in
+        the XML sitemaps, unweighted)
     Pass: At most 10% of impressions land on pages with a missing or duplicate description.
     Warn: between the pass and the fail condition.
     Fail: More than 30% of impressions land on pages with a missing or duplicate description.
-    Without Search Console: Weighted by Ahrefs organic traffic instead of Search Console
-      impressions.
+    Without Search Console: Share of the indexable URLs in the XML sitemaps (unweighted) instead
+      of weighting by Search Console impressions.
     Python rule: fail if pct_impressions_missing_or_duplicate_meta > 0.30; pass if
       pct_impressions_missing_or_duplicate_meta <= 0.10
 
@@ -2791,8 +2682,8 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Metrics:
       pct_indexable_duplicate_or_thin: Indexable URLs that are exact duplicates, near duplicates
         (90% similarity) or low content pages / indexable HTML URLs
-      n_same_language_markets_unlinked: Same-language market versions (e.g. NL-NL and NL-BE) not
-        connected with hreflang (0 for single-market sites)
+      n_same_language_markets_unlinked: Same-language market versions (e.g. /nl-nl/ and /nl-be/)
+        whose pages carry no hreflang to each other (0 when the site has one language)
     Pass: At most 2% of indexable URLs are duplicate or thin, and same-language market versions
       are connected with hreflang.
     Warn: between the pass and the fail condition.
@@ -2850,47 +2741,6 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Python rule: fail if n_page_types_with_sd_errors > 0 or pct_pages_expected_type < 0.60; pass
       if pct_pages_expected_type >= 0.90
 
-- Keyword Mapping Coverage:
-    Ref: SEO-22 · Tier Expert · Impact 4 · Confidence 3 · Ease 4
-    Audit logic: Compare the top 200 non-brand Search Console queries with the keyword-to-URL
-      mapping in the brand context, and use Screaming Frog Semantic Search (Keyword Mapping) to
-      check that the mapped URL is the most relevant page.
-    Metrics:
-      has_keyword_mapping: 1 if a keyword-to-URL mapping is in the brand context, else 0
-      keyword_mapping_age_months: Age of the keyword mapping in months
-      pct_top200_nonbrand_mapped: Top 200 non-brand Search Console queries (90 days) covered by
-        the keyword mapping / 200 (without Search Console access: top 200 non-brand Ahrefs
-        keywords by traffic)
-    Pass: A keyword mapping younger than 12 months exists and covers at least 70% of the top 200
-      non-brand queries.
-    Warn: between the pass and the fail condition.
-    Fail: No keyword mapping in the brand context, or it is older than 24 months or covers less
-      than 40% of the queries.
-    Without Search Console: Top 200 non-brand Ahrefs organic keywords by traffic instead of
-      Search Console queries.
-    Python rule: fail if has_keyword_mapping == 0 or keyword_mapping_age_months > 24 or
-      pct_top200_nonbrand_mapped < 0.40; pass if keyword_mapping_age_months < 12 and
-      pct_top200_nonbrand_mapped >= 0.70
-
-- Keyword Cannibalisation:
-    Ref: SEO-23 · Tier Expert · Impact 3 · Confidence 3 · Ease 4
-    Audit logic: From the Search Console bulk export (90 days, non-brand), find queries where 2
-      or more URLs each receive at least 20% of impressions; add Screaming Frog Content:
-      Semantically Similar (cosine 0.95 or higher).
-    Metrics:
-      pct_top200_nonbrand_cannibalised: Top 200 non-brand queries (90 days) where 2 or more URLs
-        each receive at least 20% of the impressions / 200 (without Search Console access: top
-        200 non-brand Ahrefs keywords for which 2 or more URLs rank)
-      n_semantically_similar_pages: Pages flagged as Content: Semantically Similar (cosine 0.95
-        or higher; informational)
-    Pass: At most 5% of the top 200 non-brand queries are cannibalised.
-    Warn: between the pass and the fail condition.
-    Fail: More than 15% of the top 200 non-brand queries are cannibalised.
-    Without Search Console: Top 200 non-brand Ahrefs keywords for which 2 or more URLs of the
-      site rank.
-    Python rule: fail if pct_top200_nonbrand_cannibalised > 0.15; pass if
-      pct_top200_nonbrand_cannibalised <= 0.05
-
 - Content Freshness:
     Ref: AI-37 · Tier Expert · Impact 3 · Confidence 3 · Ease 4
     Audit logic: Extract the visible update date and the schema dateModified from key content
@@ -2926,36 +2776,26 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
 
 - FAQ & Question Coverage:
     Ref: AI-32 · Tier Expert · Impact 2 · Confidence 3 · Ease 4
-    Audit logic: Detect FAQ blocks and FAQPage markup on the top 50 landing pages (custom
-      extraction) and match question-type Search Console queries and brand questions (reviews,
-      delivery, complaints) against them.
+    Audit logic: Check with a fixed LLM step whether each of the top 50 landing pages answers
+      its 3 main questions (from search data, or chosen from the page itself) on the page, and
+      whether the FAQ or customer service page answers the brand questions in its FAQ. A FAQ
+      block is not required on every page; FAQ blocks and FAQPage markup are reported. Keyword
+      research is not part of the pulse.
     Metrics:
-      pct_top50_questions_answered: Top 50 landing pages whose main question-type queries
-        (Search Console; without access: Ahrefs question keywords) and brand questions (reviews,
-        delivery, complaints) are answered in a FAQ block / 50
-    Pass: At least 50% of the top 50 landing pages answer their main questions in a FAQ,
-      including brand questions.
+      pct_top50_questions_answered: Top 50 landing pages by Search Console clicks (without
+        access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming
+        Frog Unique Inlinks) that answer their 3 main questions (from search data, or chosen by
+        the LLM step from the page itself) on the page; a FAQ block is not required. The FAQ or
+        customer service page counts when it answers them, and the brand questions from the
+        intake, in its FAQ / 50
+    Pass: At least 50% of the top 50 landing pages answer their main questions on the page (the
+      FAQ or customer service page: in its FAQ, brand questions included).
     Warn: between the pass and the fail condition.
-    Fail: Less than 20% of the top 50 landing pages answer their main questions.
-    Without Search Console: Question keywords from Ahrefs instead of Search Console question
-      queries.
+    Fail: Less than 20% of the top 50 landing pages answer their main questions on the page.
+    Without Search Console: Top 50 key pages (indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks) instead of the top landing pages by clicks.
     Python rule: fail if pct_top50_questions_answered < 0.20; pass if
       pct_top50_questions_answered >= 0.50
-
-- Topic Clusters:
-    Ref: AI-30 · Tier Expert · Impact 2 · Confidence 3 · Ease 4
-    Audit logic: Group pages into clusters (keyword mapping or Screaming Frog content clusters)
-      and check links between each pillar page and its subpages; flag Content: Low Relevance
-      Content.
-    Metrics:
-      pct_cluster_subpages_linked_both_ways: Cluster subpages (keyword mapping or Screaming Frog
-        content clusters) that link to and are linked from their pillar page / cluster subpages
-      n_low_relevance_pages: Content: Low Relevance Content (informational)
-    Pass: At least 80% of cluster subpages link to and from their pillar page.
-    Warn: between the pass and the fail condition.
-    Fail: Less than 50% of cluster subpages are connected to their pillar page.
-    Python rule: fail if pct_cluster_subpages_linked_both_ways < 0.50; pass if
-      pct_cluster_subpages_linked_both_ways >= 0.80
 
 - Source Citations:
     Ref: AI-34 · Tier Expert · Impact 2 · Confidence 3 · Ease 4
@@ -2965,8 +2805,8 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Metrics:
       pct_info_pages_citing_dr50: Informational pages with at least one external link inside
         <main> to a domain with Domain Rating 50 or higher / informational pages
-      pct_external_links_broken: External links returning 4xx, 5xx or no response / external
-        links
+      pct_external_links_broken: External URLs returning 4xx, 5xx or no response (the Response
+        Codes issues) / external URLs (External export, tab External, filter All)
     Pass: At least 50% of informational pages cite a source with DR 50 or higher, and at most 2%
       of external links are broken.
     Warn: between the pass and the fail condition.
@@ -3035,14 +2875,14 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
 
 - Referring Domain Strength:
     Ref: SEO-25 · Tier Champion · Impact 5 · Confidence 4 · Ease 1
-    Audit logic: Pull Domain Rating and dofollow referring domains with organic traffic (Ahrefs
-      API) for the client and the competitors in the brand context, and calculate 12-month
-      growth.
+    Audit logic: Pull Domain Rating and dofollow referring domains for the client and the
+      competitors in the brand context in one Ahrefs batch request, and the 12-month growth of
+      the client's referring domains (Ahrefs referring domains history).
     Metrics:
-      refdomains_vs_median_competitor: Client dofollow referring domains with organic traffic /
-        median of the competitors in the brand context
-      refdomains_growth_12m: Change in those referring domains over 12 months, as a fraction
-        (0.10 = +10%)
+      refdomains_vs_median_competitor: Client dofollow referring domains / median of the
+        competitors in the brand context (Ahrefs batch analysis)
+      refdomains_growth_12m: Change in the client's referring domains over 12 months (Ahrefs
+        referring domains history), as a fraction (0.10 = +10%)
       domain_rating: Client Domain Rating (informational)
     Pass: The client is at or above the median competitor and referring domains grew over the
       last 12 months.
@@ -3055,16 +2895,25 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
 - Fresh Authoritative Links:
     Ref: AI-19 · Tier Expert · Impact 4 · Confidence 3 · Ease 1
     Audit logic: Count new referring domains (first seen in the last 90 days) with at least
-      5,000 monthly organic visits (Ahrefs).
+      5,000 monthly organic visits (Ahrefs), for the client and the competitors in the pulse
+      form, and compare with the median competitor.
     Metrics:
       n_new_refdomains_90d_5k: New referring domains (first seen in the last 90 days) with at
         least 5,000 monthly organic visits
-      target_new_refdomains: Quarterly target: 3, or 1 for low-volume B2B sites (brand context)
-    Pass: At least 3 new qualifying referring domains per quarter (low-volume B2B: at least 1).
+      median_competitor_new_refdomains_90d_5k: Median of the same count for the competitors in
+        the pulse form
+    Pass: At least as many new qualifying referring domains in the last 90 days as the median
+      competitor (at least 1 when the competitors get none).
     Warn: between the pass and the fail condition.
-    Fail: 0 new qualifying referring domains in the last quarter.
-    Python rule: fail if n_new_refdomains_90d_5k == 0; pass if n_new_refdomains_90d_5k >=
-      target_new_refdomains
+    Fail: Less than half of the median competitor, or none while the competitors get them. Warn
+      when neither the client nor the competitors get any.
+    Python rule: fail if n_new_refdomains_90d_5k == 0 and
+      median_competitor_new_refdomains_90d_5k > 0 or n_new_refdomains_90d_5k < 0.5 *
+      median_competitor_new_refdomains_90d_5k; pass if n_new_refdomains_90d_5k >=
+      median_competitor_new_refdomains_90d_5k and n_new_refdomains_90d_5k >= 1
+    Note: Compared with the competitors instead of a fixed target, so a small niche is not held
+      to the link pace of a large market. Neither the client nor the competitors getting any is
+      warn.
 
 - Link-Earning Pages:
     Ref: AI-14 · Tier Champion · Impact 3 · Confidence 3 · Ease 1
@@ -3084,10 +2933,12 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
 - Anchor Text Profile:
     Ref: SEO-26 · Tier Advanced · Impact 2 · Confidence 3 · Ease 1
     Audit logic: Classify the anchors of referring domains (Ahrefs) as brand, URL, generic or
-      exact-match commercial, using the keyword mapping in the brand context.
+      exact-match commercial, using the brand terms in the brand context (and the keyword
+      mapping when available).
     Metrics:
       pct_refdomains_exact_match_anchor: Referring domains using exact-match commercial anchors
-        (classified with the keyword mapping) / referring domains
+        (classified with the brand terms in the brand context, and the keyword mapping when
+        available) / referring domains
     Pass: At most 10% of referring domains use exact-match commercial anchors.
     Warn: between the pass and the fail condition.
     Fail: More than 25% of referring domains use exact-match commercial anchors.
@@ -3199,8 +3050,8 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
 
 - Wikipedia & Wikidata:
     Ref: AI-20 · Tier Champion · Impact 2 · Confidence 2 · Ease 1
-    Audit logic: Check backlinks from *.wikipedia.org (Ahrefs) and a Wikidata item whose
-      official website is the domain.
+    Audit logic: Check Wikipedia articles that link to the domain (Wikipedia API) and a Wikidata
+      item whose official website is the domain.
     Metrics:
       is_notable: 1 if the brand meets Wikipedia's notability rules, else 0
       has_wikidata_item: 1 if a Wikidata item lists the domain as official website, else 0
@@ -3213,58 +3064,23 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
     Python rule: na if is_notable == 0; fail if has_wikidata_item == 0 and n_wikipedia_links ==
       0; pass if has_wikidata_item == 1 and n_wikipedia_links >= 1
 """.strip(),
-    'reputation_local': """
-=== REPUTATION & LOCAL CATEGORY (reputation_local) ===
-Are local profiles and reviews complete, consistent and active?
-
-- Google Business Profile:
-    Ref: AI-21 · Tier Basic · Impact 4 · Confidence 4 · Ease 5
-    Audit logic: Query the Business Profile API for each location in the brand context and
-      compare name, address and phone with the LocalBusiness markup on the site.
-    Metrics:
-      n_locations: Physical locations in the brand context
-      n_locations_unclaimed_or_incomplete: Locations that are unclaimed or miss name, address,
-        phone, hours, categories or photos
-      n_locations_nap_mismatch: Locations whose name, address or phone differ from the
-        LocalBusiness markup on the site
-    Pass: All locations are claimed, complete (name, address, phone, hours, categories, photos)
-      and consistent with the site.
-    Warn: between the pass and the fail condition.
-    Fail: Unclaimed or incomplete profiles, or name, address or phone differ from the site.
-    N/A: without physical locations (most B2B).
-    Python rule: na if n_locations == 0; fail if n_locations_unclaimed_or_incomplete > 0 or
-      n_locations_nap_mismatch > 0; pass if n_locations_unclaimed_or_incomplete == 0 and
-      n_locations_nap_mismatch == 0
-
-- Review Collection:
-    Ref: AI-23 · Tier Expert · Impact 3 · Confidence 3 · Ease 1
-    Audit logic: Pull review count, recency and rating from the review platforms in the brand
-      context (B2C: Google, Trustpilot; B2B: G2, Clutch).
-    Metrics:
-      n_reviews_12m: Reviews in the last 12 months across the review platforms in the brand
-        context
-      n_platforms_active_rated_4: Review platforms with reviews in the last 3 months and an
-        average rating of 4.0 or higher
-    Pass: At least 1 relevant platform with reviews in the last 3 months and an average rating
-      of 4.0 or higher.
-    Warn: between the pass and the fail condition.
-    Fail: No active review platform, or no reviews in the last 12 months.
-    Python rule: fail if n_reviews_12m == 0; pass if n_platforms_active_rated_4 >= 1
-""".strip(),
     'ai_search_readiness': """
 === AI READINESS CATEGORY (ai_search_readiness) ===
 Can AI search bots and agents access, quote and act on the site?
 
 - AI Crawler Access:
     Ref: AI-03 · Tier Basic · Impact 5 · Confidence 5 · Ease 3
-    Audit logic: Parse robots.txt per user agent and fetch 5 top URLs with the user agents of
-      OAI-SearchBot, ChatGPT-User, PerplexityBot and Claude-SearchBot (Screaming Frog custom
-      user agent); compare with the AI bot policy in the brand context.
+    Audit logic: Parse robots.txt per user agent and fetch the homepage and up to 2 key pages
+      with the user agents of OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User,
+      Claude-SearchBot and Claude-User (n8n workflow; the training bots GPTBot, ClaudeBot,
+      Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent and Bytespider are reported
+      too); compare with the AI bot policy in the brand context.
     Metrics:
       n_retrieval_bots_blocked_robots: Search and retrieval bots (OAI-SearchBot, ChatGPT-User,
-        PerplexityBot, Claude-SearchBot) disallowed in robots.txt for the tested URLs
-      n_retrieval_bot_fetches_blocked: Fetches of 5 top URLs with those user agents that get
-        403, 429 or a challenge page
+        PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt
+        for the tested URLs
+      n_retrieval_bot_fetches_blocked: Fetches of the homepage and up to 2 key pages with those
+        user agents that get 401, 403, 429, 503 or a challenge page
       is_waf_result_confirmed: 1 if the CDN/WAF behaviour for these bots is confirmed
         (configuration or a fetch from the bot's published IP ranges), else 0
       n_training_bot_policy_mismatches: Training bots (GPTBot, ClaudeBot, Google-Extended) whose
@@ -3286,7 +3102,8 @@ Can AI search bots and agents access, quote and act on the site?
     Metrics:
       n_top_urls_nosnippet_undocumented: Top 100 URLs by Search Console clicks with nosnippet or
         max-snippet:0 that the brand context does not document (without Search Console access:
-        top 100 by Ahrefs organic traffic)
+        the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog
+        Unique Inlinks)
       n_top_urls_partial_snippet_undocumented: Top 100 URLs with data-nosnippet or a max-snippet
         limit that the brand context does not document
     Pass: No unintended snippet restrictions on top URLs; any restriction matches the brand
@@ -3294,7 +3111,8 @@ Can AI search bots and agents access, quote and act on the site?
     Warn: between the pass and the fail condition.
     Fail: nosnippet or max-snippet:0 on valuable pages without a documented reason, which also
       removes them from AI Overviews and AI Mode.
-    Without Search Console: Top 100 URLs by Ahrefs organic traffic.
+    Without Search Console: Top 100 key pages: indexable URLs in the XML sitemaps ranked by
+      Screaming Frog Unique Inlinks.
     Python rule: fail if n_top_urls_nosnippet_undocumented > 0; pass if
       n_top_urls_partial_snippet_undocumented == 0
 
@@ -3365,94 +3183,28 @@ Can AI search bots and agents access, quote and act on the site?
 === AGENTIC COMMERCE CATEGORY (agentic_commerce) ===
 Are products discoverable and purchasable through AI shopping surfaces and agents?
 
-- Merchant Center Feed & Free Listings:
-    Ref: AI-N8 · Tier Basic · Impact 4 · Confidence 4 · Ease 4
-    Audit logic: Query Merchant Center (Merchant API) for product approval status, free listings
-      enrolment and the key attributes: GTIN or brand + MPN, price, availability, shipping and
-      return policy.
-    Metrics:
-      has_online_sales: 1 if the site sells online (brand context), else 0
-      is_free_listings_active: 1 if free listings are enabled, else 0
-      pct_products_approved: Approved products / products
-      pct_products_disapproved: Disapproved products / products
-      n_products_missing_price_or_availability: Products without price or availability
-      has_shipping_and_return_policy: 1 if both shipping and return policies are configured,
-        else 0
-    Pass: Free listings are active, at least 95% of products are approved, 0 products miss price
-      or availability, and shipping and return policies are configured.
-    Warn: between the pass and the fail condition.
-    Fail: Free listings are not enabled, or more than 10% of products are disapproved, which
-      keeps them out of AI Mode, Gemini and organic shopping results.
-    N/A: for sites without online sales.
-    Python rule: na if has_online_sales == 0; fail if is_free_listings_active == 0 or
-      pct_products_disapproved > 0.10; pass if pct_products_approved >= 0.95 and
-      n_products_missing_price_or_availability == 0 and has_shipping_and_return_policy == 1
-
 - Product Data Consistency:
     Ref: AI-N9 · Tier Advanced · Impact 4 · Confidence 4 · Ease 3
     Audit logic: Extract Product and Offer markup from product pages (Screaming Frog structured
-      data and custom extraction) and compare price, availability, shipping and return details
-      with the Merchant Center feed. Check that price, availability and review content are in
-      the raw HTML, not only after rendering.
+      data and custom extraction) and check that price, availability and review content are in
+      the raw HTML, not only after rendering. The product feed (Merchant Center) belongs to SEA
+      and is not compared.
     Metrics:
       has_online_sales: 1 if the site sells online (brand context), else 0
       pct_product_pages_complete_offer: Product pages with complete Product/Offer markup (price,
         currency, availability, GTIN or brand, shippingDetails, return policy) / product pages
       pct_product_pages_offer_in_raw_html: Product pages that show price and availability in the
         raw HTML (not only after rendering) / product pages
-      n_price_availability_mismatches: Products whose price or availability differ between page,
-        markup and feed
     Pass: At least 95% of product pages carry complete Product/Offer markup (price, currency,
       availability, GTIN or brand, shippingDetails, return policy) and show price and
-      availability in the raw HTML, and price and availability match the feed.
+      availability in the raw HTML.
     Warn: between the pass and the fail condition.
     Fail: Less than 70% of product pages carry complete markup or show price and availability in
-      the raw HTML, or price or availability differ between page, markup and feed.
+      the raw HTML.
     N/A: for sites without online sales.
     Python rule: na if has_online_sales == 0; fail if pct_product_pages_complete_offer < 0.70 or
-      pct_product_pages_offer_in_raw_html < 0.70 or n_price_availability_mismatches > 0; pass if
-      pct_product_pages_complete_offer >= 0.95 and pct_product_pages_offer_in_raw_html >= 0.95
-
-- AI Shopping Feed Distribution:
-    Ref: AI-N10 · Tier Champion · Impact 3 · Confidence 2 · Ease 4
-    Audit logic: Check the product feeds for the AI shopping platforms in the brand context
-      (e.g. ChatGPT shopping via the OpenAI product feed specification): submission status,
-      refresh frequency and policy URLs (returns, privacy, terms).
-    Metrics:
-      has_online_sales: 1 if the site sells online (brand context), else 0
-      n_ai_shopping_platforms: AI shopping platforms in scope (brand context), e.g. ChatGPT
-        shopping
-      n_ai_feeds_active: Of those, platforms with an active product feed
-      max_feed_refresh_hours: Longest feed refresh interval, in hours
-      has_feed_policy_urls: 1 if the feeds include return, privacy and terms URLs, else 0
-    Pass: Feeds are active for every AI shopping platform in scope, refresh at least daily and
-      include return, privacy and terms URLs.
-    Warn: Feeds refresh less than daily.
-    Fail: No product feed is submitted to any AI shopping platform in scope.
-    N/A: for sites without online sales.
-    Python rule: na if has_online_sales == 0; fail if n_ai_feeds_active == 0; warn if
-      max_feed_refresh_hours > 24; pass if n_ai_feeds_active == n_ai_shopping_platforms and
-      has_feed_policy_urls == 1
-
-- Agentic Checkout Readiness:
-    Ref: AI-N11 · Tier Champion · Impact 2 · Confidence 2 · Ease 2 · REPORT ONLY
-    Audit logic: Check in the brand context and Merchant Center whether an agentic checkout
-      protocol is enabled: Google's Universal Commerce Protocol (UCP) for AI Mode and Gemini, or
-      the Agentic Commerce Protocol (ACP) from OpenAI and Stripe, including the native_commerce
-      checkout attribute on eligible products.
-    Metrics:
-      is_agentic_checkout_eligible: 1 if the merchant is eligible for agentic checkout in its
-        markets (Google UCP: US, Canada, Australia when written; OpenAI/Stripe ACP), else 0
-      n_agentic_checkout_surfaces: AI surfaces where agentic checkout is enabled (UCP or ACP,
-        incl. the native_commerce attribute)
-    Pass: Agentic checkout is enabled on at least one AI surface where the merchant is eligible.
-    Warn: between the pass and the fail condition.
-    Fail: The merchant is eligible, but agentic checkout is not enabled on any AI surface.
-    N/A: where agentic checkout is not offered for the market (Google's UCP checkout: US, Canada
-      and Australia when written).
-    Python rule: na if is_agentic_checkout_eligible == 0; fail if n_agentic_checkout_surfaces ==
-      0; pass if n_agentic_checkout_surfaces >= 1
-    Note: Report only while the protocols mature.
+      pct_product_pages_offer_in_raw_html < 0.70; pass if pct_product_pages_complete_offer >=
+      0.95 and pct_product_pages_offer_in_raw_html >= 0.95
 
 - Verified Agent Access:
     Ref: AI-N12 · Tier Expert · Impact 4 · Confidence 2 · Ease 3
@@ -3470,6 +3222,41 @@ Are products discoverable and purchasable through AI shopping surfaces and agent
     Fail: Verified agents receive 403 responses or challenges on product, cart or checkout
       pages.
     Python rule: fail if n_verified_agent_blocks > 0; pass if is_agent_policy_documented == 1
+
+- Agent Catalog Access (UCP):
+    Ref: AI-N13 · Tier Champion · Impact 2 · Confidence 2 · Ease 2
+    Audit logic: Fetch /.well-known/ucp and check that the Universal Commerce Protocol profile
+      is valid and offers catalog search (dev.ucp.shopping.catalog.search). Then search the
+      catalog as Artefact's read-only audit agent (UCP-Agent header with
+      https://woutervisser-lab.github.io/ucp-agent-profile/agent.json; catalog search and lookup
+      only, never carts or orders) for 5 products taken from product pages, and compare price,
+      currency and availability with the Product/Offer markup on the page.
+    Metrics:
+      has_online_sales: 1 if the site sells online (brand context), else 0
+      has_ucp_profile: 1 if /.well-known/ucp returns a valid Universal Commerce Protocol
+        profile, else 0
+      has_ucp_catalog_search: 1 if the profile offers dev.ucp.shopping.catalog.search (any
+        transport), else 0
+      has_ucp_catalog_rest: 1 if catalog search is offered over the REST binding, which the
+        agent test uses, else 0 (MCP only)
+      pct_test_products_found: Test products (product pages from the sitemap or the intake, max.
+        5) found through UCP catalog search as Artefact's read-only audit agent / test products
+        searched
+      n_ucp_price_availability_mismatches: Found test products whose UCP price, currency or
+        availability differs from the Product/Offer markup on the page
+    Pass: A valid UCP profile with catalog search over REST; at least 4 of the 5 test products
+      are found and their price and availability match the product page.
+    Warn: between the pass and the fail condition.
+    Fail: No UCP profile at /.well-known/ucp, the profile offers no catalog search, or less than
+      half of the test products are found.
+    N/A: for sites without online sales.
+    Python rule: na if has_online_sales == 0; fail if has_ucp_profile == 0 or
+      has_ucp_catalog_search == 0 or pct_test_products_found < 0.50; warn if
+      has_ucp_catalog_rest == 0; pass if pct_test_products_found >= 0.80 and
+      n_ucp_price_availability_mismatches == 0
+    Note: UCP spec 2026-08-25. The agent profile only declares catalog search and lookup; the
+      test never creates carts, checkouts or orders. MCP-only catalogs are not searched yet
+      (warn).
 """.strip(),
 }
 
@@ -3477,16 +3264,15 @@ SEO_CALIBRATION = """
 === CALIBRATION BY BRAND CONTEXT ===
 
 When brand context is provided:
-- Business model: B2B and B2C sites expect different structured data types, external profiles
-  and review platforms; the topic criteria name both. D2C follows B2C.
-- markets: one market-language version makes Internationalisation not applicable.
-- hasOnlineSales=false: Merchant Center, Product Data Consistency and AI Shopping Feed
-  Distribution are not applicable; do not penalise missing product markup.
-- lowSearchVolume=true: use the lower link targets in the criteria, and accept Lighthouse lab
-  data for Core Web Vitals when CrUX has no field data.
-- locations=0: Google Business Profile is not applicable.
-- aiBotPolicy and snippetExceptions document intentional choices: a blocked training bot or a
-  nosnippet that matches them is not a finding.
+- Business model: B2B and B2C sites expect different structured data types and external
+  profiles; the topic criteria name both. D2C follows B2C.
+- n_market_languages comes from the locale folders in the crawl; 1 makes Internationalisation
+  not applicable.
+- hasOnlineSales=false: Product Data Consistency and Agent Catalog Access are not applicable;
+  do not penalise missing product markup.
+- isNotable=false: Wikipedia & Wikidata is not applicable.
+- trainingBots and snippetExceptions document intentional choices: a training bot blocked (or
+  allowed) as the policy says, or a nosnippet on a page that matches them, is not a finding.
 - brandTerms split brand from non-brand queries; competitors are the benchmark for authority
   topics.
 

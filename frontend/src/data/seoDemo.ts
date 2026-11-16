@@ -23,17 +23,9 @@ export const SEO_DEMO_BRAND_CONTEXT: BrandContext = {
       "competitor-a.nl",
       "competitor-b.nl"
     ],
-    "pageTypes": {},
-    "keywordMappingUrl": "",
-    "keywordMappingDate": "",
     "hasOnlineSales": true,
-    "lowSearchVolume": false,
-    "locations": 0,
-    "reviewPlatforms": [],
-    "expectedProfiles": [],
-    "aiBotPolicy": {},
-    "snippetExceptions": [],
-    "aiShoppingPlatforms": []
+    "trainingBots": "allow",
+    "snippetExceptions": []
   }
 };
 
@@ -190,7 +182,7 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "level": "advanced",
     "source": "topic_results",
     "action": "None",
-    "explanation": "[demo] n_indexable_parameter_urls = 0.0, n_indexable_internal_search = 0.0, n_internal_links_with_tracking = 0.0; rule: pct_parameter_urls < 0.20 and n_demand_facets_static == n_demand_facets.",
+    "explanation": "[demo] n_indexable_parameter_urls = 0.0, n_indexable_internal_search = 0.0, n_internal_links_with_tracking = 0.0; rule: pct_parameter_urls < 0.20.",
     "human_override": false,
     "not_applicable": false
   },
@@ -382,28 +374,6 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "not_applicable": false
   },
   {
-    "topic": "Keyword Mapping Coverage",
-    "category": "onpage_content",
-    "status": "warn",
-    "level": "expert",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
-    "topic": "Keyword Cannibalisation",
-    "category": "onpage_content",
-    "status": "pass",
-    "level": "expert",
-    "source": "topic_results",
-    "action": "None",
-    "explanation": "[demo] pct_top200_nonbrand_cannibalised = 0.03, n_semantically_similar_pages = 3.0; rule: pct_top200_nonbrand_cannibalised <= 0.05.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
     "topic": "Content Freshness",
     "category": "onpage_content",
     "status": "pass",
@@ -427,17 +397,6 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
   },
   {
     "topic": "FAQ & Question Coverage",
-    "category": "onpage_content",
-    "status": "warn",
-    "level": "expert",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
-    "topic": "Topic Clusters",
     "category": "onpage_content",
     "status": "warn",
     "level": "expert",
@@ -520,7 +479,7 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "level": "expert",
     "source": "topic_results",
     "action": "None",
-    "explanation": "[demo] n_new_refdomains_90d_5k = 10.0, target_new_refdomains = 1.0; rule: n_new_refdomains_90d_5k >= target_new_refdomains.",
+    "explanation": "[demo] n_new_refdomains_90d_5k = 10.0, median_competitor_new_refdomains_90d_5k = 1.0; rule: n_new_refdomains_90d_5k >= median_competitor_new_refdomains_90d_5k and n_new_refdomains_90d_5k >= 1.",
     "human_override": false,
     "not_applicable": false
   },
@@ -635,28 +594,6 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "not_applicable": false
   },
   {
-    "topic": "Google Business Profile",
-    "category": "reputation_local",
-    "status": "warn",
-    "level": "basic",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
-    "topic": "Review Collection",
-    "category": "reputation_local",
-    "status": "warn",
-    "level": "expert",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
     "topic": "AI Crawler Access",
     "category": "ai_search_readiness",
     "status": "warn",
@@ -712,43 +649,10 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "not_applicable": false
   },
   {
-    "topic": "Merchant Center Feed & Free Listings",
-    "category": "agentic_commerce",
-    "status": "warn",
-    "level": "basic",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
     "topic": "Product Data Consistency",
     "category": "agentic_commerce",
     "status": "warn",
     "level": "advanced",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
-    "topic": "AI Shopping Feed Distribution",
-    "category": "agentic_commerce",
-    "status": "warn",
-    "level": "champion",
-    "source": "no_data_source",
-    "action": "Verify manually — this data is not in BigQuery yet",
-    "explanation": "[demo] No data source for this topic yet.",
-    "human_override": false,
-    "not_applicable": false
-  },
-  {
-    "topic": "Agentic Checkout Readiness",
-    "category": "agentic_commerce",
-    "status": "warn",
-    "level": "champion",
     "source": "no_data_source",
     "action": "Verify manually — this data is not in BigQuery yet",
     "explanation": "[demo] No data source for this topic yet.",
@@ -763,6 +667,17 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "source": "topic_results",
     "action": "[demo] Fix the issues behind Verified Agent Access until the pass condition holds.",
     "explanation": "[demo] n_verified_agent_blocks = 0.0, is_agent_policy_documented = 0.0; rule: pass condition not met: is_agent_policy_documented == 1.",
+    "human_override": false,
+    "not_applicable": false
+  },
+  {
+    "topic": "Agent Catalog Access (UCP)",
+    "category": "agentic_commerce",
+    "status": "warn",
+    "level": "champion",
+    "source": "no_data_source",
+    "action": "Verify manually — this data is not in BigQuery yet",
+    "explanation": "[demo] No data source for this topic yet.",
     "human_override": false,
     "not_applicable": false
   }
@@ -791,8 +706,8 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
     },
     {
       "name": "onpage_content",
-      "score": 72.7,
-      "pass_rate": 69.2,
+      "score": 70.7,
+      "pass_rate": 66.7,
       "weight": 1.0
     },
     {
@@ -814,7 +729,7 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "weight": 1.0
     }
   ],
-  "platform_score": 75.8,
+  "platform_score": 75.5,
   "omnichannel_score": null,
   "maturity_label": "Basic",
   "quick_wins": [
@@ -896,17 +811,6 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "human_override": false
     },
     {
-      "topic": "Google Business Profile",
-      "category": "reputation_local",
-      "impact": 4.0,
-      "confidence": 2.0,
-      "ease": 5.0,
-      "priority_score": 7.33,
-      "action": "Verify manually — this data is not in BigQuery yet",
-      "explanation": "[demo] No data source for this topic yet.",
-      "human_override": false
-    },
-    {
       "topic": "Image Alt Text",
       "category": "onpage_content",
       "impact": 3.0,
@@ -920,6 +824,17 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
     {
       "topic": "Pagination",
       "category": "crawling_indexing",
+      "impact": 5.0,
+      "confidence": 2.0,
+      "ease": 3.0,
+      "priority_score": 6.67,
+      "action": "[demo] Measure this topic: its metrics are missing.",
+      "explanation": "[demo] No metrics for this topic in the latest data.",
+      "human_override": false
+    },
+    {
+      "topic": "Mobile Parity",
+      "category": "performance_mobile",
       "impact": 5.0,
       "confidence": 2.0,
       "ease": 3.0,
@@ -948,10 +863,10 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
         "reached": false
       },
       "Expert": {
-        "pass": 3,
+        "pass": 2,
         "warn": 2,
         "fail": 1,
-        "score": 0.667,
+        "score": 0.6,
         "reached": false
       },
       "Champion": {

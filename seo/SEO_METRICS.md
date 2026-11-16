@@ -8,7 +8,7 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 
 | Origin | What it is |
 |---|---|
-| SF crawl | Screaming Frog scheduled crawl exports (Internal All, Issues overview, Bulk export Issues > All, All Outlinks, All Redirects, Sitemaps, Hreflang, Structured data) loaded into BigQuery |
+| SF crawl | Screaming Frog crawl exports (Internal, Bulk export Issues > All; later All Outlinks, All Redirects, Sitemaps, Hreflang, Structured data), uploaded through the n8n form (or a scheduled crawl) into BigQuery |
 | SF list | Screaming Frog list-mode crawl of generated URLs or with a custom user agent / Accept-Language |
 | SF extraction | Screaming Frog custom extraction or custom search on the same crawl |
 | SF accessibility | Screaming Frog accessibility audit (axe-core, JavaScript rendering) |
@@ -20,23 +20,21 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 | Ahrefs | Ahrefs API v3 (Site Explorer, Keywords, Management/Rank Tracker) |
 | Brand Radar | Ahrefs Brand Radar (AI responses, cited domains, mentions) |
 | GA4 | GA4 BigQuery export and GA4 Admin API |
-| Merchant Center | Merchant Center via the BigQuery data transfer / Merchant API |
 | Intake | SEO intake form / brand context (Google Form -> Sheet -> BigQuery) |
 | LLM step | Fixed-prompt LLM scoring on the raw HTML (n8n workflow seo_pulse, LLM branch, OpenAI gpt-6-luna; same prompt, model and settings every run) |
 | Site check | Small HTTP check of a fixed URL (n8n workflow seo_pulse, e.g. the PageSpeed branch for llms.txt and ai-catalog.json, or SF list mode) |
-| Business Profile | Google Business Profile API |
 | Bing | Bing Webmaster Tools API |
-| Reviews | Review platform APIs or exports (Google, Trustpilot, G2, Clutch) |
 | Wikidata | Wikidata Query Service and the Wikipedia API (n8n workflow seo_pulse, Wikidata & Wikipedia branch) |
+| Bot test | robots.txt per AI bot and a fetch of the homepage and key pages with each bot's user agent (n8n workflow seo_pulse, verified-agent branch) |
 | Agent test | Request as a signed agent (n8n workflow seo_pulse, verified-agent branch: Cloudflare Browser Run, Web Bot Auth), or CDN/WAF configuration check |
 
 ## Rollout phases
 
 | Phase | Sources | Topics |
 |---|---|---|
-| 1 | Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (also the fallback when Search Console access is missing) | 48 |
-| 2 | GA4 BigQuery export & Admin API, Merchant Center data transfer, SEO intake form | 6 |
-| 3 | Fixed-prompt LLM steps, Ahrefs Brand Radar, Business Profile API, Bing Webmaster API, review platforms, Wikidata, verified-agent tests | 12 |
+| 1 | Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (authority: backlinks and Domain Rating) | 47 |
+| 2 | GA4 BigQuery export & Admin API, SEO intake form | 3 |
+| 3 | Fixed-prompt LLM steps, Ahrefs Brand Radar, Bing Webmaster API, Wikidata, verified-agent tests | 9 |
 
 Topics outside phase 1 start in `SEO_DATA_GAPS`.
 
@@ -44,20 +42,13 @@ Topics outside phase 1 start in `SEO_DATA_GAPS`.
 
 | Field | Type | Default | Purpose |
 |---|---|---|---|
-| `siteUrl` | `str` | `""` | Domain or Search Console property of the site being audited |
-| `brandTerms` | `list[str]` | `[]` | Brand terms, used to split brand and non-brand Search Console queries |
-| `competitors` | `list[str]` | `[]` | Competitor domains for the Ahrefs and Brand Radar comparisons |
-| `pageTypes` | `dict[str, str]` | `{}` | Page type -> URL pattern (product, category, blog, knowledge, ...), same as the Screaming Frog segments |
-| `keywordMappingUrl` | `str` | `""` | Link to the keyword-to-URL mapping |
-| `keywordMappingDate` | `str` | `""` | Date of the last keyword mapping update (YYYY-MM-DD) |
-| `hasOnlineSales` | `bool` | `False` | Site sells online; when false, Agentic Commerce topics are n/a |
-| `lowSearchVolume` | `bool` | `False` | Low-volume site (mostly B2B): lower link targets, Lighthouse lab data when CrUX is missing |
-| `locations` | `int` | `0` | Number of physical locations; 0 makes Google Business Profile n/a |
-| `reviewPlatforms` | `list[str]` | `[]` | Review platforms in scope (B2C: Google, Trustpilot; B2B: G2, Clutch) |
-| `expectedProfiles` | `list[str]` | `[]` | External profiles the brand should have (LinkedIn, Crunchbase, Instagram, ...) |
-| `aiBotPolicy` | `dict[str, str]` | `{}` | Intended policy per training bot, e.g. {'GPTBot': 'allow', 'Google-Extended': 'block'} |
-| `snippetExceptions` | `list[str]` | `[]` | URLs or patterns where nosnippet/max-snippet is intentional |
-| `aiShoppingPlatforms` | `list[str]` | `[]` | AI shopping platforms in scope (e.g. ChatGPT shopping) |
+| `siteUrl` | `str` | `""` | Domain of the site being audited (the site chosen in the SEO tab) |
+| `brandTerms` | `list[str]` | `[]` | Brand terms of the pulse form, used to split brand and non-brand queries and anchors |
+| `competitors` | `list[str]` | `[]` | Competitor domains of the pulse form, for the Ahrefs comparisons |
+| `hasOnlineSales` | `bool | None` | `None` | Sells online (pulse form); false makes Product Data Consistency and Agent Catalog Access n/a |
+| `isNotable` | `bool | None` | `None` | Notable enough for Wikipedia (pulse form); false makes Wikipedia & Wikidata n/a |
+| `trainingBots` | `'allow' | 'block' | None` | `None` | Intended policy for AI training bots such as GPTBot, ClaudeBot and Google-Extended (pulse form) |
+| `snippetExceptions` | `list[str]` | `[]` | URLs or paths where nosnippet/max-snippet is intentional (pulse form) |
 
 ## Without Search Console access
 
@@ -65,19 +56,17 @@ The first pulse usually runs without the client's Search Console. These topics t
 
 | Topic | Without Search Console |
 |---|---|
-| Canonical Host & URL Variants | Top 50 URLs by Ahrefs organic traffic instead of Search Console clicks. |
+| Canonical Host & URL Variants | Top 50 key pages instead of the top 50 by Search Console clicks: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks. |
 | Server Stability | Key URLs are the sitemap URLs only. |
 | XML Sitemap Quality | Submission and errors in Search Console are not checked; the sitemap must be referenced in robots.txt or found at /sitemap.xml. |
 | Index Coverage | Not measurable without Search Console (URL Inspection API); left out of the score until access is granted. |
-| Canonical Tags | Top 100 URLs by Ahrefs organic traffic; whether Google overrides the declared canonical is not checked. |
-| Click Depth of Key Pages | Top 100 URLs by Ahrefs organic traffic. |
-| Orphan Pages | URLs from the sitemaps and the Ahrefs top pages instead of URLs with Search Console clicks. |
-| Meta Descriptions | Weighted by Ahrefs organic traffic instead of Search Console impressions. |
+| Canonical Tags | Top 100 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks); whether Google overrides the declared canonical is not checked. |
+| Click Depth of Key Pages | Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks. |
+| Orphan Pages | URLs from the XML sitemaps instead of URLs with Search Console clicks. |
+| Meta Descriptions | Share of the indexable URLs in the XML sitemaps (unweighted) instead of weighting by Search Console impressions. |
 | Index Bloat | Not measurable without Search Console impressions; left out of the score until access is granted. |
-| Keyword Mapping Coverage | Top 200 non-brand Ahrefs organic keywords by traffic instead of Search Console queries. |
-| Keyword Cannibalisation | Top 200 non-brand Ahrefs keywords for which 2 or more URLs of the site rank. |
-| FAQ & Question Coverage | Question keywords from Ahrefs instead of Search Console question queries. |
-| Snippet Directives | Top 100 URLs by Ahrefs organic traffic. |
+| FAQ & Question Coverage | Top 50 key pages (indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) instead of the top landing pages by clicks. |
+| Snippet Directives | Top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks. |
 
 ## Data access (checked before the pulse runs, not required, not scored)
 
@@ -110,10 +99,10 @@ Each topic has a fixed tier (`SEO_TOPIC_TIER`). `seo_maturity()` turns the statu
 
 | Tier | Definition | Topics |
 |---|---|---|
-| Basic | Foundation. Search engines and AI crawlers can reach, render and index the site, the core on-page elements are in place and measurement works. Without these, nothing else pays off. | 20 |
+| Basic | Foundation. Search engines and AI crawlers can reach, render and index the site, the core on-page elements are in place and measurement works. Without these, nothing else pays off. | 18 |
 | Advanced | In order at scale. Technique, structure, performance and on-page are clean across the whole site, including the long tail. | 25 |
-| Expert | Managed. Content is steered by search demand and questions, authority is actively built and AI visibility is measured. | 13 |
-| Champion | Leading. Ahead of competitors on authority, a recognised entity, and ready for AI agents and agentic commerce. | 8 |
+| Expert | Managed. Content is steered by search demand and questions, authority is actively built and AI visibility is measured. | 9 |
+| Champion | Leading. Ahead of competitors on authority, a recognised entity, and ready for AI agents and agentic commerce. | 7 |
 
 ## Metrics per topic
 
@@ -146,7 +135,7 @@ Rule: `fail if n_http_urls > 0 or n_mixed_content_pages > 0 or n_insecure_form_p
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_variants_tested` | SF list | URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: by Ahrefs organic traffic) |
+| `n_variants_tested` | SF list | URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_variants_ok` | SF list | Variants that 301-redirect in one hop to, or canonicalise to, the preferred URL |
 | `n_variants_200_no_canonical` | SF list | Variants that return 200 without a canonical to the preferred URL |
 | `n_variants_chain_or_302` | SF list | Variants that reach the preferred URL through a redirect chain or a 302/307 |
@@ -215,7 +204,7 @@ Note: Whether a 302/307 is a permanent move cannot be detected automatically: me
 |---|---|---|
 | `nonexistent_url_status` | SF list | HTTP status code of a random non-existent URL (first response, before redirects) |
 | `n_soft_404_pages` | SF crawl | Content: Soft 404 Pages |
-| `pct_pages_linking_4xx` | SF crawl | Internal HTML pages linking to an internal 4xx URL / internal HTML pages |
+| `pct_pages_linking_4xx` | SF crawl | Internal HTML pages linking to an internal 4xx URL (source_pages of Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML pages |
 
 Rule: `fail if nonexistent_url_status == 200 or nonexistent_url_status in (301, 302, 303, 307, 308) or pct_pages_linking_4xx > 0.02`; `pass if nonexistent_url_status in (404, 410) and n_soft_404_pages == 0 and pct_pages_linking_4xx <= 0.005`
 
@@ -224,7 +213,7 @@ Rule: `fail if nonexistent_url_status == 200 or nonexistent_url_status in (301, 
 | Metric | Origin | Definition |
 |---|---|---|
 | `pct_indexable_canonical_issue` | SF crawl | Distinct indexable URLs in any Screaming Frog issue mapped to this topic / indexable HTML URLs |
-| `n_top100_canonical_issue` | SF crawl | Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: top 100 by Ahrefs organic traffic) |
+| `n_top100_canonical_issue` | SF crawl | Top 100 URLs by Search Console clicks (90 days) with a canonical issue (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_top100_canonical_overridden` *(optional)* | URL Inspection | Top 100 URLs where Google selected a different canonical than the declared one |
 
 Rule: `fail if pct_indexable_canonical_issue > 0.05 or n_top100_canonical_overridden > 0`; `pass if pct_indexable_canonical_issue <= 0.01 and n_top100_canonical_issue == 0`
@@ -274,10 +263,10 @@ Note: Thresholds agreed by Wouter on 9 October 2026, modelled on Content Without
 | `n_indexable_internal_search` | SF crawl | Indexable internal search result URLs |
 | `n_internal_links_with_tracking` | SF crawl | Internal links carrying UTM/GA tracking parameters |
 | `pct_parameter_urls` | SF crawl | Parameter URLs / all crawled internal URLs |
-| `n_demand_facets` *(optional)* | Intake | Facets with search demand according to the keyword mapping |
-| `n_demand_facets_static` *(optional)* | SF crawl | Of those, facets with a static, indexable URL |
 
-Rule: `fail if n_indexable_parameter_urls > 0 or n_indexable_internal_search > 0 or n_internal_links_with_tracking > 0`; `pass if pct_parameter_urls < 0.20 and n_demand_facets_static == n_demand_facets`
+Rule: `fail if n_indexable_parameter_urls > 0 or n_indexable_internal_search > 0 or n_internal_links_with_tracking > 0`; `pass if pct_parameter_urls < 0.20`
+
+Note: Facets with search demand are part of keyword research, a separate track; the pulse does not check them.
 
 **Pagination** (SEO-13 · I5 C4 E3 · tier Advanced, phase 1)
 
@@ -296,7 +285,7 @@ Rule: `na if has_pagination == 0 and is_load_more_only_listing == 0`; `fail if i
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_market_languages` | Intake | Number of market-language versions of the site (brand context markets) |
+| `n_market_languages` | SF crawl | Market-language versions of the site: distinct locale folders (e.g. /nl-nl/, /en/) with indexable HTML pages, at least 1 |
 | `pct_urls_hreflang_errors` | SF crawl | Distinct URLs in any hreflang issue mapped to this topic / indexable HTML URLs |
 | `has_x_default` | SF crawl | 1 if x-default is set (Hreflang: Missing X-Default = 0), else 0 |
 | `n_forced_geo_redirects` | SF list | Key URLs that redirect based on IP or Accept-Language |
@@ -309,10 +298,12 @@ Rule: `na if n_market_languages <= 1`; `fail if pct_urls_hreflang_errors > 0.05 
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_indexable_url_issue` | SF crawl | Distinct indexable URLs in any URL issue mapped to this topic / indexable HTML URLs |
+| `pct_indexable_url_issue` | SF crawl | Distinct indexable URLs in any URL issue mapped to this topic except Uppercase and Underscores (locale folders such as /nl_NL/; they stay listed as issues) / indexable HTML URLs |
 | `n_session_id_urls` | SF crawl | URLs containing session IDs (regex: sid=, sessionid, jsessionid, phpsessid) |
 
 Rule: `fail if pct_indexable_url_issue > 0.10 or n_session_id_urls > 0`; `pass if pct_indexable_url_issue <= 0.02`
+
+Note: Uppercase and Underscores are not counted: locale folders such as /nl_NL/ put them in nearly every URL, which is no problem. Do not recommend changing locale folders; name Uppercase or Underscores only for URLs outside them.
 
 **Internal Link Health** (SEO-12 · I5 C4 E4 · tier Advanced, phase 1)
 
@@ -329,7 +320,7 @@ Rule: `fail if pct_internal_links_to_3xx_4xx > 0.05 or n_uncrawlable_nav_links >
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_top100_depth_over_3` | SF crawl | Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: top 100 by Ahrefs organic traffic) |
+| `n_top100_depth_over_3` | SF crawl | Top 100 URLs by Search Console clicks (90 days) more than 3 clicks from the homepage (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_top100_depth_over_4` | SF crawl | Top 100 URLs more than 4 clicks from the homepage |
 
 Rule: `fail if n_top100_depth_over_4 > 0`; `pass if n_top100_depth_over_3 == 0`
@@ -338,7 +329,7 @@ Rule: `fail if n_top100_depth_over_4 > 0`; `pass if n_top100_depth_over_3 == 0`
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_click_urls_orphaned` | SF crawl | URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the sitemaps and the Ahrefs top pages) |
+| `pct_click_urls_orphaned` | SF crawl | URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the XML sitemaps) |
 | `pct_click_urls_weakly_linked` | SF crawl | URLs with clicks that are orphaned or only linked from non-indexable pages / URLs with clicks |
 
 Rule: `fail if pct_click_urls_weakly_linked > 0.05`; `pass if pct_click_urls_orphaned <= 0.01`
@@ -393,7 +384,7 @@ Note: Optional: when the keyword mapping is in the brand context, mention whethe
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_impressions_missing_or_duplicate_meta` | GSC bulk | Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: weighted by Ahrefs organic traffic) |
+| `pct_impressions_missing_or_duplicate_meta` | GSC bulk | Search Console impressions (90 days) on indexable pages with a missing or duplicate meta description / impressions on all crawled indexable pages (without Search Console access: share of the indexable URLs in the XML sitemaps, unweighted) |
 
 Rule: `fail if pct_impressions_missing_or_duplicate_meta > 0.30`; `pass if pct_impressions_missing_or_duplicate_meta <= 0.10`
 
@@ -419,7 +410,7 @@ Rule: `fail if pct_content_images_missing_alt > 0.20`; `pass if pct_content_imag
 | Metric | Origin | Definition |
 |---|---|---|
 | `pct_indexable_duplicate_or_thin` | SF crawl | Indexable URLs that are exact duplicates, near duplicates (90% similarity) or low content pages / indexable HTML URLs |
-| `n_same_language_markets_unlinked` | SF crawl | Same-language market versions (e.g. NL-NL and NL-BE) not connected with hreflang (0 for single-market sites) |
+| `n_same_language_markets_unlinked` | SF crawl | Same-language market versions (e.g. /nl-nl/ and /nl-be/) whose pages carry no hreflang to each other (0 when the site has one language) |
 
 Rule: `fail if pct_indexable_duplicate_or_thin > 0.10`; `pass if pct_indexable_duplicate_or_thin <= 0.02 and n_same_language_markets_unlinked == 0`
 
@@ -449,25 +440,6 @@ Rule: `fail if n_placeholder_pages > 0 or pct_pages_spelling_grammar_errors > 0.
 
 Rule: `fail if n_page_types_with_sd_errors > 0 or pct_pages_expected_type < 0.60`; `pass if pct_pages_expected_type >= 0.90`
 
-**Keyword Mapping Coverage** (SEO-22 · I4 C3 E4 · tier Expert, phase 2)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `has_keyword_mapping` | Intake | 1 if a keyword-to-URL mapping is in the brand context, else 0 |
-| `keyword_mapping_age_months` | Intake | Age of the keyword mapping in months |
-| `pct_top200_nonbrand_mapped` | GSC bulk | Top 200 non-brand Search Console queries (90 days) covered by the keyword mapping / 200 (without Search Console access: top 200 non-brand Ahrefs keywords by traffic) |
-
-Rule: `fail if has_keyword_mapping == 0 or keyword_mapping_age_months > 24 or pct_top200_nonbrand_mapped < 0.40`; `pass if keyword_mapping_age_months < 12 and pct_top200_nonbrand_mapped >= 0.70`
-
-**Keyword Cannibalisation** (SEO-23 · I3 C3 E4 · tier Expert, phase 1)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `pct_top200_nonbrand_cannibalised` | GSC bulk | Top 200 non-brand queries (90 days) where 2 or more URLs each receive at least 20% of the impressions / 200 (without Search Console access: top 200 non-brand Ahrefs keywords for which 2 or more URLs rank) |
-| `n_semantically_similar_pages` *(optional)* | SF crawl | Pages flagged as Content: Semantically Similar (cosine 0.95 or higher; informational) |
-
-Rule: `fail if pct_top200_nonbrand_cannibalised > 0.15`; `pass if pct_top200_nonbrand_cannibalised <= 0.05`
-
 **Content Freshness** (AI-37 · I3 C3 E4 · tier Expert, phase 1)
 
 | Metric | Origin | Definition |
@@ -490,25 +462,16 @@ Rule: `fail if pct_top20_meet_answer_rubric < 0.50`; `pass if pct_top20_meet_ans
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_top50_questions_answered` | LLM step | Top 50 landing pages whose main question-type queries (Search Console; without access: Ahrefs question keywords) and brand questions (reviews, delivery, complaints) are answered in a FAQ block / 50 |
+| `pct_top50_questions_answered` | LLM step | Top 50 landing pages by Search Console clicks (without access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) that answer their 3 main questions (from search data, or chosen by the LLM step from the page itself) on the page; a FAQ block is not required. The FAQ or customer service page counts when it answers them, and the brand questions from the intake, in its FAQ / 50 |
 
 Rule: `fail if pct_top50_questions_answered < 0.20`; `pass if pct_top50_questions_answered >= 0.50`
-
-**Topic Clusters** (AI-30 · I2 C3 E4 · tier Expert, phase 2)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `pct_cluster_subpages_linked_both_ways` | SF crawl | Cluster subpages (keyword mapping or Screaming Frog content clusters) that link to and are linked from their pillar page / cluster subpages |
-| `n_low_relevance_pages` *(optional)* | SF crawl | Content: Low Relevance Content (informational) |
-
-Rule: `fail if pct_cluster_subpages_linked_both_ways < 0.50`; `pass if pct_cluster_subpages_linked_both_ways >= 0.80`
 
 **Source Citations** (AI-34 · I2 C3 E4 · tier Expert, phase 1)
 
 | Metric | Origin | Definition |
 |---|---|---|
 | `pct_info_pages_citing_dr50` | Ahrefs | Informational pages with at least one external link inside <main> to a domain with Domain Rating 50 or higher / informational pages |
-| `pct_external_links_broken` | SF crawl | External links returning 4xx, 5xx or no response / external links |
+| `pct_external_links_broken` | SF crawl | External URLs returning 4xx, 5xx or no response (the Response Codes issues) / external URLs (External export, tab External, filter All) |
 
 Rule: `fail if pct_info_pages_citing_dr50 < 0.20 or pct_external_links_broken > 0.05`; `pass if pct_info_pages_citing_dr50 >= 0.50 and pct_external_links_broken <= 0.02`
 
@@ -554,8 +517,8 @@ Note: Violations also feed the separate accessibility action list (agent-blockin
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `refdomains_vs_median_competitor` | Ahrefs | Client dofollow referring domains with organic traffic / median of the competitors in the brand context |
-| `refdomains_growth_12m` | Ahrefs | Change in those referring domains over 12 months, as a fraction (0.10 = +10%) |
+| `refdomains_vs_median_competitor` | Ahrefs | Client dofollow referring domains / median of the competitors in the brand context (Ahrefs batch analysis) |
+| `refdomains_growth_12m` | Ahrefs | Change in the client's referring domains over 12 months (Ahrefs referring domains history), as a fraction (0.10 = +10%) |
 | `domain_rating` *(optional)* | Ahrefs | Client Domain Rating (informational) |
 
 Rule: `fail if refdomains_vs_median_competitor < 0.5 or refdomains_growth_12m < 0`; `pass if refdomains_vs_median_competitor >= 1 and refdomains_growth_12m > 0`
@@ -565,9 +528,11 @@ Rule: `fail if refdomains_vs_median_competitor < 0.5 or refdomains_growth_12m < 
 | Metric | Origin | Definition |
 |---|---|---|
 | `n_new_refdomains_90d_5k` | Ahrefs | New referring domains (first seen in the last 90 days) with at least 5,000 monthly organic visits |
-| `target_new_refdomains` | Intake | Quarterly target: 3, or 1 for low-volume B2B sites (brand context) |
+| `median_competitor_new_refdomains_90d_5k` | Ahrefs | Median of the same count for the competitors in the pulse form |
 
-Rule: `fail if n_new_refdomains_90d_5k == 0`; `pass if n_new_refdomains_90d_5k >= target_new_refdomains`
+Rule: `fail if n_new_refdomains_90d_5k == 0 and median_competitor_new_refdomains_90d_5k > 0 or n_new_refdomains_90d_5k < 0.5 * median_competitor_new_refdomains_90d_5k`; `pass if n_new_refdomains_90d_5k >= median_competitor_new_refdomains_90d_5k and n_new_refdomains_90d_5k >= 1`
+
+Note: Compared with the competitors instead of a fixed target, so a small niche is not held to the link pace of a large market. Neither the client nor the competitors getting any is warn.
 
 **Link-Earning Pages** (AI-14 · I3 C3 E1 · tier Champion, phase 1)
 
@@ -582,7 +547,7 @@ Rule: `fail if n_pages_10plus_refdomains < 5 or n_pages_10plus_refdomains < 0.5 
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_refdomains_exact_match_anchor` | Ahrefs | Referring domains using exact-match commercial anchors (classified with the keyword mapping) / referring domains |
+| `pct_refdomains_exact_match_anchor` | Ahrefs | Referring domains using exact-match commercial anchors (classified with the brand terms in the brand context, and the keyword mapping when available) / referring domains |
 
 Rule: `fail if pct_refdomains_exact_match_anchor > 0.25`; `pass if pct_refdomains_exact_match_anchor <= 0.10`
 
@@ -660,35 +625,14 @@ Rule: `fail if has_about_page == 0 or has_contact_page == 0 or is_about_contact_
 
 Rule: `na if is_notable == 0`; `fail if has_wikidata_item == 0 and n_wikipedia_links == 0`; `pass if has_wikidata_item == 1 and n_wikipedia_links >= 1`
 
-### Reputation & Local (`reputation_local`)
-
-**Google Business Profile** (AI-21 · I4 C4 E5 · tier Basic, phase 3)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `n_locations` | Intake | Physical locations in the brand context |
-| `n_locations_unclaimed_or_incomplete` | Business Profile | Locations that are unclaimed or miss name, address, phone, hours, categories or photos |
-| `n_locations_nap_mismatch` | Business Profile | Locations whose name, address or phone differ from the LocalBusiness markup on the site |
-
-Rule: `na if n_locations == 0`; `fail if n_locations_unclaimed_or_incomplete > 0 or n_locations_nap_mismatch > 0`; `pass if n_locations_unclaimed_or_incomplete == 0 and n_locations_nap_mismatch == 0`
-
-**Review Collection** (AI-23 · I3 C3 E1 · tier Expert, phase 3)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `n_reviews_12m` | Reviews | Reviews in the last 12 months across the review platforms in the brand context |
-| `n_platforms_active_rated_4` | Reviews | Review platforms with reviews in the last 3 months and an average rating of 4.0 or higher |
-
-Rule: `fail if n_reviews_12m == 0`; `pass if n_platforms_active_rated_4 >= 1`
-
 ### AI Readiness (`ai_search_readiness`)
 
 **AI Crawler Access** (AI-03 · I5 C5 E3 · tier Basic, phase 1)
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_retrieval_bots_blocked_robots` | SF list | Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Claude-SearchBot) disallowed in robots.txt for the tested URLs |
-| `n_retrieval_bot_fetches_blocked` | SF list | Fetches of 5 top URLs with those user agents that get 403, 429 or a challenge page |
+| `n_retrieval_bots_blocked_robots` | Bot test | Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt for the tested URLs |
+| `n_retrieval_bot_fetches_blocked` | Bot test | Fetches of the homepage and up to 2 key pages with those user agents that get 401, 403, 429, 503 or a challenge page |
 | `is_waf_result_confirmed` | Agent test | 1 if the CDN/WAF behaviour for these bots is confirmed (configuration or a fetch from the bot's published IP ranges), else 0 |
 | `n_training_bot_policy_mismatches` | Intake | Training bots (GPTBot, ClaudeBot, Google-Extended) whose robots.txt rules differ from the AI bot policy in the brand context |
 
@@ -698,7 +642,7 @@ Rule: `fail if n_retrieval_bots_blocked_robots > 0 or n_retrieval_bot_fetches_bl
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_top_urls_nosnippet_undocumented` | SF crawl | Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: top 100 by Ahrefs organic traffic) |
+| `n_top_urls_nosnippet_undocumented` | SF crawl | Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
 | `n_top_urls_partial_snippet_undocumented` | SF extraction | Top 100 URLs with data-nosnippet or a max-snippet limit that the brand context does not document |
 
 Rule: `fail if n_top_urls_nosnippet_undocumented > 0`; `pass if n_top_urls_partial_snippet_undocumented == 0`
@@ -738,19 +682,6 @@ Rule: `na if n_key_task_forms == 0`; `fail if n_key_forms_webmcp == 0 or n_webmc
 
 ### Agentic Commerce (`agentic_commerce`)
 
-**Merchant Center Feed & Free Listings** (AI-N8 · I4 C4 E4 · tier Basic, phase 2)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `has_online_sales` | Intake | 1 if the site sells online (brand context), else 0 |
-| `is_free_listings_active` | Merchant Center | 1 if free listings are enabled, else 0 |
-| `pct_products_approved` | Merchant Center | Approved products / products |
-| `pct_products_disapproved` | Merchant Center | Disapproved products / products |
-| `n_products_missing_price_or_availability` | Merchant Center | Products without price or availability |
-| `has_shipping_and_return_policy` | Merchant Center | 1 if both shipping and return policies are configured, else 0 |
-
-Rule: `na if has_online_sales == 0`; `fail if is_free_listings_active == 0 or pct_products_disapproved > 0.10`; `pass if pct_products_approved >= 0.95 and n_products_missing_price_or_availability == 0 and has_shipping_and_return_policy == 1`
-
 **Product Data Consistency** (AI-N9 · I4 C4 E3 · tier Advanced, phase 2)
 
 | Metric | Origin | Definition |
@@ -758,30 +689,8 @@ Rule: `na if has_online_sales == 0`; `fail if is_free_listings_active == 0 or pc
 | `has_online_sales` | Intake | 1 if the site sells online (brand context), else 0 |
 | `pct_product_pages_complete_offer` | SF crawl | Product pages with complete Product/Offer markup (price, currency, availability, GTIN or brand, shippingDetails, return policy) / product pages |
 | `pct_product_pages_offer_in_raw_html` | SF extraction | Product pages that show price and availability in the raw HTML (not only after rendering) / product pages |
-| `n_price_availability_mismatches` | Merchant Center | Products whose price or availability differ between page, markup and feed |
 
-Rule: `na if has_online_sales == 0`; `fail if pct_product_pages_complete_offer < 0.70 or pct_product_pages_offer_in_raw_html < 0.70 or n_price_availability_mismatches > 0`; `pass if pct_product_pages_complete_offer >= 0.95 and pct_product_pages_offer_in_raw_html >= 0.95`
-
-**AI Shopping Feed Distribution** (AI-N10 · I3 C2 E4 · tier Champion, phase 3)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `has_online_sales` | Intake | 1 if the site sells online (brand context), else 0 |
-| `n_ai_shopping_platforms` | Intake | AI shopping platforms in scope (brand context), e.g. ChatGPT shopping |
-| `n_ai_feeds_active` | Intake | Of those, platforms with an active product feed |
-| `max_feed_refresh_hours` | Intake | Longest feed refresh interval, in hours |
-| `has_feed_policy_urls` | Intake | 1 if the feeds include return, privacy and terms URLs, else 0 |
-
-Rule: `na if has_online_sales == 0`; `fail if n_ai_feeds_active == 0`; `warn if max_feed_refresh_hours > 24`; `pass if n_ai_feeds_active == n_ai_shopping_platforms and has_feed_policy_urls == 1`
-
-**Agentic Checkout Readiness** (AI-N11 · I2 C2 E2 · tier Champion, phase 3, report only)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `is_agentic_checkout_eligible` | Intake | 1 if the merchant is eligible for agentic checkout in its markets (Google UCP: US, Canada, Australia when written; OpenAI/Stripe ACP), else 0 |
-| `n_agentic_checkout_surfaces` | Merchant Center | AI surfaces where agentic checkout is enabled (UCP or ACP, incl. the native_commerce attribute) |
-
-Rule: `na if is_agentic_checkout_eligible == 0`; `fail if n_agentic_checkout_surfaces == 0`; `pass if n_agentic_checkout_surfaces >= 1`
+Rule: `na if has_online_sales == 0`; `fail if pct_product_pages_complete_offer < 0.70 or pct_product_pages_offer_in_raw_html < 0.70`; `pass if pct_product_pages_complete_offer >= 0.95 and pct_product_pages_offer_in_raw_html >= 0.95`
 
 **Verified Agent Access** (AI-N12 · I4 C2 E3 · tier Expert, phase 3)
 
@@ -791,3 +700,18 @@ Rule: `na if is_agentic_checkout_eligible == 0`; `fail if n_agentic_checkout_sur
 | `is_agent_policy_documented` | Intake | 1 if the CDN/WAF policy for verified agents is documented in the brand context, else 0 |
 
 Rule: `fail if n_verified_agent_blocks > 0`; `pass if is_agent_policy_documented == 1`
+
+**Agent Catalog Access (UCP)** (AI-N13 · I2 C2 E2 · tier Champion, phase 3)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `has_online_sales` | Intake | 1 if the site sells online (brand context), else 0 |
+| `has_ucp_profile` | Site check | 1 if /.well-known/ucp returns a valid Universal Commerce Protocol profile, else 0 |
+| `has_ucp_catalog_search` | Site check | 1 if the profile offers dev.ucp.shopping.catalog.search (any transport), else 0 |
+| `has_ucp_catalog_rest` *(optional)* | Site check | 1 if catalog search is offered over the REST binding, which the agent test uses, else 0 (MCP only) |
+| `pct_test_products_found` *(optional)* | Agent test | Test products (product pages from the sitemap or the intake, max. 5) found through UCP catalog search as Artefact's read-only audit agent / test products searched |
+| `n_ucp_price_availability_mismatches` *(optional)* | Agent test | Found test products whose UCP price, currency or availability differs from the Product/Offer markup on the page |
+
+Rule: `na if has_online_sales == 0`; `fail if has_ucp_profile == 0 or has_ucp_catalog_search == 0 or pct_test_products_found < 0.50`; `warn if has_ucp_catalog_rest == 0`; `pass if pct_test_products_found >= 0.80 and n_ucp_price_availability_mismatches == 0`
+
+Note: UCP spec 2026-08-25. The agent profile only declares catalog search and lookup; the test never creates carts, checkouts or orders. MCP-only catalogs are not searched yet (warn).

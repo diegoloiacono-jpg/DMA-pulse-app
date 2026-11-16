@@ -1,98 +1,60 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Search, Globe, PlayCircle, XCircle } from "lucide-react";
+import { Search, Globe, PlayCircle, XCircle } from "lucide-react";
 import artefactLogo from "@/assets/artefact-logo-white.png";
 import SeoAuditRunner from "@/components/SeoAuditRunner";
-import SeoContextFields from "@/components/SeoContextFields";
 import SeoResults from "@/components/SeoResults";
 import SpecialistReview from "@/components/SpecialistReview";
 import ScoringReview from "@/components/ScoringReview";
-import { DEFAULT_SEO_CONTEXT, seoMaturityText } from "@/utils/seo";
-import { apiClient, type AuditState, type BrandContextPayload, type ScoringOutput } from "@/lib/apiClient";
-import { type BrandContext, DEFAULT_BRAND_CONTEXT, getEffectiveBenchmark } from "@/utils/brandContext";
-import { listSavedContexts, fetchContexts, saveContext, type SavedContext } from "@/utils/savedContexts";
+import { seoMaturityText } from "@/utils/seo";
+import { apiClient, type AuditState, type ScoringOutput } from "@/lib/apiClient";
+import { DEFAULT_BRAND_CONTEXT, getEffectiveBenchmark } from "@/utils/brandContext";
 import { saveSeoSummary } from "@/utils/seoSummary";
 import { SEO_CATEGORY_TOPIC_COUNT, SEO_PLATFORM_ID, SEO_PLATFORM_LABEL, SEO_TIERS } from "@/data/seoPulse";
 import { SEO_DEMO_BRAND_CONTEXT, SEO_DEMO_DOMAIN, SEO_DEMO_RESULTS, SEO_DEMO_SCORING } from "@/data/seoDemo";
 
-const INPUT =
-  "w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
-
 const TOPIC_COUNT = Object.values(SEO_CATEGORY_TOPIC_COUNT).reduce((a, b) => a + b, 0);
 
 /**
- * SEO & AI Search tab: its own brand context, audit runner and review steps, kept apart from the
- * paid media overview. Uses the same backend audit flow with platform "seo".
+ * SEO & AI Search tab: audit runner and review steps, kept apart from the paid media overview. Uses the
+ * same backend audit flow with platform "seo". There is no brand context form: the backend builds the
+ * brand context from the SEO pulse the audit runs on (the n8n form), and the results read it from the audit.
  */
 export default function SeoAudit() {
-  const [brandContext, setBrandContext] = useState<BrandContext>(DEFAULT_BRAND_CONTEXT);
-  const [savedContexts, setSavedContexts] = useState<SavedContext[]>(() => listSavedContexts());
-  const [editingContextId, setEditingContextId] = useState<string | null>(null);
-  const [contextStoreError, setContextStoreError] = useState("");
-  const [contextSaved, setContextSaved] = useState(false);
-
   const [auditId, setAuditId] = useState<string | null>(null);
   const [auditState, setAuditState] = useState<AuditState | null>(null);
   const [finalOutput, setFinalOutput] = useState<ScoringOutput | null>(null);
   // Demo: a sample audit that runs entirely in the browser (no backend), e.g. for Lovable
   const [demoMode, setDemoMode] = useState(false);
 
-  const refreshContexts = useCallback(async () => {
-    try {
-      setSavedContexts(await fetchContexts());
-      setContextStoreError("");
-    } catch (err) {
-      setContextStoreError(err instanceof Error ? err.message : "Could not reach the saved-context store.");
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshContexts();
-  }, [refreshContexts]);
-
-  const handleSelectContext = useCallback((id: string | null) => {
-    if (!id) { setEditingContextId(null); return; }
-    const entry = savedContexts.find(s => s.id === id);
-    if (entry) {
-      setBrandContext(entry.context);
-      setEditingContextId(id);
-    }
-  }, [savedContexts]);
-
-  const seo = brandContext.seo ?? DEFAULT_SEO_CONTEXT;
-
-  const payload: BrandContextPayload = {
-    brandName: brandContext.brandName,
-    model: (brandContext.model || "B2B") as "B2B" | "B2C" | "D2C",
-    namingConvention: "",
-    demographics: "",
-    markets: [],
-    selectedPlatforms: [SEO_PLATFORM_ID],
-    industry: brandContext.industry ?? "",
-    // Only send SEO fields that were filled in or saved; without them the agent treats them as unknown
-    seo: brandContext.seo,
-  };
+  // Client and site of the audit: from the pulse, filled in by the backend
+  const brandName = auditState?.brand_context.brandName ?? "";
+  const siteUrl = auditState?.brand_context.seo?.siteUrl ?? "";
 
   const resetAudit = () => {
     setAuditId(null);
     setAuditState(null);
     setFinalOutput(null);
-    if (demoMode) {
-      setDemoMode(false);
-      setBrandContext(DEFAULT_BRAND_CONTEXT);
-    }
+    setDemoMode(false);
   };
 
   const loadDemo = () => {
     const now = new Date().toISOString();
-    setBrandContext(SEO_DEMO_BRAND_CONTEXT);
-    setEditingContextId(null);
     setFinalOutput(null);
     setDemoMode(true);
     setAuditId("demo");
     setAuditState({
       audit_id: "demo",
-      brand_context: { ...payload, brandName: SEO_DEMO_BRAND_CONTEXT.brandName, seo: SEO_DEMO_BRAND_CONTEXT.seo },
+      brand_context: {
+        brandName: SEO_DEMO_BRAND_CONTEXT.brandName,
+        model: SEO_DEMO_BRAND_CONTEXT.model as "B2B" | "B2C" | "D2C",
+        namingConvention: "",
+        demographics: "",
+        markets: [],
+        selectedPlatforms: [SEO_PLATFORM_ID],
+        industry: SEO_DEMO_BRAND_CONTEXT.industry ?? "",
+        seo: SEO_DEMO_BRAND_CONTEXT.seo,
+      },
       status: "specialist_review",
       specialist_results: SEO_DEMO_RESULTS,
       scoring_output: SEO_DEMO_SCORING,
@@ -102,7 +64,7 @@ export default function SeoAudit() {
     });
   };
 
-  const benchmark = getEffectiveBenchmark(brandContext);
+  const benchmark = getEffectiveBenchmark(DEFAULT_BRAND_CONTEXT);
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,8 +148,8 @@ export default function SeoAudit() {
               setFinalOutput(output);
               setAuditState(prev => prev ? { ...prev, status: "complete" } : prev);
               saveSeoSummary({
-                brandName: brandContext.brandName,
-                domain: seo.siteUrl,
+                brandName,
+                domain: siteUrl,
                 platformScore: Math.round(output.platform_score),
                 maturityText: seoMaturityText(output.maturity, output.maturity_label),
                 topWin: output.quick_wins[0]?.topic ?? null,
@@ -201,115 +163,20 @@ export default function SeoAudit() {
           <SeoResults
             output={finalOutput}
             specialistResults={auditState.specialist_results}
-            brandName={brandContext.brandName}
+            brandName={brandName}
             benchmarkScore={benchmark}
             onNewAudit={resetAudit}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left: SEO brand context */}
-            <div className="bg-card rounded-xl border border-border shadow-sm p-5 space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold">Brand Context</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">SEO & AI Search — configure before running the audit</p>
-              </div>
-
-              {savedContexts.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground">Load saved context</label>
-                  <select
-                    value={editingContextId ?? ""}
-                    onChange={e => handleSelectContext(e.target.value || null)}
-                    className={INPUT}
-                  >
-                    <option value="">— New / current form —</option>
-                    {savedContexts.map(s => (
-                      <option key={s.id} value={s.id}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Brand Name</label>
-                <input
-                  type="text"
-                  value={brandContext.brandName}
-                  onChange={e => setBrandContext(c => ({ ...c, brandName: e.target.value }))}
-                  placeholder="e.g. Artefact"
-                  className={INPUT}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Business Model</label>
-                <div className="flex gap-2">
-                  {(["B2B", "B2C", "D2C"] as const).map(opt => (
-                    <button
-                      key={opt}
-                      onClick={() => setBrandContext(c => ({ ...c, model: c.model === opt ? "" : opt }))}
-                      className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-all duration-150 active:scale-[0.97] ${
-                        brandContext.model === opt
-                          ? "border-primary bg-primary text-primary-foreground shadow-md"
-                          : "border-input bg-background text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-muted/50"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Industry</label>
-                <input
-                  type="text"
-                  value={brandContext.industry ?? ""}
-                  onChange={e => setBrandContext(c => ({ ...c, industry: e.target.value }))}
-                  placeholder="e.g. Finance, Retail, Insurance, Travel"
-                  className={INPUT}
-                />
-              </div>
-
-              <SeoContextFields
-                value={seo}
-                onChange={next => setBrandContext(c => ({ ...c, seo: next }))}
-              />
-
-              {contextStoreError && <p className="text-xs text-destructive">{contextStoreError}</p>}
-
-              <button
-                onClick={async () => {
-                  try {
-                    // Keeps the paid media fields of the context; only the shared and SEO fields are edited here
-                    const entry = await saveContext(brandContext.brandName || "Unnamed", brandContext, editingContextId ?? undefined);
-                    setEditingContextId(entry.id);
-                    await refreshContexts();
-                    setContextSaved(true);
-                    setTimeout(() => setContextSaved(false), 2000);
-                  } catch (err) {
-                    setContextStoreError(err instanceof Error ? err.message : "Save failed.");
-                  }
-                }}
-                disabled={!brandContext.brandName.trim()}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {contextSaved ? (<><Check className="w-4 h-4" />Saved</>) : "Save Context"}
-              </button>
-            </div>
-
-            {/* Right: runner + what the tiers mean */}
+            {/* Left: the site and pulse to audit; right: what the tiers mean */}
+            <SeoAuditRunner
+              onSpecialistReady={(id, state) => {
+                setAuditId(id);
+                setAuditState(state);
+              }}
+            />
             <div className="flex flex-col gap-4">
-              <SeoAuditRunner
-                brandContext={payload}
-                savedContexts={savedContexts}
-                activeContextId={editingContextId}
-                onSelectContext={handleSelectContext}
-                onSpecialistReady={(id, state) => {
-                  setAuditId(id);
-                  setAuditState(state);
-                }}
-              />
               <div className="p-4 rounded-xl border bg-card space-y-2">
                 <span className="text-sm font-semibold">Maturity tiers</span>
                 <p className="text-xs text-muted-foreground">
