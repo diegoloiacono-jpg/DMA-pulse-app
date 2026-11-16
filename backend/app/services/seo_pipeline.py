@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
 import pandas as pd
@@ -23,7 +24,7 @@ from google.cloud import bigquery
 
 from app.config import GCP_PROJECT, SEO_BQ_DATASET
 from app.models.audit import SeoAuditParams, SpecialistResult
-from app.models.brand import BrandContext
+from app.models.brand import BrandContext, SeoContext
 from app.services import specialist
 from app.services.bigquery import run_query
 from app.services.seo_criteria import (
@@ -79,21 +80,17 @@ def _metrics_by_topic(df: pd.DataFrame) -> dict[str, dict[str, float]]:
 
 
 def intake_metrics(bc: BrandContext | None) -> dict[str, dict[str, float]]:
-    """Intake metrics that follow from the SEO brand context, per topic. Only when the SEO context
-    is filled in; a value in BigQuery (e.g. from metric_values) wins over these."""
+    """Intake metrics that follow from the SEO brand context (the intake of the pulse form), per topic. A value in
+    BigQuery (e.g. from metric_values) wins over these."""
     if not bc or not bc.seo:
         return {}
     seo = bc.seo
-    values = {
-        # quarterly target (pulse sheet): 3, or 1 when the site is marked as low search volume
-        "target_new_refdomains": 1.0 if seo.lowSearchVolume else 3.0,
-        "n_ai_shopping_platforms": float(len(seo.aiShoppingPlatforms)),
-    }
-    # Only when set explicitly (not asked in the SEO form): unknown stays unknown
+    values: dict[str, float] = {}
+    # Only when answered in the form: unknown stays unknown
     if seo.hasOnlineSales is not None:
         values["has_online_sales"] = 1.0 if seo.hasOnlineSales else 0.0
-    if seo.locations is not None:
-        values["n_locations"] = float(seo.locations)
+    if seo.isNotable is not None:
+        values["is_notable"] = 1.0 if seo.isNotable else 0.0
     out: dict[str, dict[str, float]] = {}
     for topic, metrics in SEO_TOPIC_METRICS.items():
         for metric, (origin, _) in metrics.items():
@@ -116,6 +113,8 @@ def extract_seo_audit_data(params: SeoAuditParams, brand_context: BrandContext |
     as_of = params.as_of or date.today()
     oldest = as_of - timedelta(days=params.max_age_days)
     market = (params.market or "").strip().upper()
+    if params.search_console is None:   # not set by the caller: whether BigQuery or the crawl has Search Console data
+        params.search_console = has_search_console(site, params.crawl_id or "")
     crawl_id = (params.crawl_id or "").strip()
     n8n_audit_id = (params.n8n_audit_id or "").strip()
     base = [
@@ -188,6 +187,124 @@ def extract_seo_audit_data(params: SeoAuditParams, brand_context: BrandContext |
     }
 
 
+def has_search_console(site: str, crawl_id: str = "") -> bool:
+    """True when the audit has the site's Search Console data: Search Console metrics in BigQuery (metric_values, a
+    source starting with gsc), or a crawl run with Screaming Frog connected to Search Console (Clicks and Impressions in
+    its Internal export, or "Search Console" issues in its folder). The crawl is the chosen one, else the site's latest."""
+    df = _query("v_seo_metrics", f"""
+        WITH c AS (
+          SELECT IF(@crawl_id != '', @crawl_id, (SELECT crawl_id FROM {_view("v_seo_crawl_summary")} WHERE site = @site
+                                                 ORDER BY crawl_date DESC, loaded_at DESC LIMIT 1)) AS crawl_id
+        )
+        SELECT
+          (SELECT COUNT(*) FROM {_view("v_seo_metrics")} WHERE site = @site AND STARTS_WITH(source, 'gsc')) AS n_gsc,
+          (SELECT COUNT(*) FROM {_view("sf_issues_overview")} AS i, c WHERE i.sf_category = 'Search Console' AND i.crawl_id = c.crawl_id)
+          + (SELECT COUNTIF(s.search_console) FROM {_view("v_seo_crawl_summary")} AS s, c WHERE s.crawl_id = c.crawl_id) AS n_sf
+    """, [bigquery.ScalarQueryParameter("site", "STRING", site), bigquery.ScalarQueryParameter("crawl_id", "STRING", crawl_id or "")])
+    return bool(len(df) and (int(df.iloc[0]["n_gsc"] or 0) > 0 or int(df.iloc[0]["n_sf"] or 0) > 0))
+
+
+def _crawls_with_search_console(site: str) -> set[str]:
+    """The site's crawls run with Screaming Frog connected to Search Console (the crawl's flag, or its issues)."""
+    df = _query("sf_issues_overview", f"""
+        SELECT DISTINCT crawl_id FROM {_view("sf_issues_overview")}
+        WHERE sf_category = 'Search Console' AND REGEXP_REPLACE(LOWER(domain), r'^www\\.', '') = @site
+        UNION DISTINCT
+        SELECT crawl_id FROM {_view("v_seo_crawl_summary")} WHERE site = @site AND search_console
+    """, [bigquery.ScalarQueryParameter("site", "STRING", site)])
+    return set(df["crawl_id"]) if len(df) else set()
+
+
+def _split(text) -> list[str]:
+    return [t.strip() for t in str(text or "").split(",") if t.strip()]
+
+
+_INTAKE_COLS = ["business_model", "online_sales", "wikipedia_notable", "training_bots", "nosnippet_pages"]
+
+
+def _value(v):
+    """A BigQuery value, or None for NULL / NaN / NA."""
+    try:
+        return None if v is None or pd.isna(v) else v
+    except (TypeError, ValueError):
+        return v
+
+
+def pulse_intake(row: dict) -> dict:
+    """The intake of a pulse_runs row (section "About the site" of the form), None = unknown."""
+    flag = lambda v: None if _value(v) is None else bool(v)
+    model = str(_value(row.get("business_model")) or "").upper()
+    bots = str(_value(row.get("training_bots")) or "").lower()
+    return {
+        "business_model": model if model in ("B2B", "B2C", "D2C") else None,
+        "online_sales": flag(row.get("online_sales")),
+        "wikipedia_notable": flag(row.get("wikipedia_notable")),
+        "training_bots": bots if bots in ("allow", "block") else None,
+        "nosnippet_pages": [x.strip() for x in str(_value(row.get("nosnippet_pages")) or "").splitlines() if x.strip()],
+    }
+
+
+def _read_pulse_runs(site: str, audit_id: str = "") -> pd.DataFrame:
+    """The site's rows in pulse_runs (one run when audit_id is given), newest first; the intake columns are NULL for runs
+    from before the intake. An empty frame when the table (or its intake columns) does not exist yet."""
+    cols = ["audit_id", "crawl_id", "client", "started_at", "brand_terms", "competitors", *_INTAKE_COLS]
+    try:
+        return _query("pulse_runs", f"""
+            SELECT {", ".join(cols)} FROM {_view("pulse_runs")}
+            WHERE REGEXP_REPLACE(LOWER(domain), r'^www\\.', '') = @site AND (@n8n_audit_id = '' OR audit_id = @n8n_audit_id)
+            ORDER BY started_at DESC
+        """, [bigquery.ScalarQueryParameter("site", "STRING", site),
+              bigquery.ScalarQueryParameter("n8n_audit_id", "STRING", (audit_id or "").strip())])
+    except RuntimeError as exc:   # a dataset made before pulse_runs (or its intake columns) existed
+        logger.warning("pulse_runs not read: %s", exc)
+        return pd.DataFrame(columns=cols)
+
+
+def apply_pulse_context(bc: BrandContext | None, params: SeoAuditParams) -> BrandContext | None:
+    """The brand context of the audit from the SEO pulse (the n8n form, table pulse_runs): the client name, the business
+    model, the brand terms and competitors the metrics were computed with, and the intake about the site. The chosen run,
+    else the site's latest run. The SEO tab has no brand context form; what the run does not say stays as it is."""
+    site = normalise_site(params.domain)
+    if not bc or not site:
+        return bc
+    df = _read_pulse_runs(site, params.n8n_audit_id or "")
+    seo = (bc.seo or SeoContext()).model_copy(update={"siteUrl": site})
+    if df.empty:
+        return bc.model_copy(update={"seo": seo})
+    row = df.iloc[0].to_dict()
+    intake = pulse_intake(row)
+    terms, comps = _split(row.get("brand_terms")), _split(row.get("competitors"))
+    seo = seo.model_copy(update={
+        **({"brandTerms": terms} if terms else {}), **({"competitors": comps} if comps else {}),
+        **({"hasOnlineSales": intake["online_sales"]} if intake["online_sales"] is not None else {}),
+        **({"isNotable": intake["wikipedia_notable"]} if intake["wikipedia_notable"] is not None else {}),
+        **({"trainingBots": intake["training_bots"]} if intake["training_bots"] else {}),
+        **({"snippetExceptions": intake["nosnippet_pages"]} if intake["nosnippet_pages"] else {}),
+    })
+    update = {"seo": seo}
+    if intake["business_model"]:
+        update["model"] = intake["business_model"]
+    if _value(row.get("client")):
+        update["brandName"] = str(row["client"])
+    return bc.model_copy(update=update)
+
+
+def list_seo_sites(limit: int = 200) -> list[dict]:
+    """The sites with SEO data in BigQuery (a pulse run, an n8n run or a crawl), most recent first, with the client name
+    of the latest one: the SEO tab's choice of site."""
+    df = _query("v_seo_crawl_summary", f"""
+        WITH s AS (
+          SELECT site, client, loaded_at AS ts FROM {_view("v_seo_crawl_summary")}
+          UNION ALL SELECT site, client, last_write FROM {_view("v_seo_n8n_runs")}
+        )
+        SELECT site, ARRAY_AGG(client IGNORE NULLS ORDER BY ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS client, MAX(ts) AS last_at
+        FROM s WHERE site IS NOT NULL AND site != '' GROUP BY site ORDER BY last_at DESC LIMIT {int(limit)}
+    """, [])
+    return [{"site": r["site"], "client": _value(r["client"]),
+             "last_at": None if _value(r["last_at"]) is None else pd.Timestamp(r["last_at"]).isoformat()}
+            for r in df.to_dict("records")]
+
+
 def list_seo_sources(domain: str, market: str = "", limit: int = 20) -> dict:
     """The Screaming Frog crawls and n8n runs of a site in BigQuery, newest first: the choice of the data an
     SEO audit reads (SeoAuditParams.crawl_id / n8n_audit_id)."""
@@ -196,28 +313,31 @@ def list_seo_sources(domain: str, market: str = "", limit: int = 20) -> dict:
         return {"site": "", "crawls": [], "n8n_runs": []}
     params = [bigquery.ScalarQueryParameter("site", "STRING", site),
               bigquery.ScalarQueryParameter("market", "STRING", (market or "").strip().upper())]
-    crawls = _query("v_seo_crawl_summary", f"""
+    crawls_sql = f"""
         SELECT crawl_id, crawl_date, market, internal_html, indexable_html, external_urls, js_rendering, loaded_at
         FROM {_view("v_seo_crawl_summary")}
         WHERE site = @site AND {_MARKET_FILTER}
         ORDER BY crawl_date DESC, loaded_at DESC
         LIMIT {int(limit)}
-    """, params)
-    runs = _query("v_seo_n8n_runs", f"""
+    """
+    runs_sql = f"""
         SELECT audit_id, run_date, market, checks, n_metrics, first_write, last_write
         FROM {_view("v_seo_n8n_runs")}
         WHERE site = @site AND {_MARKET_FILTER}
         ORDER BY last_write DESC
         LIMIT {int(limit)}
-    """, params)
-    try:
-        links = _query("pulse_runs", f"""
-            SELECT audit_id, crawl_id FROM {_view("pulse_runs")}
-            WHERE REGEXP_REPLACE(LOWER(domain), r'^www\\.', '') = @site AND crawl_id IS NOT NULL
-        """, params)
-    except RuntimeError as exc:   # a dataset made before pulse_runs existed
-        logger.warning("pulse_runs not read: %s", exc)
-        links = pd.DataFrame(columns=["audit_id", "crawl_id"])
+    """
+
+    # The crawls first (it also opens the connection: several first requests at once broke on SSL), then the other
+    # four reads at the same time instead of one after the other
+    crawls = _query("v_seo_crawl_summary", crawls_sql, params)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        f_runs = pool.submit(_query, "v_seo_n8n_runs", runs_sql, params)
+        f_links = pool.submit(_read_pulse_runs, site)
+        f_gsc_crawls = pool.submit(_crawls_with_search_console, site)
+        f_gsc_metrics = pool.submit(has_search_console, site, "-")
+        runs, links = f_runs.result(), f_links.result()
+        gsc_crawls, gsc_metrics = f_gsc_crawls.result(), f_gsc_metrics.result()
 
     def plain(v):
         if v is None or (isinstance(v, float) and pd.isna(v)) or v is pd.NaT:
@@ -228,7 +348,18 @@ def list_seo_sources(domain: str, market: str = "", limit: int = 20) -> dict:
 
     rows = lambda df: [{k: plain(v) for k, v in r.items()} for r in df.to_dict("records")]
     crawl_list, run_list = rows(crawls), rows(runs)
-    return {"site": site, "pulses": pair_pulses(run_list, crawl_list, dict(zip(links["audit_id"], links["crawl_id"]))),
+    link_rows = rows(links)
+    pulses = pair_pulses(run_list, crawl_list, {r["audit_id"]: r["crawl_id"] for r in link_rows if r.get("crawl_id")})
+    context = {r["audit_id"]: r for r in link_rows}
+    for p in pulses:   # the client, brand terms, competitors and intake of the form of that run, and Search Console data
+        ctx = context.get(p["audit_id"]) or {}
+        p["client"] = ctx.get("client")
+        p["brand_terms"], p["competitors"] = _split(ctx.get("brand_terms")), _split(ctx.get("competitors"))
+        p["intake"] = pulse_intake(ctx)
+        p["search_console"] = gsc_metrics or p["crawl_id"] in gsc_crawls
+        p["search_console_from"] = "metrics" if gsc_metrics else "crawl" if p["crawl_id"] in gsc_crawls else None
+    latest = crawl_list[0]["crawl_id"] if crawl_list else None
+    return {"site": site, "search_console": gsc_metrics or latest in gsc_crawls, "pulses": pulses,
             "crawls": crawl_list, "n8n_runs": run_list}
 
 
@@ -279,8 +410,8 @@ def _format_seo_brand_context(bc: BrandContext | None, params: SeoAuditParams) -
             lines.append(f"{field}: {json.dumps(value, ensure_ascii=False)}")
     else:
         lines.append("SEO brand context not provided.")
-    lines.append("SEO fields not listed here (e.g. hasOnlineSales, lowSearchVolume, locations) are unknown, not false or 0: "
-                 "judge those topics on the data.")
+    lines.append("SEO fields not listed here (e.g. hasOnlineSales, isNotable, trainingBots) are unknown, "
+                 "not false or 0: judge those topics on the data.")
     lines.append("---")
     return "\n".join(lines) + "\n\n"
 

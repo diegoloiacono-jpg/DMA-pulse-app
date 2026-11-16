@@ -15,7 +15,9 @@ from app.models.audit import (
 )
 from app.services.bigquery import resolve_account_id
 from app.services.data_extraction import extract_audit_data
-from app.services.seo_pipeline import extract_seo_audit_data, list_seo_sources, normalise_site, run_seo_specialist
+from app.services.seo_pipeline import (
+    apply_pulse_context, extract_seo_audit_data, list_seo_sites, list_seo_sources, normalise_site, run_seo_specialist,
+)
 from app.services.specialist import run_specialist_agent
 
 router = APIRouter()
@@ -59,6 +61,8 @@ def _run_seo_pipeline(audit_id: str, params: SeoAuditParams) -> None:
     try:
         state.status = AuditStatus.EXTRACTING
         state.updated_at = _now()
+        # the brand context (client, business model, brand terms, competitors, intake) comes from the SEO pulse (the n8n form)
+        state.brand_context = apply_pulse_context(state.brand_context, params)
         audit_data = extract_seo_audit_data(params, state.brand_context)
 
         state.status = AuditStatus.SPECIALIST_RUNNING
@@ -96,6 +100,15 @@ def _start_seo_audit(payload: AuditRunRequest, background_tasks: BackgroundTasks
 def seo_support() -> dict:
     """Lets the SEO tab check that this backend runs SEO audits (older ones would ignore platform)."""
     return {"seo": True, "dataset": SEO_BQ_DATASET}
+
+
+@router.get("/seo/sites")
+def seo_sites() -> dict:
+    """The sites with SEO data in BigQuery, for the SEO tab's choice of site."""
+    try:
+        return {"sites": list_seo_sites()}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/seo/sources")

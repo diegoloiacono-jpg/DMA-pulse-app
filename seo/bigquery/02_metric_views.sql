@@ -59,11 +59,11 @@ ah AS (
 ),
 ah_median AS (
   -- medians of the competitors (exact, also for an even number of competitors)
-  SELECT DISTINCT audit_id, call,
-         PERCENTILE_CONT(IF(call = 'batch', refdomains_dofollow, n_pages_10plus), 0.5) OVER (PARTITION BY audit_id, call) AS median
-  FROM ah
-  WHERE role = 'competitor' AND call IN ('batch', 'best_links')
-    AND IF(call = 'batch', refdomains_dofollow, n_pages_10plus) IS NOT NULL
+  SELECT DISTINCT audit_id, call, PERCENTILE_CONT(v, 0.5) OVER (PARTITION BY audit_id, call) AS median
+  FROM (SELECT audit_id, call, CASE call WHEN 'batch' THEN refdomains_dofollow WHEN 'best_links' THEN n_pages_10plus
+                                         WHEN 'refdomains' THEN n_new_refdomains_5k END AS v
+        FROM ah WHERE role = 'competitor')
+  WHERE v IS NOT NULL
 ),
 ah_cite AS (
   SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ahrefs_citations`
@@ -178,6 +178,9 @@ FROM ah WHERE call = 'batch' AND role = 'client' AND domain_rating IS NOT NULL
 UNION ALL
 SELECT audit_id, 'Fresh Authoritative Links', 'n_new_refdomains_90d_5k', CAST(n_new_refdomains_5k AS FLOAT64)
 FROM ah WHERE call = 'refdomains' AND role = 'client' AND n_new_refdomains_5k IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Fresh Authoritative Links', 'median_competitor_new_refdomains_90d_5k', median
+FROM ah_median WHERE call = 'refdomains'
 UNION ALL
 SELECT audit_id, 'Link-Earning Pages', 'n_pages_10plus_refdomains', CAST(n_pages_10plus AS FLOAT64)
 FROM ah WHERE call = 'best_links' AND role = 'client' AND n_pages_10plus IS NOT NULL

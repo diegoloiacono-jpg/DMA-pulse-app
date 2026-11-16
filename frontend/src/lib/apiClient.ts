@@ -16,23 +16,32 @@ export interface BrandContextPayload {
   seo?: SeoContextPayload;
 }
 
-/** Brand context fields used by the SEO platform only (see seo/SEO_METRICS.md). */
+/** Brand context fields used by the SEO platform only (see seo/SEO_METRICS.md). The SEO tab has no form for them: the
+ *  backend fills them from the SEO pulse the audit runs on (the n8n form). Absent or null = unknown. */
 export interface SeoContextPayload {
   siteUrl: string;
   brandTerms: string[];
   competitors: string[];
-  pageTypes: Record<string, string>;
-  keywordMappingUrl: string;
-  keywordMappingDate: string;
-  /** Not asked in the SEO form: absent = unknown */
   hasOnlineSales?: boolean | null;
-  lowSearchVolume?: boolean | null;
-  locations?: number | null;
-  reviewPlatforms: string[];
-  expectedProfiles: string[];
-  aiBotPolicy: Record<string, string>;
+  isNotable?: boolean | null;
+  trainingBots?: "allow" | "block" | null;
   snippetExceptions: string[];
-  aiShoppingPlatforms: string[];
+}
+
+/** The intake of an SEO pulse: section "About the site" of the n8n form (backend pulse_intake); null = unknown. */
+export interface SeoIntake {
+  business_model: "B2B" | "B2C" | "D2C" | null;
+  online_sales: boolean | null;
+  wikipedia_notable: boolean | null;
+  training_bots: "allow" | "block" | null;
+  nosnippet_pages: string[];
+}
+
+/** A site with SEO data in BigQuery (backend list_seo_sites), with the client of its latest run or crawl. */
+export interface SeoSite {
+  site: string;
+  client: string | null;
+  last_at: string | null;
 }
 
 /** Which site and data an SEO audit reads from BigQuery (backend SeoAuditParams). */
@@ -52,7 +61,12 @@ export interface SeoSources {
   site: string;
   /** One per submit of the n8n form: the run and the crawl uploaded with it (audit_id null: a crawl without a run). */
   pulses: { audit_id: string | null; crawl_id: string | null; at: string | null; checks: string | null; n_metrics: number | null;
-            linked_by: "form" | "time" | null; crawl_date: string | null; internal_html: number | null; js_rendering: boolean | null }[];
+            linked_by: "form" | "time" | null; crawl_date: string | null; internal_html: number | null; js_rendering: boolean | null;
+            client: string | null; brand_terms: string[]; competitors: string[]; intake: SeoIntake;
+            /** Search Console data: metrics in BigQuery, or a crawl run with Screaming Frog connected to Search Console */
+            search_console: boolean; search_console_from: "metrics" | "crawl" | null }[];
+  /** Search Console data for the default choice (the latest crawl, or metrics in BigQuery). */
+  search_console: boolean;
   crawls: { crawl_id: string; crawl_date: string; market: string | null; internal_html: number | null;
             indexable_html: number | null; external_urls: number | null; js_rendering: boolean | null; loaded_at: string }[];
   n8n_runs: { audit_id: string; run_date: string; market: string | null; checks: string; n_metrics: number; last_write: string }[];
@@ -193,6 +207,10 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify({ brand_context: brandContext, platform: "seo", seo }),
     });
+  },
+
+  getSeoSites() {
+    return request<{ sites: SeoSite[] }>("/api/audit/seo/sites");
   },
 
   getSeoSources(domain: string, market?: string) {

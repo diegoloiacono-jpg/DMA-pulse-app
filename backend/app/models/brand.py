@@ -3,22 +3,16 @@ from pydantic import BaseModel
 
 
 class SeoContext(BaseModel):
-    """Brand context fields that only the SEO platform uses (see seo/SEO_METRICS.md)."""
+    """Brand context fields that only the SEO platform uses (see seo/SEO_METRICS.md). The SEO tab has no form for them:
+    apply_pulse_context fills them from the SEO pulse run (the n8n form, table pulse_runs)."""
     siteUrl: str = ""
     brandTerms: list[str] = []
     competitors: list[str] = []
-    pageTypes: dict[str, str] = {}
-    keywordMappingUrl: str = ""
-    keywordMappingDate: str = ""
-    # Not asked in the SEO form: None = unknown (False/0 would make topics not applicable)
+    # None = unknown (False would make topics not applicable)
     hasOnlineSales: bool | None = None
-    lowSearchVolume: bool | None = None
-    locations: int | None = None
-    reviewPlatforms: list[str] = []
-    expectedProfiles: list[str] = []
-    aiBotPolicy: dict[str, str] = {}
+    isNotable: bool | None = None
+    trainingBots: Literal["allow", "block"] | None = None
     snippetExceptions: list[str] = []
-    aiShoppingPlatforms: list[str] = []
 
 
 class BrandContext(BaseModel):

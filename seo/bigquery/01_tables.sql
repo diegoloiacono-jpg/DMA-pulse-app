@@ -108,7 +108,19 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.ahrefs_citations` (
 ) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
 
 -- One row per run of the SEO pulse checks, written first: the crawl uploaded with it in the same form (crawl_id, NULL
--- without a crawl) and the checks selected. The DMA Pulse app offers a run and its crawl as one choice.
+-- without a crawl), the checks selected, the brand terms and competitors of the form and the intake about the site
+-- (section "About the site"; NULL = unknown). The DMA Pulse app offers a run and its crawl as one choice and builds the
+-- brand context of the audit from that run: it has no brand context form for SEO.
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.pulse_runs` (
-  audit_id STRING, crawl_id STRING, client STRING, market STRING, domain STRING, checks STRING, started_at TIMESTAMP
+  audit_id STRING, crawl_id STRING, client STRING, market STRING, domain STRING, checks STRING, started_at TIMESTAMP,
+  brand_terms STRING, competitors STRING,
+  business_model STRING,      -- B2B, B2C or D2C
+  online_sales BOOL, wikipedia_notable BOOL,
+  training_bots STRING,       -- intended policy for AI training bots: allow or block
+  nosnippet_pages STRING      -- URLs or paths where nosnippet/max-snippet is intentional, one per line
 ) PARTITION BY DATE(started_at) CLUSTER BY domain;
+-- Added on 3 Nov 2026, for a table made before
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS brand_terms STRING, ADD COLUMN IF NOT EXISTS competitors STRING;
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS business_model STRING, ADD COLUMN IF NOT EXISTS online_sales BOOL,
+  ADD COLUMN IF NOT EXISTS wikipedia_notable BOOL,
+  ADD COLUMN IF NOT EXISTS training_bots STRING, ADD COLUMN IF NOT EXISTS nosnippet_pages STRING;

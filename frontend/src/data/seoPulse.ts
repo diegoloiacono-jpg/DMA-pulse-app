@@ -11,7 +11,6 @@ export const SEO_CATEGORY_LABELS: Record<string, string> = {
   "performance_mobile": "Performance & Mobile",
   "onpage_content": "On-page & Content",
   "authority_entity": "Authority & Entity",
-  "reputation_local": "Reputation & Local",
   "ai_search_readiness": "AI Readiness",
   "agentic_commerce": "Agentic Commerce"
 };
@@ -21,11 +20,10 @@ export const SEO_CATEGORY_TOPIC_COUNT: Record<string, number> = {
   "crawling_indexing": 16,
   "site_structure": 4,
   "performance_mobile": 3,
-  "onpage_content": 17,
+  "onpage_content": 16,
   "authority_entity": 12,
-  "reputation_local": 2,
   "ai_search_readiness": 5,
-  "agentic_commerce": 6
+  "agentic_commerce": 3
 };
 
 /** Maturity tiers, lowest first, with their definitions (sheet 'Maturity'). */
@@ -84,7 +82,6 @@ export const SEO_TOPIC_TIER: Record<string, string> = {
   "Content Freshness": "Expert",
   "Answer-First Content": "Expert",
   "FAQ & Question Coverage": "Expert",
-  "Topic Clusters": "Expert",
   "Source Citations": "Expert",
   "Structured Formatting": "Advanced",
   "Semantic HTML": "Advanced",
@@ -102,23 +99,18 @@ export const SEO_TOPIC_TIER: Record<string, string> = {
   "Brand Consistency": "Expert",
   "Authority Pages": "Basic",
   "Wikipedia & Wikidata": "Champion",
-  "Google Business Profile": "Basic",
-  "Review Collection": "Expert",
   "AI Crawler Access": "Basic",
   "Snippet Directives": "Basic",
   "Agent Accessibility Tree": "Champion",
   "llms.txt & ai-catalog.json Hygiene": "Advanced",
   "WebMCP Readiness": "Champion",
-  "Merchant Center Feed & Free Listings": "Basic",
   "Product Data Consistency": "Advanced",
-  "AI Shopping Feed Distribution": "Champion",
-  "Agentic Checkout Readiness": "Champion",
   "Verified Agent Access": "Expert",
   "Agent Catalog Access (UCP)": "Champion"
 };
 
 /** Evaluated and shown, but left out of the scores while the standards mature. */
-export const SEO_REPORT_ONLY: string[] = ["WebMCP Readiness", "Agentic Checkout Readiness"];
+export const SEO_REPORT_ONLY: string[] = ["WebMCP Readiness"];
 
 /** Result sources that mean the topic had no data: left out of the scores (seo_criteria._UNSCORED_SOURCES). */
 export const SEO_UNSCORED_SOURCES: string[] = ["no_data_source", "parse_error", "missing"];
