@@ -140,6 +140,13 @@ UNION ALL
 SELECT audit_id, 'AI Crawler Access', 'n_retrieval_bot_fetches_blocked', CAST(COUNTIF(blocked) AS FLOAT64)
 FROM bots WHERE bot_type IN ('search', 'user') AND http_status IS NOT NULL
 GROUP BY audit_id
+-- training bots whose robots.txt rule differs from the training-bot policy of the pulse form (pulse_runs.training_bots)
+UNION ALL
+SELECT b.audit_id, 'AI Crawler Access', 'n_training_bot_policy_mismatches',
+       CAST(COUNT(DISTINCT IF(b.robots_allowed != (r.training_bots = 'allow'), b.bot, NULL)) AS FLOAT64)
+FROM bots AS b JOIN `YOUR_GCP_PROJECT.seo_raw.pulse_runs` AS r ON r.audit_id = b.audit_id
+WHERE b.bot_type = 'training' AND b.robots_allowed IS NOT NULL AND r.training_bots IN ('allow', 'block')
+GROUP BY b.audit_id
 
 -- Verified Agent Access: product, cart and checkout URLs where the signed agent got a block or challenge
 UNION ALL

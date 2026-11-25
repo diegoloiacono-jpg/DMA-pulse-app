@@ -60,8 +60,6 @@ H2,Non-sequential,Warning,Low,Heading Structure,onpage_content
 H2,Duplicate,Opportunity,Low,Heading Structure,onpage_content
 H2,Over 70 Characters,Opportunity,Low,Heading Structure,onpage_content
 Content,Exact Duplicates,Issue,High,Duplicate & Thin Content,onpage_content
-Content,Spelling Errors,Issue,Medium,Content Hygiene,onpage_content
-Content,Grammar Errors,Issue,Medium,Content Hygiene,onpage_content
 Content,Soft 404 Pages,Warning,High,Error Handling & Soft 404s,crawling_indexing
 Content,Lorem Ipsum Placeholder,Warning,High,Content Hygiene,onpage_content
 Content,Near Duplicates,Warning,Medium,Duplicate & Thin Content,onpage_content

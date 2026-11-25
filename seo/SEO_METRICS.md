@@ -156,10 +156,10 @@ Rule: `fail if n_5xx_key_urls > 0 or median_response_time_s > 1.5`; `pass if n_5
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `has_sitemap` | GSC API | 1 if an XML sitemap is submitted in Search Console, else 0 (without Search Console access: 1 if a sitemap is referenced in robots.txt or found at /sitemap.xml) |
+| `has_sitemap` | SF crawl | 1 if the crawl read an XML sitemap (Screaming Frog reports the Sitemaps issues only when it found and crawled one: Crawl Linked XML Sitemaps), else unknown; submission in Search Console shows in n_sitemap_errors_gsc |
 | `n_sitemap_errors_gsc` *(optional)* | GSC API | Errors reported by Search Console on the submitted sitemaps |
 | `n_sitemap_files_over_limit` | SF crawl | Sitemap files above 50,000 URLs or 50 MB |
-| `pct_non_indexable_in_sitemap` | SF crawl | Non-indexable URLs in the sitemaps / all URLs in the sitemaps |
+| `pct_non_indexable_in_sitemap` | SF crawl | Non-indexable URLs in the sitemaps / all URLs in the sitemaps (as the crawl sees them: indexable HTML URLs in a sitemap + non-indexable URLs in a sitemap) |
 | `pct_indexable_in_sitemap` | SF crawl | Indexable HTML URLs that are in a sitemap / all indexable HTML URLs |
 
 Rule: `fail if has_sitemap == 0 or n_sitemap_errors_gsc > 0 or pct_non_indexable_in_sitemap > 0.05 or pct_indexable_in_sitemap < 0.80`; `pass if n_sitemap_files_over_limit == 0 and pct_non_indexable_in_sitemap <= 0.01 and pct_indexable_in_sitemap >= 0.95`
@@ -232,7 +232,7 @@ Rule: `fail if n_pages_elements_outside_head > 0 or n_files_over_2mb > 0`; `pass
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_js_dependent_pages` | SF crawl | Indexable pages where more than 10% of the words only exist in the rendered HTML (Contains JavaScript Content) / indexable HTML URLs |
+| `pct_js_dependent_pages` | SF crawl | Indexable pages where more than 10% of the words only exist in the rendered HTML (JS Word Count % in the Contains JavaScript Content export, which lists every page where JavaScript adds any word) / indexable HTML URLs |
 | `pct_pages_js_only_nav_links` | SF crawl | Pages whose navigation or header links only exist in the rendered HTML (All Outlinks: link position Navigation/Header, link origin Rendered HTML) / internal HTML pages |
 | `pct_core_elements_render_only` | SF crawl | Indexable pages whose title, meta description, canonical, meta robots, hreflang, headings or structured data only exist in the rendered HTML / indexable HTML URLs |
 | `n_directive_conflicts` | SF crawl | Pages with noindex or nofollow only in the original HTML |
@@ -427,9 +427,10 @@ Rule: `fail if pct_indexable_zero_impressions_90d > 0.50`; `pass if pct_indexabl
 | Metric | Origin | Definition |
 |---|---|---|
 | `n_placeholder_pages` | SF crawl | Live pages with placeholder text (Content: Lorem Ipsum Placeholder) |
-| `pct_pages_spelling_grammar_errors` | SF crawl | Indexable pages with spelling or grammar errors (language per market, brand terms whitelisted) / indexable HTML URLs |
 
-Rule: `fail if n_placeholder_pages > 0 or pct_pages_spelling_grammar_errors > 0.15`; `pass if pct_pages_spelling_grammar_errors <= 0.05`
+Rule: `fail if n_placeholder_pages > 0`; `pass if n_placeholder_pages == 0`
+
+Note: Spelling and grammar are not part of the pulse (slow crawl, brand names and jargon count as errors).
 
 **Structured Data** (SEO-24 · I5 C4 E3 · tier Advanced, phase 1)
 
@@ -634,7 +635,7 @@ Rule: `na if is_notable == 0`; `fail if has_wikidata_item == 0 and n_wikipedia_l
 | `n_retrieval_bots_blocked_robots` | Bot test | Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt for the tested URLs |
 | `n_retrieval_bot_fetches_blocked` | Bot test | Fetches of the homepage and up to 2 key pages with those user agents that get 401, 403, 429, 503 or a challenge page |
 | `is_waf_result_confirmed` | Agent test | 1 if the CDN/WAF behaviour for these bots is confirmed (configuration or a fetch from the bot's published IP ranges), else 0 |
-| `n_training_bot_policy_mismatches` | Intake | Training bots (GPTBot, ClaudeBot, Google-Extended) whose robots.txt rules differ from the AI bot policy in the brand context |
+| `n_training_bot_policy_mismatches` | Bot test | Training bots (GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent, Bytespider) whose robots.txt rule for the tested URLs differs from the training-bot policy in the pulse form (allowed or blocked) |
 
 Rule: `fail if n_retrieval_bots_blocked_robots > 0 or n_retrieval_bot_fetches_blocked > 0 and is_waf_result_confirmed == 1`; `warn if is_waf_result_confirmed == 0`; `pass if n_retrieval_bot_fetches_blocked == 0 and n_training_bot_policy_mismatches == 0`
 

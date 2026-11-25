@@ -700,10 +700,10 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'median_response_time_s': ('SF crawl', 'Median response time of internal HTML pages, in seconds'),
     },
     'XML Sitemap Quality': {
-        'has_sitemap': ('GSC API', '1 if an XML sitemap is submitted in Search Console, else 0 (without Search Console access: 1 if a sitemap is referenced in robots.txt or found at /sitemap.xml)'),
+        'has_sitemap': ('SF crawl', '1 if the crawl read an XML sitemap (Screaming Frog reports the Sitemaps issues only when it found and crawled one: Crawl Linked XML Sitemaps), else unknown; submission in Search Console shows in n_sitemap_errors_gsc'),
         'n_sitemap_errors_gsc': ('GSC API', 'Errors reported by Search Console on the submitted sitemaps'),
         'n_sitemap_files_over_limit': ('SF crawl', 'Sitemap files above 50,000 URLs or 50 MB'),
-        'pct_non_indexable_in_sitemap': ('SF crawl', 'Non-indexable URLs in the sitemaps / all URLs in the sitemaps'),
+        'pct_non_indexable_in_sitemap': ('SF crawl', 'Non-indexable URLs in the sitemaps / all URLs in the sitemaps (as the crawl sees them: indexable HTML URLs in a sitemap + non-indexable URLs in a sitemap)'),
         'pct_indexable_in_sitemap': ('SF crawl', 'Indexable HTML URLs that are in a sitemap / all indexable HTML URLs'),
     },
     'Bing Webmaster Tools & IndexNow': {
@@ -739,7 +739,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_files_over_2mb': ('SF crawl', 'HTML documents or resources above 2 MB'),
     },
     'Content Without JavaScript': {
-        'pct_js_dependent_pages': ('SF crawl', 'Indexable pages where more than 10% of the words only exist in the rendered HTML (Contains JavaScript Content) / indexable HTML URLs'),
+        'pct_js_dependent_pages': ('SF crawl', 'Indexable pages where more than 10% of the words only exist in the rendered HTML (JS Word Count % in the Contains JavaScript Content export, which lists every page where JavaScript adds any word) / indexable HTML URLs'),
         'pct_pages_js_only_nav_links': ('SF crawl', 'Pages whose navigation or header links only exist in the rendered HTML (All Outlinks: link position Navigation/Header, link origin Rendered HTML) / internal HTML pages'),
         'pct_core_elements_render_only': ('SF crawl', 'Indexable pages whose title, meta description, canonical, meta robots, hreflang, headings or structured data only exist in the rendered HTML / indexable HTML URLs'),
         'n_directive_conflicts': ('SF crawl', 'Pages with noindex or nofollow only in the original HTML'),
@@ -828,7 +828,6 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     },
     'Content Hygiene': {
         'n_placeholder_pages': ('SF crawl', 'Live pages with placeholder text (Content: Lorem Ipsum Placeholder)'),
-        'pct_pages_spelling_grammar_errors': ('SF crawl', 'Indexable pages with spelling or grammar errors (language per market, brand terms whitelisted) / indexable HTML URLs'),
     },
     'Structured Data': {
         'n_page_types_with_sd_errors': ('SF crawl', 'Page types (templates) with structured data validation, parse or rich result validation errors'),
@@ -917,7 +916,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_retrieval_bots_blocked_robots': ('Bot test', 'Search and retrieval bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User, Claude-SearchBot, Claude-User) disallowed in robots.txt for the tested URLs'),
         'n_retrieval_bot_fetches_blocked': ('Bot test', 'Fetches of the homepage and up to 2 key pages with those user agents that get 401, 403, 429, 503 or a challenge page'),
         'is_waf_result_confirmed': ('Agent test', "1 if the CDN/WAF behaviour for these bots is confirmed (configuration or a fetch from the bot's published IP ranges), else 0"),
-        'n_training_bot_policy_mismatches': ('Intake', 'Training bots (GPTBot, ClaudeBot, Google-Extended) whose robots.txt rules differ from the AI bot policy in the brand context'),
+        'n_training_bot_policy_mismatches': ('Bot test', 'Training bots (GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent, Bytespider) whose robots.txt rule for the tested URLs differs from the training-bot policy in the pulse form (allowed or blocked)'),
     },
     'Snippet Directives': {
         'n_top_urls_nosnippet_undocumented': ('SF crawl', 'Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
@@ -1148,9 +1147,9 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
     },
     'Content Hygiene': {
         'na_if': [],
-        'fail_if': ['n_placeholder_pages > 0', 'pct_pages_spelling_grammar_errors > 0.15'],
+        'fail_if': ['n_placeholder_pages > 0'],
         'warn_if': [],
-        'pass_if': ['pct_pages_spelling_grammar_errors <= 0.05'],
+        'pass_if': ['n_placeholder_pages == 0'],
     },
     'Structured Data': {
         'na_if': [],
@@ -1393,8 +1392,6 @@ SEO_SF_ISSUE_MAP: list[tuple[str, str, str, str, str]] = [
     ('H2', 'Duplicate', 'Opportunity', 'Low', 'Heading Structure'),
     ('H2', 'Over 70 Characters', 'Opportunity', 'Low', 'Heading Structure'),
     ('Content', 'Exact Duplicates', 'Issue', 'High', 'Duplicate & Thin Content'),
-    ('Content', 'Spelling Errors', 'Issue', 'Medium', 'Content Hygiene'),
-    ('Content', 'Grammar Errors', 'Issue', 'Medium', 'Content Hygiene'),
     ('Content', 'Soft 404 Pages', 'Warning', 'High', 'Error Handling & Soft 404s'),
     ('Content', 'Lorem Ipsum Placeholder', 'Warning', 'High', 'Content Hygiene'),
     ('Content', 'Near Duplicates', 'Warning', 'Medium', 'Duplicate & Thin Content'),
@@ -2195,12 +2192,14 @@ Can search engines and AI crawlers reach, render and index the site?
     Audit logic: Crawl the sitemap(s), compare them with the crawl (Sitemaps filters) and query
       the Search Console Sitemaps API for submission status and errors.
     Metrics:
-      has_sitemap: 1 if an XML sitemap is submitted in Search Console, else 0 (without Search
-        Console access: 1 if a sitemap is referenced in robots.txt or found at /sitemap.xml)
+      has_sitemap: 1 if the crawl read an XML sitemap (Screaming Frog reports the Sitemaps
+        issues only when it found and crawled one: Crawl Linked XML Sitemaps), else unknown;
+        submission in Search Console shows in n_sitemap_errors_gsc
       n_sitemap_errors_gsc: Errors reported by Search Console on the submitted sitemaps
       n_sitemap_files_over_limit: Sitemap files above 50,000 URLs or 50 MB
       pct_non_indexable_in_sitemap: Non-indexable URLs in the sitemaps / all URLs in the
-        sitemaps
+        sitemaps (as the crawl sees them: indexable HTML URLs in a sitemap + non-indexable URLs
+        in a sitemap)
       pct_indexable_in_sitemap: Indexable HTML URLs that are in a sitemap / all indexable HTML
         URLs
     Pass: Sitemap submitted with 0 errors, within protocol limits (50k URLs / 50 MB per file),
@@ -2349,7 +2348,8 @@ Can search engines and AI crawlers reach, render and index the site?
       This is the 'JavaScript off' test at scale.
     Metrics:
       pct_js_dependent_pages: Indexable pages where more than 10% of the words only exist in the
-        rendered HTML (Contains JavaScript Content) / indexable HTML URLs
+        rendered HTML (JS Word Count % in the Contains JavaScript Content export, which lists
+        every page where JavaScript adds any word) / indexable HTML URLs
       pct_pages_js_only_nav_links: Pages whose navigation or header links only exist in the
         rendered HTML (All Outlinks: link position Navigation/Header, link origin Rendered HTML)
         / internal HTML pages
@@ -2708,17 +2708,16 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
 
 - Content Hygiene:
     Ref: SEO-N10 · Tier Advanced · Impact 4 · Confidence 3 · Ease 4
-    Audit logic: Scan Content: Lorem Ipsum Placeholder, Spelling Errors and Grammar Errors, with
-      the language set per market and brand terms whitelisted from the brand context.
+    Audit logic: Scan Content: Lorem Ipsum Placeholder. Spelling and grammar are not checked in
+      the pulse: the check makes the crawl slow and counts brand names and jargon as errors.
     Metrics:
       n_placeholder_pages: Live pages with placeholder text (Content: Lorem Ipsum Placeholder)
-      pct_pages_spelling_grammar_errors: Indexable pages with spelling or grammar errors
-        (language per market, brand terms whitelisted) / indexable HTML URLs
-    Pass: 0 pages with placeholder text and at most 5% of pages with spelling or grammar errors.
+    Pass: 0 live pages with placeholder text.
     Warn: between the pass and the fail condition.
-    Fail: Any live page with placeholder text, or more than 15% of pages with errors.
-    Python rule: fail if n_placeholder_pages > 0 or pct_pages_spelling_grammar_errors > 0.15;
-      pass if pct_pages_spelling_grammar_errors <= 0.05
+    Fail: Any live page with placeholder text.
+    Python rule: fail if n_placeholder_pages > 0; pass if n_placeholder_pages == 0
+    Note: Spelling and grammar are not part of the pulse (slow crawl, brand names and jargon
+      count as errors).
 
 - Structured Data:
     Ref: SEO-24 · Tier Advanced · Impact 5 · Confidence 4 · Ease 3
@@ -3083,8 +3082,9 @@ Can AI search bots and agents access, quote and act on the site?
         user agents that get 401, 403, 429, 503 or a challenge page
       is_waf_result_confirmed: 1 if the CDN/WAF behaviour for these bots is confirmed
         (configuration or a fetch from the bot's published IP ranges), else 0
-      n_training_bot_policy_mismatches: Training bots (GPTBot, ClaudeBot, Google-Extended) whose
-        robots.txt rules differ from the AI bot policy in the brand context
+      n_training_bot_policy_mismatches: Training bots (GPTBot, ClaudeBot, Google-Extended,
+        Applebot-Extended, CCBot, Meta-ExternalAgent, Bytespider) whose robots.txt rule for the
+        tested URLs differs from the training-bot policy in the pulse form (allowed or blocked)
     Pass: All search and retrieval bots are allowed in robots.txt and receive 200 responses;
       training bots (GPTBot, ClaudeBot, Google-Extended) follow the documented brand policy.
     Warn: The WAF result cannot be confirmed, because firewalls can treat spoofed user agents
