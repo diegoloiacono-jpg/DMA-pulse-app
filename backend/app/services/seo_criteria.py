@@ -870,7 +870,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_content_pages_list_or_table': ('Site check', 'Key content pages of the pulse form (not the homepage) with a list or table inside <main> or <article> / those pages'),
     },
     'Semantic HTML': {
-        'pct_indexable_main_or_article': ('Site check', 'Key pages of the pulse form (up to 30) that wrap their main content in <main>, role=main or <article> / key pages fetched'),
+        'pct_indexable_main_or_article': ('Site check', 'Key pages of the pulse form (up to 15) that wrap their main content in <main>, role=main or <article> / key pages fetched'),
     },
     'Author & E-E-A-T Signals': {
         'pct_editorial_with_author': ('Site check', 'Editorial pages among the key pages (Article markup, or a blog, news or knowledge URL) showing an author (byline, rel=author or Article author markup) / editorial pages'),
@@ -2891,7 +2891,7 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Ref: AI-06 · Tier Advanced · Impact 1 · Confidence 2 · Ease 3
     Audit logic: Count <main>, <article> and <nav> elements per template (custom extraction).
     Metrics:
-      pct_indexable_main_or_article: Key pages of the pulse form (up to 30) that wrap their main
+      pct_indexable_main_or_article: Key pages of the pulse form (up to 15) that wrap their main
         content in <main>, role=main or <article> / key pages fetched
     Pass: At least 90% of indexable pages wrap their main content in <main> or <article>.
     Warn: between the pass and the fail condition.

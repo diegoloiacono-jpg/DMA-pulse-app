@@ -22,7 +22,7 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 | GA4 | GA4 BigQuery export and GA4 Admin API |
 | Intake | SEO intake form / brand context (Google Form -> Sheet -> BigQuery) |
 | LLM step | Fixed-prompt LLM scoring on the raw HTML (n8n workflow seo_pulse, LLM branch, OpenAI gpt-6-luna; same prompt, model and settings every run) |
-| Site check | Small HTTP check in the n8n workflow seo_pulse: llms.txt and ai-catalog.json (PageSpeed branch), and in every run robots.txt, a non-existent URL, URL variants and the HTML of up to 30 key pages of the form (section Site checks) |
+| Site check | Small HTTP check in the n8n workflow seo_pulse: llms.txt and ai-catalog.json (PageSpeed branch), and in every run robots.txt, a non-existent URL, URL variants and the HTML of up to 15 key pages of the form (section Site checks) |
 | Bing | Bing Webmaster Tools API |
 | Wikidata | Wikidata Query Service and the Wikipedia API (n8n workflow seo_pulse, Wikidata & Wikipedia branch) |
 | Bot test | robots.txt per AI bot and a fetch of the homepage and key pages with each bot's user agent (n8n workflow seo_pulse, verified-agent branch) |
@@ -508,7 +508,7 @@ Rule: `fail if pct_content_pages_list_or_table < 0.30`; `pass if pct_content_pag
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_indexable_main_or_article` | Site check | Key pages of the pulse form (up to 30) that wrap their main content in <main>, role=main or <article> / key pages fetched |
+| `pct_indexable_main_or_article` | Site check | Key pages of the pulse form (up to 15) that wrap their main content in <main>, role=main or <article> / key pages fetched |
 
 Rule: `fail if pct_indexable_main_or_article < 0.50`; `pass if pct_indexable_main_or_article >= 0.90`
 

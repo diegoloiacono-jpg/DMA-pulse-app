@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.site_checks` (
   error STRING
 ) PARTITION BY DATE(checked_at) CLUSTER BY client, domain;
 
--- Page facts (every run): what the HTML of up to 30 key pages of the form shows, read from the full page
+-- Page facts (every run): what the HTML of up to 15 key pages of the form shows, read from the full page
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.page_facts` (
   audit_id STRING, client STRING, market STRING, domain STRING, fetched_at TIMESTAMP,
   url STRING, is_home BOOL, http_status INT64,
@@ -147,10 +147,13 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.pulse_runs` (
   business_model STRING,      -- B2B, B2C or D2C
   online_sales BOOL, wikipedia_notable BOOL,
   training_bots STRING,       -- intended policy for AI training bots: allow or block
-  nosnippet_pages STRING      -- URLs or paths where nosnippet/max-snippet is intentional, one per line
+  nosnippet_pages STRING,     -- URLs or paths where nosnippet/max-snippet is intentional, one per line
+  view_key STRING             -- the random key of the results page link: the page shows the progress while the run is busy
 ) PARTITION BY DATE(started_at) CLUSTER BY domain;
 -- Added on 3 Nov 2026, for a table made before
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS brand_terms STRING, ADD COLUMN IF NOT EXISTS competitors STRING;
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS business_model STRING, ADD COLUMN IF NOT EXISTS online_sales BOOL,
   ADD COLUMN IF NOT EXISTS wikipedia_notable BOOL,
   ADD COLUMN IF NOT EXISTS training_bots STRING, ADD COLUMN IF NOT EXISTS nosnippet_pages STRING;
+-- Added on 25 Nov 2026: the progress on the results page
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS view_key STRING;
