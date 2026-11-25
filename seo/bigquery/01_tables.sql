@@ -148,7 +148,9 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.pulse_runs` (
   online_sales BOOL, wikipedia_notable BOOL,
   training_bots STRING,       -- intended policy for AI training bots: allow or block
   nosnippet_pages STRING,     -- URLs or paths where nosnippet/max-snippet is intentional, one per line
-  view_key STRING             -- the random key of the results page link: the page shows the progress while the run is busy
+  view_key STRING,            -- the random key of the results page link: the page shows the progress while the run is busy
+  site_reachable BOOL,        -- did the homepage answer n8n at the start? FALSE = n8n's own requests to the site were skipped
+  site_error STRING           -- why not (timeout, connection refused, DNS)
 ) PARTITION BY DATE(started_at) CLUSTER BY domain;
 -- Added on 3 Nov 2026, for a table made before
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS brand_terms STRING, ADD COLUMN IF NOT EXISTS competitors STRING;
@@ -157,3 +159,5 @@ ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS busin
   ADD COLUMN IF NOT EXISTS training_bots STRING, ADD COLUMN IF NOT EXISTS nosnippet_pages STRING;
 -- Added on 25 Nov 2026: the progress on the results page
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS view_key STRING;
+-- Added on 25 Nov 2026: the reachability check at the start of a run
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS site_reachable BOOL, ADD COLUMN IF NOT EXISTS site_error STRING;
