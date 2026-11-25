@@ -45,11 +45,12 @@ SEO_PLATFORM_ID = "seo"
 SEO_CATEGORY_LABELS: dict[str, str] = {
     'crawling_indexing': 'Crawling & Indexing',
     'site_structure': 'Site Structure & Internal Linking',
-    'performance_mobile': 'Performance & Mobile',
+    'pagespeed': 'PageSpeed',
     'onpage_content': 'On-page & Content',
     'authority_entity': 'Authority & Entity',
     'ai_search_readiness': 'AI Readiness',
     'agentic_commerce': 'Agentic Commerce',
+    'accessibility': 'Accessibility',
 }
 
 # Topics expected per category — canonical names, used for the response schema and stubs
@@ -71,6 +72,7 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'Parameters & Faceted Navigation',
         'Pagination',
         'Internationalisation',
+        'Mobile Parity',
     ],
     'site_structure': [
         'URL Structure',
@@ -78,9 +80,11 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'Click Depth of Key Pages',
         'Orphan Pages',
     ],
-    'performance_mobile': [
-        'Core Web Vitals',
-        'Mobile Parity',
+    'pagespeed': [
+        'Largest Contentful Paint',
+        'Interaction to Next Paint',
+        'Cumulative Layout Shift',
+        'Performance Score',
         'Image Weight & Format',
     ],
     'onpage_content': [
@@ -99,7 +103,6 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'Structured Formatting',
         'Semantic HTML',
         'Author & E-E-A-T Signals',
-        'Accessibility',
     ],
     'authority_entity': [
         'Referring Domain Strength',
@@ -127,6 +130,14 @@ SEO_CATEGORY_TOPICS: dict[str, list[str]] = {
         'Verified Agent Access',
         'Agent Catalog Access (UCP)',
     ],
+    'accessibility': [
+        'WCAG Level A',
+        'WCAG Level AA',
+        'Color Contrast',
+        'Text Alternatives & Names',
+        'Forms & ARIA',
+        'Structure & Navigation',
+    ],
 }
 
 # Criterion code in the pulse sheet and the validation workbook (two pairs share an old code)
@@ -147,12 +158,15 @@ SEO_TOPIC_IDS: dict[str, str] = {
     'Parameters & Faceted Navigation': 'SEO-14',
     'Pagination': 'SEO-13',
     'Internationalisation': 'SEO-15',
+    'Mobile Parity': 'SEO-N3',
     'URL Structure': 'SEO-09',
     'Internal Link Health': 'SEO-12',
     'Click Depth of Key Pages': 'SEO-12',
     'Orphan Pages': 'SEO-N6',
-    'Core Web Vitals': 'SEO-N2',
-    'Mobile Parity': 'SEO-N3',
+    'Largest Contentful Paint': 'PS-1',
+    'Interaction to Next Paint': 'PS-2',
+    'Cumulative Layout Shift': 'PS-3',
+    'Performance Score': 'PS-4',
     'Image Weight & Format': 'SEO-20',
     'Page Titles': 'SEO-17',
     'Meta Descriptions': 'SEO-18',
@@ -169,7 +183,6 @@ SEO_TOPIC_IDS: dict[str, str] = {
     'Structured Formatting': 'AI-33',
     'Semantic HTML': 'AI-06',
     'Author & E-E-A-T Signals': 'AI-N2',
-    'Accessibility': 'SEO-N11',
     'Referring Domain Strength': 'SEO-25',
     'Fresh Authoritative Links': 'AI-19',
     'Link-Earning Pages': 'AI-14',
@@ -190,6 +203,12 @@ SEO_TOPIC_IDS: dict[str, str] = {
     'Product Data Consistency': 'AI-N9',
     'Verified Agent Access': 'AI-N12',
     'Agent Catalog Access (UCP)': 'AI-N13',
+    'WCAG Level A': 'ACC-1',
+    'WCAG Level AA': 'ACC-2',
+    'Color Contrast': 'ACC-3',
+    'Text Alternatives & Names': 'ACC-4',
+    'Forms & ARIA': 'ACC-5',
+    'Structure & Navigation': 'ACC-6',
 }
 
 # Impact 1–5: highest Screaming Frog issue type × priority behind the topic (Impact matrix), or an assigned SF-style type/priority. Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -210,13 +229,16 @@ SEO_TOPIC_IMPACT: dict[str, float] = {
     'crawling_indexing::parameters & faceted navigation': 2.0,
     'crawling_indexing::pagination': 5.0,
     'crawling_indexing::internationalisation': 5.0,
+    'crawling_indexing::mobile parity': 5.0,
     'site_structure::url structure': 3.0,
     'site_structure::internal link health': 5.0,
     'site_structure::click depth of key pages': 2.0,
     'site_structure::orphan pages': 4.0,
-    'performance_mobile::core web vitals': 4.0,
-    'performance_mobile::mobile parity': 5.0,
-    'performance_mobile::image weight & format': 2.0,
+    'pagespeed::largest contentful paint': 4.0,
+    'pagespeed::interaction to next paint': 4.0,
+    'pagespeed::cumulative layout shift': 4.0,
+    'pagespeed::performance score': 3.0,
+    'pagespeed::image weight & format': 2.0,
     'onpage_content::page titles': 5.0,
     'onpage_content::meta descriptions': 4.0,
     'onpage_content::heading structure': 4.0,
@@ -232,7 +254,6 @@ SEO_TOPIC_IMPACT: dict[str, float] = {
     'onpage_content::structured formatting': 2.0,
     'onpage_content::semantic html': 1.0,
     'onpage_content::author & e-e-a-t signals': 3.0,
-    'onpage_content::accessibility': 4.0,
     'authority_entity::referring domain strength': 5.0,
     'authority_entity::fresh authoritative links': 4.0,
     'authority_entity::link-earning pages': 3.0,
@@ -253,6 +274,12 @@ SEO_TOPIC_IMPACT: dict[str, float] = {
     'agentic_commerce::product data consistency': 4.0,
     'agentic_commerce::verified agent access': 4.0,
     'agentic_commerce::agent catalog access (ucp)': 2.0,
+    'accessibility::wcag level a': 4.0,
+    'accessibility::wcag level aa': 4.0,
+    'accessibility::color contrast': 4.0,
+    'accessibility::text alternatives & names': 4.0,
+    'accessibility::forms & aria': 4.0,
+    'accessibility::structure & navigation': 4.0,
 }
 
 # Confidence 1–5: evidence level (Required 5, Google guideline 4, Industry practice 3, Emerging 2, Experimental 1). Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -273,13 +300,16 @@ SEO_TOPIC_CONFIDENCE: dict[str, float] = {
     'crawling_indexing::parameters & faceted navigation': 4.0,
     'crawling_indexing::pagination': 4.0,
     'crawling_indexing::internationalisation': 4.0,
+    'crawling_indexing::mobile parity': 5.0,
     'site_structure::url structure': 3.0,
     'site_structure::internal link health': 4.0,
     'site_structure::click depth of key pages': 3.0,
     'site_structure::orphan pages': 3.0,
-    'performance_mobile::core web vitals': 4.0,
-    'performance_mobile::mobile parity': 5.0,
-    'performance_mobile::image weight & format': 3.0,
+    'pagespeed::largest contentful paint': 4.0,
+    'pagespeed::interaction to next paint': 4.0,
+    'pagespeed::cumulative layout shift': 4.0,
+    'pagespeed::performance score': 3.0,
+    'pagespeed::image weight & format': 3.0,
     'onpage_content::page titles': 4.0,
     'onpage_content::meta descriptions': 3.0,
     'onpage_content::heading structure': 3.0,
@@ -295,7 +325,6 @@ SEO_TOPIC_CONFIDENCE: dict[str, float] = {
     'onpage_content::structured formatting': 2.0,
     'onpage_content::semantic html': 2.0,
     'onpage_content::author & e-e-a-t signals': 3.0,
-    'onpage_content::accessibility': 3.0,
     'authority_entity::referring domain strength': 4.0,
     'authority_entity::fresh authoritative links': 3.0,
     'authority_entity::link-earning pages': 3.0,
@@ -316,6 +345,12 @@ SEO_TOPIC_CONFIDENCE: dict[str, float] = {
     'agentic_commerce::product data consistency': 4.0,
     'agentic_commerce::verified agent access': 2.0,
     'agentic_commerce::agent catalog access (ucp)': 2.0,
+    'accessibility::wcag level a': 3.0,
+    'accessibility::wcag level aa': 3.0,
+    'accessibility::color contrast': 3.0,
+    'accessibility::text alternatives & names': 4.0,
+    'accessibility::forms & aria': 3.0,
+    'accessibility::structure & navigation': 3.0,
 }
 
 # Ease 1–5: implementation type (Setting 5, Team work 4, Developer ticket 3, Development project 2, Off-site/long-term 1). Keyed as "category::topic_lower", like criteria_ice.CRITERIA_ICE.
@@ -336,13 +371,16 @@ SEO_TOPIC_EASE: dict[str, float] = {
     'crawling_indexing::parameters & faceted navigation': 2.0,
     'crawling_indexing::pagination': 3.0,
     'crawling_indexing::internationalisation': 2.0,
+    'crawling_indexing::mobile parity': 3.0,
     'site_structure::url structure': 2.0,
     'site_structure::internal link health': 4.0,
     'site_structure::click depth of key pages': 3.0,
     'site_structure::orphan pages': 4.0,
-    'performance_mobile::core web vitals': 2.0,
-    'performance_mobile::mobile parity': 3.0,
-    'performance_mobile::image weight & format': 3.0,
+    'pagespeed::largest contentful paint': 2.0,
+    'pagespeed::interaction to next paint': 2.0,
+    'pagespeed::cumulative layout shift': 3.0,
+    'pagespeed::performance score': 2.0,
+    'pagespeed::image weight & format': 3.0,
     'onpage_content::page titles': 4.0,
     'onpage_content::meta descriptions': 4.0,
     'onpage_content::heading structure': 4.0,
@@ -358,7 +396,6 @@ SEO_TOPIC_EASE: dict[str, float] = {
     'onpage_content::structured formatting': 4.0,
     'onpage_content::semantic html': 3.0,
     'onpage_content::author & e-e-a-t signals': 3.0,
-    'onpage_content::accessibility': 3.0,
     'authority_entity::referring domain strength': 1.0,
     'authority_entity::fresh authoritative links': 1.0,
     'authority_entity::link-earning pages': 1.0,
@@ -379,6 +416,12 @@ SEO_TOPIC_EASE: dict[str, float] = {
     'agentic_commerce::product data consistency': 3.0,
     'agentic_commerce::verified agent access': 3.0,
     'agentic_commerce::agent catalog access (ucp)': 2.0,
+    'accessibility::wcag level a': 3.0,
+    'accessibility::wcag level aa': 3.0,
+    'accessibility::color contrast': 3.0,
+    'accessibility::text alternatives & names': 3.0,
+    'accessibility::forms & aria': 3.0,
+    'accessibility::structure & navigation': 3.0,
 }
 
 # Impact, Confidence and Ease per topic in the shape of criteria_ice.CRITERIA_ICE: same keys, same
@@ -401,13 +444,16 @@ SEO_CRITERIA_ICE: dict[str, tuple[float, float, float]] = {
     'crawling_indexing::parameters & faceted navigation': (2.0, 4.0, 2.0),
     'crawling_indexing::pagination': (5.0, 4.0, 3.0),
     'crawling_indexing::internationalisation': (5.0, 4.0, 2.0),
+    'crawling_indexing::mobile parity': (5.0, 5.0, 3.0),
     'site_structure::url structure': (3.0, 3.0, 2.0),
     'site_structure::internal link health': (5.0, 4.0, 4.0),
     'site_structure::click depth of key pages': (2.0, 3.0, 3.0),
     'site_structure::orphan pages': (4.0, 3.0, 4.0),
-    'performance_mobile::core web vitals': (4.0, 4.0, 2.0),
-    'performance_mobile::mobile parity': (5.0, 5.0, 3.0),
-    'performance_mobile::image weight & format': (2.0, 3.0, 3.0),
+    'pagespeed::largest contentful paint': (4.0, 4.0, 2.0),
+    'pagespeed::interaction to next paint': (4.0, 4.0, 2.0),
+    'pagespeed::cumulative layout shift': (4.0, 4.0, 3.0),
+    'pagespeed::performance score': (3.0, 3.0, 2.0),
+    'pagespeed::image weight & format': (2.0, 3.0, 3.0),
     'onpage_content::page titles': (5.0, 4.0, 4.0),
     'onpage_content::meta descriptions': (4.0, 3.0, 4.0),
     'onpage_content::heading structure': (4.0, 3.0, 4.0),
@@ -423,7 +469,6 @@ SEO_CRITERIA_ICE: dict[str, tuple[float, float, float]] = {
     'onpage_content::structured formatting': (2.0, 2.0, 4.0),
     'onpage_content::semantic html': (1.0, 2.0, 3.0),
     'onpage_content::author & e-e-a-t signals': (3.0, 3.0, 3.0),
-    'onpage_content::accessibility': (4.0, 3.0, 3.0),
     'authority_entity::referring domain strength': (5.0, 4.0, 1.0),
     'authority_entity::fresh authoritative links': (4.0, 3.0, 1.0),
     'authority_entity::link-earning pages': (3.0, 3.0, 1.0),
@@ -444,17 +489,24 @@ SEO_CRITERIA_ICE: dict[str, tuple[float, float, float]] = {
     'agentic_commerce::product data consistency': (4.0, 4.0, 3.0),
     'agentic_commerce::verified agent access': (4.0, 2.0, 3.0),
     'agentic_commerce::agent catalog access (ucp)': (2.0, 2.0, 2.0),
+    'accessibility::wcag level a': (4.0, 3.0, 3.0),
+    'accessibility::wcag level aa': (4.0, 3.0, 3.0),
+    'accessibility::color contrast': (4.0, 3.0, 3.0),
+    'accessibility::text alternatives & names': (4.0, 4.0, 3.0),
+    'accessibility::forms & aria': (4.0, 3.0, 3.0),
+    'accessibility::structure & navigation': (4.0, 3.0, 3.0),
 }
 
 # Base category weights (mirror scoring._BASE_WEIGHTS)
 SEO_BASE_WEIGHTS: dict[str, float] = {
     'crawling_indexing': 1.0,
     'site_structure': 1.0,
-    'performance_mobile': 1.0,
+    'pagespeed': 1.0,
     'onpage_content': 1.0,
     'authority_entity': 1.0,
     'ai_search_readiness': 1.0,
     'agentic_commerce': 1.0,
+    'accessibility': 1.0,
 }
 
 # Business-model multipliers: none agreed yet (open decision, see SEO_HANDOFF.md)
@@ -514,12 +566,15 @@ SEO_TOPIC_TIER: dict[str, str] = {
     'Parameters & Faceted Navigation': 'Advanced',
     'Pagination': 'Advanced',
     'Internationalisation': 'Basic',
+    'Mobile Parity': 'Basic',
     'URL Structure': 'Advanced',
     'Internal Link Health': 'Advanced',
     'Click Depth of Key Pages': 'Advanced',
     'Orphan Pages': 'Advanced',
-    'Core Web Vitals': 'Advanced',
-    'Mobile Parity': 'Basic',
+    'Largest Contentful Paint': 'Advanced',
+    'Interaction to Next Paint': 'Advanced',
+    'Cumulative Layout Shift': 'Advanced',
+    'Performance Score': 'Expert',
     'Image Weight & Format': 'Advanced',
     'Page Titles': 'Basic',
     'Meta Descriptions': 'Basic',
@@ -536,7 +591,6 @@ SEO_TOPIC_TIER: dict[str, str] = {
     'Structured Formatting': 'Advanced',
     'Semantic HTML': 'Advanced',
     'Author & E-E-A-T Signals': 'Expert',
-    'Accessibility': 'Advanced',
     'Referring Domain Strength': 'Champion',
     'Fresh Authoritative Links': 'Expert',
     'Link-Earning Pages': 'Champion',
@@ -557,6 +611,12 @@ SEO_TOPIC_TIER: dict[str, str] = {
     'Product Data Consistency': 'Advanced',
     'Verified Agent Access': 'Expert',
     'Agent Catalog Access (UCP)': 'Champion',
+    'WCAG Level A': 'Advanced',
+    'WCAG Level AA': 'Expert',
+    'Color Contrast': 'Advanced',
+    'Text Alternatives & Names': 'Advanced',
+    'Forms & ARIA': 'Expert',
+    'Structure & Navigation': 'Advanced',
 }
 
 # Staircase inputs from the Maturity sheet: share that must pass per tier, and the credit for a warn
@@ -584,12 +644,15 @@ SEO_TOPIC_PHASE: dict[str, int] = {
     'Parameters & Faceted Navigation': 1,
     'Pagination': 1,
     'Internationalisation': 1,
+    'Mobile Parity': 1,
     'URL Structure': 1,
     'Internal Link Health': 1,
     'Click Depth of Key Pages': 1,
     'Orphan Pages': 1,
-    'Core Web Vitals': 1,
-    'Mobile Parity': 1,
+    'Largest Contentful Paint': 1,
+    'Interaction to Next Paint': 1,
+    'Cumulative Layout Shift': 1,
+    'Performance Score': 1,
     'Image Weight & Format': 1,
     'Page Titles': 1,
     'Meta Descriptions': 1,
@@ -606,7 +669,6 @@ SEO_TOPIC_PHASE: dict[str, int] = {
     'Structured Formatting': 1,
     'Semantic HTML': 1,
     'Author & E-E-A-T Signals': 1,
-    'Accessibility': 1,
     'Referring Domain Strength': 1,
     'Fresh Authoritative Links': 1,
     'Link-Earning Pages': 1,
@@ -627,6 +689,12 @@ SEO_TOPIC_PHASE: dict[str, int] = {
     'Product Data Consistency': 2,
     'Verified Agent Access': 3,
     'Agent Catalog Access (UCP)': 3,
+    'WCAG Level A': 1,
+    'WCAG Level AA': 1,
+    'Color Contrast': 1,
+    'Text Alternatives & Names': 1,
+    'Forms & ARIA': 1,
+    'Structure & Navigation': 1,
 }
 
 # Topics with no BigQuery source in phase 1. specialist.py injects these into the prompt
@@ -771,6 +839,11 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'has_x_default': ('SF crawl', '1 if x-default is set (Hreflang: Missing X-Default = 0), else 0'),
         'n_forced_geo_redirects': ('SF list', 'Key URLs that redirect based on IP or Accept-Language'),
     },
+    'Mobile Parity': {
+        'pct_pages_mobile_desktop_diff': ('SF mobile', 'Pages whose word count, internal links or structured data differ more than 10% between the smartphone and desktop crawl / pages compared'),
+        'pct_pages_less_on_mobile': ('SF mobile', 'Pages with content, links or structured data missing on mobile (mobile more than 10% lower) / pages compared'),
+        'n_pages_viewport_missing': ('SF crawl', 'Pages without a viewport meta tag (Mobile: Viewport Not Set)'),
+    },
     'URL Structure': {
         'pct_indexable_url_issue': ('SF crawl', 'Distinct indexable URLs in any URL issue mapped to this topic except Uppercase and Underscores (locale folders such as /nl_NL/; they stay listed as issues) / indexable HTML URLs'),
         'n_session_id_urls': ('SF crawl', 'URLs containing session IDs (regex: sid=, sessionid, jsessionid, phpsessid)'),
@@ -789,32 +862,39 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_click_urls_orphaned': ('SF crawl', 'URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the XML sitemaps)'),
         'pct_click_urls_weakly_linked': ('SF crawl', 'URLs with clicks that are orphaned or only linked from non-indexable pages (Links: Non-Indexable Page Inlinks Only) / URLs with clicks (without Search Console access: URLs from the XML sitemaps)'),
     },
-    'Core Web Vitals': {
-        'n_cwv_failed_mobile': ('PSI', 'Number of LCP, INP and CLS that fail on mobile (LCP > 2.5 s, INP > 200 ms, CLS > 0.1): the CrUX field data (p75) of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab data of the pages (Screaming Frog PageSpeed integration; TBT > 200 ms as the INP proxy)'),
-        'has_crux_origin': ('PSI', '1 if CrUX field data exists for the origin on mobile, else 0'),
+    'Largest Contentful Paint': {
+        'lcp_ms': ('PSI', 'Largest Contentful Paint on mobile in ms: p75 CrUX field data of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab value of the indexable pages (Screaming Frog PageSpeed integration)'),
         'is_cwv_from_lab': ('PSI', '1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for the origin or the pages), else 0'),
-        'lcp_ms': ('PSI', 'Largest Contentful Paint used for the count, in ms (p75 field data, else the median lab value of the pages)'),
-        'inp_ms': ('PSI', 'Interaction to Next Paint, p75 field data in ms (there is no lab value)'),
-        'cls': ('PSI', 'Cumulative Layout Shift used for the count (p75 field data, else the median lab value of the pages)'),
-        'tbt_lab_ms': ('PSI', 'Median Total Blocking Time of the pages (lab), in ms: the INP proxy without field data'),
-        'performance_score': ('PSI', 'Median Lighthouse Performance score of the pages (0-100, lab)'),
+        'has_crux_origin': ('PSI', '1 if CrUX field data exists for the origin on mobile, else 0'),
         'n_psi_pages': ('PSI', 'Indexable pages with PageSpeed lab data in the crawl'),
         'psi_render_blocking_ms': ('PSI', 'Median per page of the PageSpeed opportunity render-blocking requests (ms saved) (Screaming Frog PageSpeed integration)'),
-        'psi_unused_js_ms': ('PSI', 'Median per page of the PageSpeed opportunity unused JavaScript (ms saved) (Screaming Frog PageSpeed integration)'),
+        'psi_image_delivery_kb': ('PSI', 'Median per page of the PageSpeed opportunity image delivery (kB saved) (Screaming Frog PageSpeed integration)'),
         'psi_unused_css_ms': ('PSI', 'Median per page of the PageSpeed opportunity unused CSS (ms saved) (Screaming Frog PageSpeed integration)'),
+        'psi_font_display_ms': ('PSI', 'Median per page of the PageSpeed opportunity font display (ms saved) (Screaming Frog PageSpeed integration)'),
+        'psi_cache_kb': ('PSI', 'Median per page of the PageSpeed opportunity cache lifetimes (kB saved) (Screaming Frog PageSpeed integration)'),
+    },
+    'Interaction to Next Paint': {
+        'is_inp_from_lab': ('PSI', '1 if there is no INP field data and the median Lighthouse Total Blocking Time of the pages stands in for it, 0 with field data'),
+        'inp_ms': ('PSI', 'Interaction to Next Paint on mobile in ms: p75 CrUX field data of the origin (n8n PageSpeed check), else the median CrUX of the pages (there is no lab value)'),
+        'tbt_lab_ms': ('PSI', 'Median Total Blocking Time of the indexable pages (Lighthouse lab, mobile) in ms: the stand-in for INP without field data (Screaming Frog PageSpeed integration)'),
+        'has_crux_origin': ('PSI', '1 if CrUX field data exists for the origin on mobile, else 0'),
+        'n_psi_pages': ('PSI', 'Indexable pages with PageSpeed lab data in the crawl'),
         'psi_js_execution_ms': ('PSI', 'Median per page of the PageSpeed opportunity JavaScript execution time (ms) (Screaming Frog PageSpeed integration)'),
         'psi_main_thread_ms': ('PSI', 'Median per page of the PageSpeed opportunity main-thread work (ms) (Screaming Frog PageSpeed integration)'),
-        'psi_font_display_ms': ('PSI', 'Median per page of the PageSpeed opportunity font display (ms saved) (Screaming Frog PageSpeed integration)'),
-        'psi_image_delivery_kb': ('PSI', 'Median per page of the PageSpeed opportunity image delivery (kB saved) (Screaming Frog PageSpeed integration)'),
-        'psi_cache_kb': ('PSI', 'Median per page of the PageSpeed opportunity cache lifetimes (kB saved) (Screaming Frog PageSpeed integration)'),
+        'psi_unused_js_ms': ('PSI', 'Median per page of the PageSpeed opportunity unused JavaScript (ms saved) (Screaming Frog PageSpeed integration)'),
         'psi_legacy_js_kb': ('PSI', 'Median per page of the PageSpeed opportunity legacy JavaScript (kB saved) (Screaming Frog PageSpeed integration)'),
-        'psi_page_weight_kb': ('PSI', 'Median per page of the PageSpeed opportunity page weight (kB) (Screaming Frog PageSpeed integration)'),
         'psi_dom_size': ('PSI', 'Median per page of the PageSpeed opportunity DOM size (elements) (Screaming Frog PageSpeed integration)'),
     },
-    'Mobile Parity': {
-        'pct_pages_mobile_desktop_diff': ('SF mobile', 'Pages whose word count, internal links or structured data differ more than 10% between the smartphone and desktop crawl / pages compared'),
-        'pct_pages_less_on_mobile': ('SF mobile', 'Pages with content, links or structured data missing on mobile (mobile more than 10% lower) / pages compared'),
-        'n_pages_viewport_missing': ('SF crawl', 'Pages without a viewport meta tag (Mobile: Viewport Not Set)'),
+    'Cumulative Layout Shift': {
+        'cls': ('PSI', 'Cumulative Layout Shift on mobile: p75 CrUX field data of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab value of the indexable pages (Screaming Frog PageSpeed integration)'),
+        'is_cwv_from_lab': ('PSI', '1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for the origin or the pages), else 0'),
+        'has_crux_origin': ('PSI', '1 if CrUX field data exists for the origin on mobile, else 0'),
+        'n_psi_pages': ('PSI', 'Indexable pages with PageSpeed lab data in the crawl'),
+    },
+    'Performance Score': {
+        'performance_score': ('PSI', 'Median Lighthouse Performance score of the indexable pages (0-100, lab, mobile) (Screaming Frog PageSpeed integration)'),
+        'n_psi_pages': ('PSI', 'Indexable pages with PageSpeed lab data in the crawl'),
+        'psi_page_weight_kb': ('PSI', 'Median per page of the PageSpeed opportunity page weight (kB) (Screaming Frog PageSpeed integration)'),
     },
     'Image Weight & Format': {
         'pct_images_over_100kb': ('SF crawl', 'Internal images above 100 KB (Images: Over 100 kb) / internal images in the Internal export (filter All)'),
@@ -875,10 +955,6 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     'Author & E-E-A-T Signals': {
         'pct_editorial_with_author': ('Site check', 'Editorial pages among the key pages (Article markup, or a blog, news or knowledge URL) showing an author (byline, rel=author or Article author markup) / editorial pages'),
         'pct_editorial_full_author': ('Site check', 'Editorial pages with a visible author, a link to an author page and Article author markup / editorial pages'),
-    },
-    'Accessibility': {
-        'pct_pages_accessibility_good': ('SF accessibility', "Pages with accessibility score 'Good' / pages audited"),
-        'n_templates_high_violations': ('SF accessibility', 'Key templates with high-priority violations'),
     },
     'Referring Domain Strength': {
         'refdomains_vs_median_competitor': ('Ahrefs', 'Client dofollow referring domains / median of the competitors in the brand context (Ahrefs batch analysis)'),
@@ -973,6 +1049,31 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_test_products_found': ('Agent test', "Test products (product pages from the sitemap or the intake, max. 5) found through UCP catalog search as Artefact's read-only audit agent / test products searched"),
         'n_ucp_price_availability_mismatches': ('Agent test', 'Found test products whose UCP price, currency or availability differs from the Product/Offer markup on the page'),
     },
+    'WCAG Level A': {
+        'pct_pages_wcag_a_violation': ('SF accessibility', 'Pages with a violation of a WCAG 2.0 or 2.1 Level A rule / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests)'),
+        'n_wcag_a_rules_failing': ('SF accessibility', 'Level A rules violated on at least one page'),
+    },
+    'WCAG Level AA': {
+        'pct_pages_wcag_aa_violation': ('SF accessibility', 'Pages with a violation of a WCAG 2.0 or 2.1 Level AA rule / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests)'),
+        'n_wcag_aa_rules_failing': ('SF accessibility', 'Level AA rules (WCAG 2.0 and 2.1) violated on at least one page'),
+        'pct_pages_wcag22_aa_violation': ('SF accessibility', 'Pages with a violation of a WCAG 2.2 AA rule (touch target size) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required'),
+    },
+    'Color Contrast': {
+        'pct_pages_contrast_violation': ('SF accessibility', 'Pages with text below the contrast minimum (WCAG 1.4.3, AA) or links told apart by colour alone (WCAG 1.4.1, A) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests)'),
+        'pct_pages_contrast_aaa': ('SF accessibility', 'Pages below the enhanced contrast of Level AAA (7:1) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required'),
+    },
+    'Text Alternatives & Names': {
+        'pct_pages_unnamed_elements': ('SF accessibility', 'Pages with images, image buttons, SVGs, videos, frames, links or buttons without a text alternative or accessible name, or without a page title (WCAG 2.0 Level A rules) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests)'),
+        'pct_pages_names_best_practice': ('SF accessibility', 'Pages with alt text repeated as visible text, links with the same name but different targets (AAA) or unnamed ARIA dialogs and tree items (best practice) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required'),
+    },
+    'Forms & ARIA': {
+        'pct_pages_form_aria_violation': ('SF accessibility', 'Pages with form fields without a label or accessible name, wrong autocomplete values, nested interactive controls, or invalid, not allowed or focus-hiding ARIA roles and attributes (WCAG 2.0 Level A, 2.1 AA) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests)'),
+        'pct_pages_form_aria_best_practice': ('SF accessibility', 'Pages with best-practice form or ARIA issues (no visible label, a role that does not suit the element, focusable content inside role=text, presentational elements that are not ignored) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required'),
+    },
+    'Structure & Navigation': {
+        'pct_pages_structure_violation': ('SF accessibility', 'Pages without a (valid) page language or a way to skip repeated blocks, with broken list or table markup, regions not scrollable by keyboard, zoom disabled, text spacing that cannot be adjusted or media that plays by itself (WCAG 2.0 A and AA, 2.1 AA) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests)'),
+        'pct_pages_structure_best_practice': ('SF accessibility', 'Pages with best-practice issues: landmarks, the heading order, one <h1>, empty headings, skip links, tabindex, zoom to 500%, table markup, a delayed meta refresh (AAA) or small touch targets (WCAG 2.2 AA) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required'),
+    },
 }
 
 # Metrics that may be absent without blocking a verdict (informational or not always measurable)
@@ -980,11 +1081,20 @@ SEO_OPTIONAL_METRICS: dict[str, set[str]] = {
     'XML Sitemap Quality': {'n_sitemap_errors_gsc'},
     'Redirect Hygiene': {'n_temporary_redirects'},
     'Canonical Tags': {'n_top100_canonical_overridden'},
-    'Core Web Vitals': {'cls', 'has_crux_origin', 'inp_ms', 'is_cwv_from_lab', 'lcp_ms', 'n_psi_pages', 'performance_score', 'psi_cache_kb', 'psi_dom_size', 'psi_font_display_ms', 'psi_image_delivery_kb', 'psi_js_execution_ms', 'psi_legacy_js_kb', 'psi_main_thread_ms', 'psi_page_weight_kb', 'psi_render_blocking_ms', 'psi_unused_css_ms', 'psi_unused_js_ms', 'tbt_lab_ms'},
+    'Largest Contentful Paint': {'has_crux_origin', 'is_cwv_from_lab', 'n_psi_pages', 'psi_cache_kb', 'psi_font_display_ms', 'psi_image_delivery_kb', 'psi_render_blocking_ms', 'psi_unused_css_ms'},
+    'Interaction to Next Paint': {'has_crux_origin', 'inp_ms', 'n_psi_pages', 'psi_dom_size', 'psi_js_execution_ms', 'psi_legacy_js_kb', 'psi_main_thread_ms', 'psi_unused_js_ms', 'tbt_lab_ms'},
+    'Cumulative Layout Shift': {'has_crux_origin', 'is_cwv_from_lab', 'n_psi_pages'},
+    'Performance Score': {'n_psi_pages', 'psi_page_weight_kb'},
     'Image Weight & Format': {'pct_images_modern_format'},
     'Content Freshness': {'n_date_refresh_without_change'},
     'Referring Domain Strength': {'domain_rating'},
     'Agent Catalog Access (UCP)': {'has_ucp_catalog_rest', 'n_ucp_price_availability_mismatches', 'pct_test_products_found'},
+    'WCAG Level A': {'n_wcag_a_rules_failing'},
+    'WCAG Level AA': {'n_wcag_aa_rules_failing', 'pct_pages_wcag22_aa_violation'},
+    'Color Contrast': {'pct_pages_contrast_aaa'},
+    'Text Alternatives & Names': {'pct_pages_names_best_practice'},
+    'Forms & ARIA': {'pct_pages_form_aria_best_practice'},
+    'Structure & Navigation': {'pct_pages_structure_best_practice'},
 }
 
 # Thresholds from the pulse sheet as evaluable conditions (see evaluate_topic)
@@ -1085,6 +1195,12 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'warn_if': [],
         'pass_if': ['pct_urls_hreflang_errors <= 0.01', 'has_x_default == 1'],
     },
+    'Mobile Parity': {
+        'na_if': [],
+        'fail_if': ['pct_pages_less_on_mobile > 0.10'],
+        'warn_if': [],
+        'pass_if': ['pct_pages_mobile_desktop_diff <= 0.02', 'n_pages_viewport_missing == 0'],
+    },
     'URL Structure': {
         'na_if': [],
         'fail_if': ['pct_indexable_url_issue > 0.10', 'n_session_id_urls > 0'],
@@ -1109,17 +1225,29 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'warn_if': [],
         'pass_if': ['pct_click_urls_orphaned <= 0.01'],
     },
-    'Core Web Vitals': {
+    'Largest Contentful Paint': {
         'na_if': [],
-        'fail_if': ['n_cwv_failed_mobile >= 2'],
-        'warn_if': ['n_cwv_failed_mobile == 1'],
-        'pass_if': ['n_cwv_failed_mobile == 0'],
-    },
-    'Mobile Parity': {
-        'na_if': [],
-        'fail_if': ['pct_pages_less_on_mobile > 0.10'],
+        'fail_if': ['lcp_ms > 4000'],
         'warn_if': [],
-        'pass_if': ['pct_pages_mobile_desktop_diff <= 0.02', 'n_pages_viewport_missing == 0'],
+        'pass_if': ['lcp_ms <= 2500'],
+    },
+    'Interaction to Next Paint': {
+        'na_if': [],
+        'fail_if': ['is_inp_from_lab == 0 and inp_ms > 500', 'is_inp_from_lab == 1 and tbt_lab_ms > 600'],
+        'warn_if': [],
+        'pass_if': ['(is_inp_from_lab == 0 and inp_ms <= 200) or (is_inp_from_lab == 1 and tbt_lab_ms <= 200)'],
+    },
+    'Cumulative Layout Shift': {
+        'na_if': [],
+        'fail_if': ['cls > 0.25'],
+        'warn_if': [],
+        'pass_if': ['cls <= 0.1'],
+    },
+    'Performance Score': {
+        'na_if': [],
+        'fail_if': ['performance_score < 50'],
+        'warn_if': [],
+        'pass_if': ['performance_score >= 90'],
     },
     'Image Weight & Format': {
         'na_if': [],
@@ -1216,12 +1344,6 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'fail_if': ['pct_editorial_with_author < 0.40'],
         'warn_if': [],
         'pass_if': ['pct_editorial_full_author >= 0.80'],
-    },
-    'Accessibility': {
-        'na_if': [],
-        'fail_if': ['pct_pages_accessibility_good < 0.60'],
-        'warn_if': [],
-        'pass_if': ['pct_pages_accessibility_good >= 0.90', 'n_templates_high_violations == 0'],
     },
     'Referring Domain Strength': {
         'na_if': [],
@@ -1342,6 +1464,42 @@ SEO_RULES: dict[str, dict[str, list[str]]] = {
         'fail_if': ['has_ucp_profile == 0', 'has_ucp_catalog_search == 0', 'pct_test_products_found < 0.50'],
         'warn_if': ['has_ucp_catalog_rest == 0'],
         'pass_if': ['pct_test_products_found >= 0.80', 'n_ucp_price_availability_mismatches == 0'],
+    },
+    'WCAG Level A': {
+        'na_if': [],
+        'fail_if': ['pct_pages_wcag_a_violation > 0.50'],
+        'warn_if': [],
+        'pass_if': ['pct_pages_wcag_a_violation <= 0.10'],
+    },
+    'WCAG Level AA': {
+        'na_if': [],
+        'fail_if': ['pct_pages_wcag_aa_violation > 0.50'],
+        'warn_if': [],
+        'pass_if': ['pct_pages_wcag_aa_violation <= 0.10'],
+    },
+    'Color Contrast': {
+        'na_if': [],
+        'fail_if': ['pct_pages_contrast_violation > 0.50'],
+        'warn_if': [],
+        'pass_if': ['pct_pages_contrast_violation <= 0.10'],
+    },
+    'Text Alternatives & Names': {
+        'na_if': [],
+        'fail_if': ['pct_pages_unnamed_elements > 0.50'],
+        'warn_if': [],
+        'pass_if': ['pct_pages_unnamed_elements <= 0.10'],
+    },
+    'Forms & ARIA': {
+        'na_if': [],
+        'fail_if': ['pct_pages_form_aria_violation > 0.50'],
+        'warn_if': [],
+        'pass_if': ['pct_pages_form_aria_violation <= 0.10'],
+    },
+    'Structure & Navigation': {
+        'na_if': [],
+        'fail_if': ['pct_pages_structure_violation > 0.50'],
+        'warn_if': [],
+        'pass_if': ['pct_pages_structure_violation <= 0.10'],
     },
 }
 
@@ -1500,156 +1658,215 @@ SEO_SF_ISSUE_MAP: list[tuple[str, str, str, str, str]] = [
     ('Sitemaps', 'Orphan URLs', 'Issue', 'Medium', 'Orphan Pages'),
     ('Sitemaps', 'Non-Indexable URLs In Sitemap', 'Issue', 'Medium', 'XML Sitemap Quality'),
     ('Sitemaps', 'URLs In Multiple Sitemaps', 'Warning', 'Low', 'XML Sitemap Quality'),
-    ('PageSpeed', 'Document Request Latency', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'LCP Request Discovery', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Render Blocking Requests', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Network Dependency Tree', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Use Efficient Cache Lifetimes', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Layout Shift Culprits', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Improve Image Delivery', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Forced Reflow', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Legacy JavaScript', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Duplicated JavaScript', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Avoid Enormous Network Payloads', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Minify CSS', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Minify JavaScript', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Reduce Unused CSS', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Reduce Unused JavaScript', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Reduce JavaScript Execution Time', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Minimize Main-Thread Work', 'Opportunity', 'Medium', 'Core Web Vitals'),
-    ('PageSpeed', 'Optimize DOM Size', 'Opportunity', 'Low', 'Core Web Vitals'),
-    ('PageSpeed', 'Font Display', 'Opportunity', 'Low', 'Core Web Vitals'),
+    ('PageSpeed', 'Document Request Latency', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'LCP Request Discovery', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'Render Blocking Requests', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'Network Dependency Tree', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'Use Efficient Cache Lifetimes', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'Layout Shift Culprits', 'Opportunity', 'Medium', 'Cumulative Layout Shift'),
+    ('PageSpeed', 'Improve Image Delivery', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'Forced Reflow', 'Opportunity', 'Medium', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Legacy JavaScript', 'Opportunity', 'Medium', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Duplicated JavaScript', 'Opportunity', 'Medium', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Avoid Enormous Network Payloads', 'Opportunity', 'Medium', 'Performance Score'),
+    ('PageSpeed', 'Minify CSS', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'Minify JavaScript', 'Opportunity', 'Medium', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Reduce Unused CSS', 'Opportunity', 'Medium', 'Largest Contentful Paint'),
+    ('PageSpeed', 'Reduce Unused JavaScript', 'Opportunity', 'Medium', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Reduce JavaScript Execution Time', 'Opportunity', 'Medium', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Minimize Main-Thread Work', 'Opportunity', 'Medium', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Optimize DOM Size', 'Opportunity', 'Low', 'Interaction to Next Paint'),
+    ('PageSpeed', 'Font Display', 'Opportunity', 'Low', 'Largest Contentful Paint'),
     ('Mobile', 'Viewport Not Set', 'Issue', 'High', 'Mobile Parity'),
     ('Mobile', 'Content Not Sized Correctly', 'Issue', 'High', 'Mobile Parity'),
     ('Mobile', 'Illegible Font Size', 'Issue', 'High', 'Mobile Parity'),
     ('Mobile', 'Contains Unsupported Plugins', 'Issue', 'High', 'Mobile Parity'),
     ('Mobile', 'Target Size', 'Issue', 'Medium', 'Mobile Parity'),
     ('Mobile', 'Mobile Alternate Link', 'Warning', 'High', 'Mobile Parity'),
-    ('Accessibility', 'Best Practice – Accesskey Attribute Value Must Be Unique', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Elements Must Not Have Tabindex Greater Than Zero', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'Best Practice – Accesskey Attribute Value Must Be Unique', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Elements Must Not Have Tabindex Greater Than Zero', 'Warning', 'High', 'Structure & Navigation'),
     ('Accessibility', 'Best Practice – Elements Must Not Have Tabindex Greater Than Zero', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'Best Practice – ARIA Dialog & Alertdialog Require Accessible Name', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'Best Practice – ARIA Dialog & Alertdialog Require Accessible Name', 'Warning', 'High', 'Text Alternatives & Names'),
     ('Accessibility', 'Best Practice – ARIA Dialog & Alertdialog Require Accessible Name', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'Best Practice – ARIA Treeitem Nodes Require Accessible Name', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'Best Practice – ARIA Treeitem Nodes Require Accessible Name', 'Warning', 'High', 'Text Alternatives & Names'),
     ('Accessibility', 'Best Practice – ARIA Treeitem Nodes Require Accessible Name', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'Best Practice – Role=text Should Have No Focusable Descendants', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'Best Practice – Role=text Should Have No Focusable Descendants', 'Warning', 'High', 'Forms & ARIA'),
     ('Accessibility', 'Best Practice – Role=text Should Have No Focusable Descendants', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'Best Practice – Form Elements Should Have Visible Label', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Frames Should Be Tested With axe-core', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Scope Attribute Should Be Used Correctly On Tables', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Scrollable Region Requires Keyboard Access', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Required ARIA Attributes Must Be Provided', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'Best Practice – Form Elements Should Have Visible Label', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'Best Practice – Scope Attribute Should Be Used Correctly On Tables', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Scrollable Region Requires Keyboard Access', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Scrollable Region Requires Keyboard Access', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Required ARIA Attributes Must Be Provided', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Required ARIA Attributes Must Be Provided', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Required ARIA Attributes Must Be Provided', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Values', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Values', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Values', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Values', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Names', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Names', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Names', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Attributes Require Valid Names', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Commands Require Accessible Name', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Commands Require Accessible Name', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Commands Require Accessible Name', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Commands Require Accessible Name', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Input Fields Require Accessible Name', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Input Fields Require Accessible Name', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Input Fields Require Accessible Name', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Input Fields Require Accessible Name', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Meter Nodes Require Accessible Name', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Progressbar Nodes Require Accessible Name', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Meter Nodes Require Accessible Name', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Meter Nodes Require Accessible Name', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Progressbar Nodes Require Accessible Name', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Progressbar Nodes Require Accessible Name', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Roles Require Valid Values', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Roles Require Valid Values', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Roles Require Valid Values', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Roles Require Valid Values', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Aria-braille Require Non-braille Equivalent', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Aria-braille Require Non-braille Equivalent', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Aria-braille Require Non-braille Equivalent', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Page Requires Means To Bypass Repeated Blocks', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Form <input> Elements Require Labels', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Page Requires Means To Bypass Repeated Blocks', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Page Requires Means To Bypass Repeated Blocks', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Form <input> Elements Require Labels', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Form <input> Elements Require Labels', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Form <input> Elements Require Labels', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Frames Require Title Attribute', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Frames Require Unique Title Attribute', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Frames With Focusable Content Must Not Use tabindex=-1', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Page Must Contain <title>', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Frames Require Title Attribute', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Frames Require Title Attribute', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Frames Require Unique Title Attribute', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Frames Require Unique Title Attribute', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Frames With Focusable Content Must Not Use tabindex=-1', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Frames With Focusable Content Must Not Use tabindex=-1', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Page Must Contain <title>', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Page Must Contain <title>', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Page Must Contain <title>', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – HTML Element Lang Attribute Value Must Be Valid', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – HTML Element Requires Lang Attribute', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Image Button Requires Alternate Text', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – HTML Element Lang Attribute Value Must Be Valid', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – HTML Element Lang Attribute Value Must Be Valid', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – HTML Element Requires Lang Attribute', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – HTML Element Requires Lang Attribute', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Image Button Requires Alternate Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Image Button Requires Alternate Text', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Image Button Requires Alternate Text', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Images Require Alternate Text', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – <object> Elements Require Alternate Text', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Active <area> Elements Require Alternate Text', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Elements Marked role=img Require Alternate Text', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – SVG Images & Graphics Require Accessible Text', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Images Require Alternate Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Images Require Alternate Text', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – <object> Elements Require Alternate Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – <object> Elements Require Alternate Text', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Active <area> Elements Require Alternate Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Active <area> Elements Require Alternate Text', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Elements Marked role=img Require Alternate Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Elements Marked role=img Require Alternate Text', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – SVG Images & Graphics Require Accessible Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – SVG Images & Graphics Require Accessible Text', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – SVG Images & Graphics Require Accessible Text', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – <video> Elements Require <track> For Captions', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – <video> or <audio> Elements Must Not Auto-play', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Buttons Require Discernible Text', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – <video> Elements Require <track> For Captions', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – <video> Elements Require <track> For Captions', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – <video> or <audio> Elements Must Not Auto-play', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – <video> or <audio> Elements Must Not Auto-play', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Buttons Require Discernible Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Buttons Require Discernible Text', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Buttons Require Discernible Text', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Input Buttons Require Discernible Text', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Input Buttons Require Discernible Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Input Buttons Require Discernible Text', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Input Buttons Require Discernible Text', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Links Require Discernible Text', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Links Require Discernible Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Links Require Discernible Text', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Links Require Discernible Text', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Links Must Be Distinguishable', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Select Element Requires Accessible Name', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Links Must Be Distinguishable', 'Warning', 'High', 'Color Contrast'),
+    ('Accessibility', 'WCAG 2.0 A – Links Must Be Distinguishable', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Select Element Requires Accessible Name', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Select Element Requires Accessible Name', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – Select Element Requires Accessible Name', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Summary Elements Require Discernible Text', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Deprecated <marquee> Element Must Not Be Used', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Interactive Controls Must Not Be Nested', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – List Items Must Be Contained In List Elements', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Lists Must Only Contain <li> Content Elements', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – <dt> & <dd> Elements Must Be Contained by <dl>', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Summary Elements Require Discernible Text', 'Warning', 'High', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Summary Elements Require Discernible Text', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Deprecated <marquee> Element Must Not Be Used', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Deprecated <marquee> Element Must Not Be Used', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Interactive Controls Must Not Be Nested', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Interactive Controls Must Not Be Nested', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – List Items Must Be Contained In List Elements', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – List Items Must Be Contained In List Elements', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Lists Must Only Contain <li> Content Elements', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Lists Must Only Contain <li> Content Elements', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – <dt> & <dd> Elements Must Be Contained by <dl>', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – <dt> & <dd> Elements Must Be Contained by <dl>', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups', 'Warning', 'High', 'WCAG Level A'),
     ('Accessibility', 'WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – <blink> Elements Deprecated & Must Not Be Used', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – <th> Element Requires Associated Data Cells', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Table Header Attr Must Refer To Cell In Same Table', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 AA – Meta Viewport Zoom & Scaling Disabled', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 AA – Lang Attribute Requires Valid Value', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 AA – Text Requires Higher Color Contrast to Background', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 AAA – Text Requires Higher Color Contrast Ratio', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly', 'Warning', 'High', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – <blink> Elements Deprecated & Must Not Be Used', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – <blink> Elements Deprecated & Must Not Be Used', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – <th> Element Requires Associated Data Cells', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – <th> Element Requires Associated Data Cells', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Table Header Attr Must Refer To Cell In Same Table', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Table Header Attr Must Refer To Cell In Same Table', 'Warning', 'High', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 AA – Meta Viewport Zoom & Scaling Disabled', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 AA – Meta Viewport Zoom & Scaling Disabled', 'Warning', 'High', 'WCAG Level AA'),
+    ('Accessibility', 'WCAG 2.0 AA – Lang Attribute Requires Valid Value', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 AA – Lang Attribute Requires Valid Value', 'Warning', 'High', 'WCAG Level AA'),
+    ('Accessibility', 'WCAG 2.0 AA – Text Requires Higher Color Contrast to Background', 'Warning', 'High', 'Color Contrast'),
+    ('Accessibility', 'WCAG 2.0 AA – Text Requires Higher Color Contrast to Background', 'Warning', 'High', 'WCAG Level AA'),
+    ('Accessibility', 'WCAG 2.0 AAA – Text Requires Higher Color Contrast Ratio', 'Warning', 'High', 'Color Contrast'),
+    ('Accessibility', 'WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly', 'Warning', 'High', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly', 'Warning', 'High', 'WCAG Level AA'),
     ('Accessibility', 'WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly', 'Warning', 'High', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.1 AA – Inline Text Spacing Must Be Adjustable', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.2 AA – Touch Targets Require Sufficient Size & Spacing', 'Warning', 'High', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Skip-link Target Should Exist & Be Focusable', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – All Page Content Must Be Contained By Landmarks', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Page Requires One Main Landmark', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Page Must Not Have More Than One Banner Landmark', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Banner Landmark Must Not Be In Another Landmark', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Page Must Not Have Multiple Contentinfo Landmarks', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Page Requires At Most One Main Landmark', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Complementary Landmarks & Asides Must Be Top Level', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Contentinfo Landmark Must Be Top Level Landmark', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Main Landmark Must Not Be In Another Landmark', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Landmarks Require Unique Role Or Accessible Name', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Page Must Contain <h1>', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Heading Levels Should Only Increase By One', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Form Field Must Not Have Multiple Label Elements', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – HTML Lang & XML Lang Value Should Match', 'Warning', 'Medium', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Ensure Elements Marked Presentational Are Ignored', 'Warning', 'Low', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.1 AA – Inline Text Spacing Must Be Adjustable', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.1 AA – Inline Text Spacing Must Be Adjustable', 'Warning', 'High', 'WCAG Level AA'),
+    ('Accessibility', 'WCAG 2.2 AA – Touch Targets Require Sufficient Size & Spacing', 'Warning', 'High', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Skip-link Target Should Exist & Be Focusable', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – All Page Content Must Be Contained By Landmarks', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Page Requires One Main Landmark', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Page Must Not Have More Than One Banner Landmark', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Banner Landmark Must Not Be In Another Landmark', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Page Must Not Have Multiple Contentinfo Landmarks', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Page Requires At Most One Main Landmark', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Complementary Landmarks & Asides Must Be Top Level', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Contentinfo Landmark Must Be Top Level Landmark', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Main Landmark Must Not Be In Another Landmark', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Landmarks Require Unique Role Or Accessible Name', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Page Must Contain <h1>', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Heading Levels Should Only Increase By One', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – Form Field Must Not Have Multiple Label Elements', 'Warning', 'Medium', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Form Field Must Not Have Multiple Label Elements', 'Warning', 'Medium', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – HTML Lang & XML Lang Value Should Match', 'Warning', 'Medium', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 A – HTML Lang & XML Lang Value Should Match', 'Warning', 'Medium', 'WCAG Level A'),
+    ('Accessibility', 'Best Practice – Ensure Elements Marked Presentational Are Ignored', 'Warning', 'Low', 'Forms & ARIA'),
     ('Accessibility', 'Best Practice – Ensure Elements Marked Presentational Are Ignored', 'Warning', 'Low', 'Agent Accessibility Tree'),
-    ('Accessibility', 'Best Practice – ARIA Role Should Be Appropriate For Element', 'Warning', 'Low', 'Accessibility'),
+    ('Accessibility', 'Best Practice – ARIA Role Should Be Appropriate For Element', 'Warning', 'Low', 'Forms & ARIA'),
     ('Accessibility', 'Best Practice – ARIA Role Should Be Appropriate For Element', 'Warning', 'Low', 'Agent Accessibility Tree'),
-    ('Accessibility', 'Best Practice – Headings Should Not Be Empty', 'Warning', 'Low', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Meta Viewport Should Allow Zoom & Scale Up to 500%', 'Warning', 'Low', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Alt Text Should Not Be Repeated As Text', 'Warning', 'Low', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Table Headers Require Discernible Text', 'Warning', 'Low', 'Accessibility'),
-    ('Accessibility', 'Best Practice – Table With Identical Summary & Caption Text', 'Warning', 'Low', 'Accessibility'),
+    ('Accessibility', 'Best Practice – Headings Should Not Be Empty', 'Warning', 'Low', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Meta Viewport Should Allow Zoom & Scale Up to 500%', 'Warning', 'Low', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Alt Text Should Not Be Repeated As Text', 'Warning', 'Low', 'Text Alternatives & Names'),
+    ('Accessibility', 'Best Practice – Table Headers Require Discernible Text', 'Warning', 'Low', 'Structure & Navigation'),
+    ('Accessibility', 'Best Practice – Table With Identical Summary & Caption Text', 'Warning', 'Low', 'Structure & Navigation'),
     ('Accessibility', 'Best Practice – Table With Identical Summary & Caption Text', 'Warning', 'Low', 'Agent Accessibility Tree'),
-    ('Accessibility', 'WCAG 2.0 A – Deprecated ARIA Roles Must Not Be Used', 'Warning', 'Low', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 A – Server-Side Image Maps Must Not Be Used', 'Warning', 'Low', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 AAA – Delayed Meta Refresh Must Not Be Used', 'Warning', 'Low', 'Accessibility'),
-    ('Accessibility', 'WCAG 2.0 AAA – Links With Same Accessible Name', 'Warning', 'Low', 'Accessibility'),
+    ('Accessibility', 'WCAG 2.0 A – Deprecated ARIA Roles Must Not Be Used', 'Warning', 'Low', 'Forms & ARIA'),
+    ('Accessibility', 'WCAG 2.0 A – Deprecated ARIA Roles Must Not Be Used', 'Warning', 'Low', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 A – Server-Side Image Maps Must Not Be Used', 'Warning', 'Low', 'Text Alternatives & Names'),
+    ('Accessibility', 'WCAG 2.0 A – Server-Side Image Maps Must Not Be Used', 'Warning', 'Low', 'WCAG Level A'),
+    ('Accessibility', 'WCAG 2.0 AAA – Delayed Meta Refresh Must Not Be Used', 'Warning', 'Low', 'Structure & Navigation'),
+    ('Accessibility', 'WCAG 2.0 AAA – Links With Same Accessible Name', 'Warning', 'Low', 'Text Alternatives & Names'),
     ('Analytics', 'Orphan URLs', 'Issue', 'Medium', 'Orphan Pages'),
     ('Analytics', 'No GA Data', 'Warning', 'Low', 'Index Bloat'),
     ('Analytics', 'Non-Indexable with GA Data', 'Warning', 'Low', 'Index Coverage'),
@@ -2492,6 +2709,25 @@ Can search engines and AI crawlers reach, render and index the site?
     Python rule: na if n_market_languages <= 1; fail if pct_urls_hreflang_errors > 0.05 or
       n_forced_geo_redirects > 0; pass if pct_urls_hreflang_errors <= 0.01 and has_x_default ==
       1
+
+- Mobile Parity:
+    Ref: SEO-N3 · Tier Basic · Impact 5 · Confidence 5 · Ease 3
+    Audit logic: Crawl with Googlebot Smartphone and desktop user agents and compare word count,
+      internal links, title, canonical and structured data per URL; scan the Mobile filters
+      (Viewport Not Set, Content Not Sized Correctly, Illegible Font Size, Target Size).
+    Metrics:
+      pct_pages_mobile_desktop_diff: Pages whose word count, internal links or structured data
+        differ more than 10% between the smartphone and desktop crawl / pages compared
+      pct_pages_less_on_mobile: Pages with content, links or structured data missing on mobile
+        (mobile more than 10% lower) / pages compared
+      n_pages_viewport_missing: Pages without a viewport meta tag (Mobile: Viewport Not Set)
+    Pass: At most 2% of pages differ more than 10% between mobile and desktop, and every
+      template sets a viewport.
+    Warn: between the pass and the fail condition.
+    Fail: Content, links or structured data missing on mobile for more than 10% of pages (Google
+      indexes mobile-first).
+    Python rule: fail if pct_pages_less_on_mobile > 0.10; pass if pct_pages_mobile_desktop_diff
+      <= 0.02 and n_pages_viewport_missing == 0
 """.strip(),
     'site_structure': """
 === SITE STRUCTURE & INTERNAL LINKING CATEGORY (site_structure) ===
@@ -2573,83 +2809,115 @@ Do URLs and internal links make key pages easy to find and crawl?
     Python rule: fail if pct_click_urls_weakly_linked > 0.05; pass if pct_click_urls_orphaned <=
       0.01
 """.strip(),
-    'performance_mobile': """
-=== PERFORMANCE & MOBILE CATEGORY (performance_mobile) ===
-Is the site fast and equivalent on mobile (Google indexes mobile-first)?
+    'pagespeed': """
+=== PAGESPEED CATEGORY (pagespeed) ===
+Is the site fast for real users on mobile: loading (LCP), responsiveness (INP), visual stability (CLS) and the Lighthouse Performance score? CrUX field data first, Lighthouse lab data without it (lab is stricter than real users).
 
-- Core Web Vitals:
-    Ref: SEO-N2 · Tier Advanced · Impact 4 · Confidence 4 · Ease 2
-    Audit logic: Query PageSpeed Insights (CrUX field data) for the origin and for the top URL
-      per page type, mobile and desktop, and report unused JavaScript and JavaScript execution
-      time per page type as the main levers for INP.
+- Largest Contentful Paint:
+    Ref: PS-1 · Tier Advanced · Impact 4 · Confidence 4 · Ease 2
+    Audit logic: Read the Largest Contentful Paint on mobile: how long the main content takes to
+      appear. The value is the CrUX field data (p75, mobile) of the origin from the n8n
+      PageSpeed check, else the median CrUX of the pages, else the median Lighthouse lab data of
+      the pages (Screaming Frog PageSpeed integration, mobile). Report the largest opportunities
+      for it: render-blocking requests, image delivery, unused CSS, font display and cache
+      lifetimes.
     Metrics:
-      n_cwv_failed_mobile: Number of LCP, INP and CLS that fail on mobile (LCP > 2.5 s, INP >
-        200 ms, CLS > 0.1): the CrUX field data (p75) of the origin (n8n PageSpeed check), else
-        the median CrUX of the pages, else the median Lighthouse lab data of the pages
-        (Screaming Frog PageSpeed integration; TBT > 200 ms as the INP proxy)
-      has_crux_origin: 1 if CrUX field data exists for the origin on mobile, else 0
+      lcp_ms: Largest Contentful Paint on mobile in ms: p75 CrUX field data of the origin (n8n
+        PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab
+        value of the indexable pages (Screaming Frog PageSpeed integration)
       is_cwv_from_lab: 1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for
         the origin or the pages), else 0
-      lcp_ms: Largest Contentful Paint used for the count, in ms (p75 field data, else the
-        median lab value of the pages)
-      inp_ms: Interaction to Next Paint, p75 field data in ms (there is no lab value)
-      cls: Cumulative Layout Shift used for the count (p75 field data, else the median lab value
-        of the pages)
-      tbt_lab_ms: Median Total Blocking Time of the pages (lab), in ms: the INP proxy without
-        field data
-      performance_score: Median Lighthouse Performance score of the pages (0-100, lab)
+      has_crux_origin: 1 if CrUX field data exists for the origin on mobile, else 0
       n_psi_pages: Indexable pages with PageSpeed lab data in the crawl
       psi_render_blocking_ms: Median per page of the PageSpeed opportunity render-blocking
         requests (ms saved) (Screaming Frog PageSpeed integration)
-      psi_unused_js_ms: Median per page of the PageSpeed opportunity unused JavaScript (ms
+      psi_image_delivery_kb: Median per page of the PageSpeed opportunity image delivery (kB
         saved) (Screaming Frog PageSpeed integration)
       psi_unused_css_ms: Median per page of the PageSpeed opportunity unused CSS (ms saved)
         (Screaming Frog PageSpeed integration)
+      psi_font_display_ms: Median per page of the PageSpeed opportunity font display (ms saved)
+        (Screaming Frog PageSpeed integration)
+      psi_cache_kb: Median per page of the PageSpeed opportunity cache lifetimes (kB saved)
+        (Screaming Frog PageSpeed integration)
+    Pass: LCP is 2.5 seconds or less.
+    Warn: Between 2.5 and 4 seconds.
+    Fail: LCP is more than 4 seconds.
+    Python rule: fail if lcp_ms > 4000; pass if lcp_ms <= 2500
+    Note: Lab data simulates a slow mobile connection and is stricter than real users.
+
+- Interaction to Next Paint:
+    Ref: PS-2 · Tier Advanced · Impact 4 · Confidence 4 · Ease 2
+    Audit logic: Read the Interaction to Next Paint on mobile: how fast the page responds to
+      taps and clicks (CrUX field data of the origin, else of the pages). Without field data,
+      the median Total Blocking Time of the Lighthouse lab test stands in for it. Report the
+      largest opportunities for it: JavaScript execution time, main-thread work, unused and
+      legacy JavaScript and the DOM size.
+    Metrics:
+      is_inp_from_lab: 1 if there is no INP field data and the median Lighthouse Total Blocking
+        Time of the pages stands in for it, 0 with field data
+      inp_ms: Interaction to Next Paint on mobile in ms: p75 CrUX field data of the origin (n8n
+        PageSpeed check), else the median CrUX of the pages (there is no lab value)
+      tbt_lab_ms: Median Total Blocking Time of the indexable pages (Lighthouse lab, mobile) in
+        ms: the stand-in for INP without field data (Screaming Frog PageSpeed integration)
+      has_crux_origin: 1 if CrUX field data exists for the origin on mobile, else 0
+      n_psi_pages: Indexable pages with PageSpeed lab data in the crawl
       psi_js_execution_ms: Median per page of the PageSpeed opportunity JavaScript execution
         time (ms) (Screaming Frog PageSpeed integration)
       psi_main_thread_ms: Median per page of the PageSpeed opportunity main-thread work (ms)
         (Screaming Frog PageSpeed integration)
-      psi_font_display_ms: Median per page of the PageSpeed opportunity font display (ms saved)
-        (Screaming Frog PageSpeed integration)
-      psi_image_delivery_kb: Median per page of the PageSpeed opportunity image delivery (kB
+      psi_unused_js_ms: Median per page of the PageSpeed opportunity unused JavaScript (ms
         saved) (Screaming Frog PageSpeed integration)
-      psi_cache_kb: Median per page of the PageSpeed opportunity cache lifetimes (kB saved)
-        (Screaming Frog PageSpeed integration)
       psi_legacy_js_kb: Median per page of the PageSpeed opportunity legacy JavaScript (kB
         saved) (Screaming Frog PageSpeed integration)
-      psi_page_weight_kb: Median per page of the PageSpeed opportunity page weight (kB)
-        (Screaming Frog PageSpeed integration)
       psi_dom_size: Median per page of the PageSpeed opportunity DOM size (elements) (Screaming
         Frog PageSpeed integration)
-    Pass: The origin passes the Core Web Vitals assessment on mobile (LCP 2.5 s or less, INP 200
-      ms or less, CLS 0.1 or less at p75). Sites without CrUX field data: Lighthouse lab data
-      passes on the key templates.
-    Warn: 1 metric fails.
-    Fail: The origin fails 2 or more of the 3 metrics on mobile.
-    Python rule: fail if n_cwv_failed_mobile >= 2; warn if n_cwv_failed_mobile == 1; pass if
-      n_cwv_failed_mobile == 0
-    Note: The overview shows LCP, INP (or TBT in the lab), CLS, the Performance score and the
-      largest opportunities under the criterion. Lab data simulates a slow mobile connection and
-      is stricter than real users.
-
-- Mobile Parity:
-    Ref: SEO-N3 · Tier Basic · Impact 5 · Confidence 5 · Ease 3
-    Audit logic: Crawl with Googlebot Smartphone and desktop user agents and compare word count,
-      internal links, title, canonical and structured data per URL; scan the Mobile filters
-      (Viewport Not Set, Content Not Sized Correctly, Illegible Font Size, Target Size).
-    Metrics:
-      pct_pages_mobile_desktop_diff: Pages whose word count, internal links or structured data
-        differ more than 10% between the smartphone and desktop crawl / pages compared
-      pct_pages_less_on_mobile: Pages with content, links or structured data missing on mobile
-        (mobile more than 10% lower) / pages compared
-      n_pages_viewport_missing: Pages without a viewport meta tag (Mobile: Viewport Not Set)
-    Pass: At most 2% of pages differ more than 10% between mobile and desktop, and every
-      template sets a viewport.
+    Pass: INP is 200 ms or less (without field data: TBT 200 ms or less).
     Warn: between the pass and the fail condition.
-    Fail: Content, links or structured data missing on mobile for more than 10% of pages (Google
-      indexes mobile-first).
-    Python rule: fail if pct_pages_less_on_mobile > 0.10; pass if pct_pages_mobile_desktop_diff
-      <= 0.02 and n_pages_viewport_missing == 0
+    Fail: INP is more than 500 ms (without field data: TBT more than 600 ms). Warn in between.
+    Python rule: fail if is_inp_from_lab == 0 and inp_ms > 500 or is_inp_from_lab == 1 and
+      tbt_lab_ms > 600; pass if (is_inp_from_lab == 0 and inp_ms <= 200) or (is_inp_from_lab ==
+      1 and tbt_lab_ms <= 200)
+    Note: Without field data the Lighthouse Total Blocking Time stands in for INP (TBT 200/600
+      ms).
+
+- Cumulative Layout Shift:
+    Ref: PS-3 · Tier Advanced · Impact 4 · Confidence 4 · Ease 3
+    Audit logic: Read the Cumulative Layout Shift on mobile: how much the layout moves while the
+      page loads. The value is the CrUX field data (p75, mobile) of the origin from the n8n
+      PageSpeed check, else the median CrUX of the pages, else the median Lighthouse lab data of
+      the pages (Screaming Frog PageSpeed integration, mobile). Report the layout-shift culprits
+      (images and embeds without dimensions, late fonts, injected content).
+    Metrics:
+      cls: Cumulative Layout Shift on mobile: p75 CrUX field data of the origin (n8n PageSpeed
+        check), else the median CrUX of the pages, else the median Lighthouse lab value of the
+        indexable pages (Screaming Frog PageSpeed integration)
+      is_cwv_from_lab: 1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for
+        the origin or the pages), else 0
+      has_crux_origin: 1 if CrUX field data exists for the origin on mobile, else 0
+      n_psi_pages: Indexable pages with PageSpeed lab data in the crawl
+    Pass: CLS is 0.1 or less.
+    Warn: Between 0.1 and 0.25.
+    Fail: CLS is more than 0.25.
+    Python rule: fail if cls > 0.25; pass if cls <= 0.1
+
+- Performance Score:
+    Ref: PS-4 · Tier Expert · Impact 3 · Confidence 3 · Ease 2
+    Audit logic: Take the median Lighthouse Performance score (mobile, 0-100) of the indexable
+      pages in the Screaming Frog PageSpeed integration. Lab data on a simulated slow mobile
+      connection: stricter than real users and not a ranking signal itself, but it shows the
+      room for improvement on every page, also without field data.
+    Metrics:
+      performance_score: Median Lighthouse Performance score of the indexable pages (0-100, lab,
+        mobile) (Screaming Frog PageSpeed integration)
+      n_psi_pages: Indexable pages with PageSpeed lab data in the crawl
+      psi_page_weight_kb: Median per page of the PageSpeed opportunity page weight (kB)
+        (Screaming Frog PageSpeed integration)
+    Pass: The median Performance score is 90 or higher.
+    Warn: Between 50 and 89.
+    Fail: The median Performance score is below 50.
+    Python rule: fail if performance_score < 50; pass if performance_score >= 90
+    Note: Lab data, not a ranking signal itself; it shows the room for improvement on every
+      page, also without field data.
 
 - Image Weight & Format:
     Ref: SEO-20 · Tier Advanced · Impact 2 · Confidence 3 · Ease 3
@@ -2914,21 +3182,6 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Fail: Less than 40% of editorial pages show an author.
     Python rule: fail if pct_editorial_with_author < 0.40; pass if pct_editorial_full_author >=
       0.80
-
-- Accessibility:
-    Ref: SEO-N11 · Tier Advanced · Impact 4 · Confidence 3 · Ease 3
-    Audit logic: Run the Screaming Frog Accessibility audit (axe-core, requires JavaScript
-      rendering) per template. Violations feed the separate accessibility action list.
-    Metrics:
-      pct_pages_accessibility_good: Pages with accessibility score 'Good' / pages audited
-      n_templates_high_violations: Key templates with high-priority violations
-    Pass: At least 90% of pages score 'Good' and 0 high-priority violations on templates.
-    Warn: between the pass and the fail condition.
-    Fail: Less than 60% of pages score 'Good'.
-    Python rule: fail if pct_pages_accessibility_good < 0.60; pass if
-      pct_pages_accessibility_good >= 0.90 and n_templates_high_violations == 0
-    Note: Violations also feed the separate accessibility action list (agent-blocking rules
-      first).
 """.strip(),
     'authority_entity': """
 === AUTHORITY & ENTITY CATEGORY (authority_entity) ===
@@ -3319,6 +3572,142 @@ Are products discoverable and purchasable through AI shopping surfaces and agent
     Note: UCP spec 2026-08-25. The agent profile only declares catalog search and lookup; the
       test never creates carts, checkouts or orders. MCP-only catalogs are not searched yet
       (warn).
+""".strip(),
+    'accessibility': """
+=== ACCESSIBILITY CATEGORY (accessibility) ===
+Can people with disabilities, and the assistive technology and AI agents that read the accessibility tree, use the site? WCAG 2.1 AA (Level A and AA) is the bar: the standard of the European Accessibility Act.
+
+- WCAG Level A:
+    Ref: ACC-1 · Tier Advanced · Impact 4 · Confidence 3 · Ease 3
+    Audit logic: Count the pages tested by the Screaming Frog Accessibility audit (axe-core,
+      JavaScript rendering) that violate a WCAG 2.0 or 2.1 Level A rule: the minimum level,
+      without which some visitors cannot use the page at all (images without text alternative,
+      unlabelled form fields, no page language, content that cannot be reached with the
+      keyboard).
+    Metrics:
+      pct_pages_wcag_a_violation: Pages with a violation of a WCAG 2.0 or 2.1 Level A rule / the
+        HTML pages with status 200 in the Internal export (the pages the Accessibility audit
+        tests)
+      n_wcag_a_rules_failing: Level A rules violated on at least one page
+    Pass: At most 10% of the tested pages violate a Level A rule.
+    Warn: between the pass and the fail condition.
+    Fail: More than half of the tested pages violate a Level A rule.
+    Python rule: fail if pct_pages_wcag_a_violation > 0.50; pass if pct_pages_wcag_a_violation
+      <= 0.10
+
+- WCAG Level AA:
+    Ref: ACC-2 · Tier Expert · Impact 4 · Confidence 3 · Ease 3
+    Audit logic: Count the tested pages that violate a WCAG 2.0 or 2.1 Level AA rule (text
+      contrast, zoom disabled, language of parts, autocomplete, text spacing). Level A and Level
+      AA together are WCAG 2.1 AA, the standard behind the European Accessibility Act (EN 301
+      549), which applies to e-commerce and other services in the EU since 28 June 2025. WCAG
+      2.2 AA (touch target size) is reported, not required.
+    Metrics:
+      pct_pages_wcag_aa_violation: Pages with a violation of a WCAG 2.0 or 2.1 Level AA rule /
+        the HTML pages with status 200 in the Internal export (the pages the Accessibility audit
+        tests)
+      n_wcag_aa_rules_failing: Level AA rules (WCAG 2.0 and 2.1) violated on at least one page
+      pct_pages_wcag22_aa_violation: Pages with a violation of a WCAG 2.2 AA rule (touch target
+        size) / the HTML pages with status 200 in the Internal export (the pages the
+        Accessibility audit tests); reported, not required
+    Pass: At most 10% of the tested pages violate a WCAG 2.0 or 2.1 Level AA rule.
+    Warn: between the pass and the fail condition.
+    Fail: More than half of the tested pages violate a Level AA rule.
+    Python rule: fail if pct_pages_wcag_aa_violation > 0.50; pass if pct_pages_wcag_aa_violation
+      <= 0.10
+    Note: WCAG 2.1 AA = Level A and Level AA together: the standard behind the European
+      Accessibility Act (EN 301 549).
+
+- Color Contrast:
+    Ref: ACC-3 · Tier Advanced · Impact 4 · Confidence 3 · Ease 3
+    Audit logic: Count the tested pages with text that lacks contrast with its background
+      (4.5:1, 3:1 for large text; WCAG 1.4.3) or links in running text that are told apart by
+      colour alone (WCAG 1.4.1). The enhanced contrast of Level AAA (7:1) is reported, not
+      required.
+    Metrics:
+      pct_pages_contrast_violation: Pages with text below the contrast minimum (WCAG 1.4.3, AA)
+        or links told apart by colour alone (WCAG 1.4.1, A) / the HTML pages with status 200 in
+        the Internal export (the pages the Accessibility audit tests)
+      pct_pages_contrast_aaa: Pages below the enhanced contrast of Level AAA (7:1) / the HTML
+        pages with status 200 in the Internal export (the pages the Accessibility audit tests);
+        reported, not required
+    Pass: At most 10% of the tested pages have text with too little contrast or links told apart
+      by colour alone.
+    Warn: between the pass and the fail condition.
+    Fail: More than half of the tested pages have contrast problems.
+    Python rule: fail if pct_pages_contrast_violation > 0.50; pass if
+      pct_pages_contrast_violation <= 0.10
+
+- Text Alternatives & Names:
+    Ref: ACC-4 · Tier Advanced · Impact 4 · Confidence 4 · Ease 3
+    Audit logic: Count the tested pages with images, image buttons, SVGs, videos, frames, links
+      or buttons without a text alternative or accessible name, or without a page title (WCAG
+      1.1.1, 1.2.2, 2.4.2, 2.4.4, 4.1.2). Screen readers, voice control and AI agents rely on
+      these names; alt and link texts overlap with SEO. Alt text repeated as visible text and
+      links with the same name but different targets are reported, not required.
+    Metrics:
+      pct_pages_unnamed_elements: Pages with images, image buttons, SVGs, videos, frames, links
+        or buttons without a text alternative or accessible name, or without a page title (WCAG
+        2.0 Level A rules) / the HTML pages with status 200 in the Internal export (the pages
+        the Accessibility audit tests)
+      pct_pages_names_best_practice: Pages with alt text repeated as visible text, links with
+        the same name but different targets (AAA) or unnamed ARIA dialogs and tree items (best
+        practice) / the HTML pages with status 200 in the Internal export (the pages the
+        Accessibility audit tests); reported, not required
+    Pass: At most 10% of the tested pages have elements without a text alternative or accessible
+      name.
+    Warn: between the pass and the fail condition.
+    Fail: More than half of the tested pages have elements without a text alternative or
+      accessible name.
+    Python rule: fail if pct_pages_unnamed_elements > 0.50; pass if pct_pages_unnamed_elements
+      <= 0.10
+
+- Forms & ARIA:
+    Ref: ACC-5 · Tier Expert · Impact 4 · Confidence 3 · Ease 3
+    Audit logic: Count the tested pages with form fields without a label or accessible name,
+      wrong autocomplete values, nested interactive controls, or ARIA roles and attributes that
+      are invalid, not allowed or hide focusable elements (WCAG 1.3.1, 1.3.5, 3.3.2, 4.1.2).
+      Best practice (visible labels, roles that suit the element) is reported, not required.
+    Metrics:
+      pct_pages_form_aria_violation: Pages with form fields without a label or accessible name,
+        wrong autocomplete values, nested interactive controls, or invalid, not allowed or
+        focus-hiding ARIA roles and attributes (WCAG 2.0 Level A, 2.1 AA) / the HTML pages with
+        status 200 in the Internal export (the pages the Accessibility audit tests)
+      pct_pages_form_aria_best_practice: Pages with best-practice form or ARIA issues (no
+        visible label, a role that does not suit the element, focusable content inside
+        role=text, presentational elements that are not ignored) / the HTML pages with status
+        200 in the Internal export (the pages the Accessibility audit tests); reported, not
+        required
+    Pass: At most 10% of the tested pages have form or ARIA errors.
+    Warn: between the pass and the fail condition.
+    Fail: More than half of the tested pages have form or ARIA errors.
+    Python rule: fail if pct_pages_form_aria_violation > 0.50; pass if
+      pct_pages_form_aria_violation <= 0.10
+
+- Structure & Navigation:
+    Ref: ACC-6 · Tier Advanced · Impact 4 · Confidence 3 · Ease 3
+    Audit logic: Count the tested pages without a page language or a way to skip repeated
+      blocks, with broken list or table markup, regions that cannot be scrolled with the
+      keyboard, zoom disabled, text spacing that cannot be adjusted, or media that plays by
+      itself (WCAG 1.3.1, 1.4.2, 1.4.4, 1.4.12, 2.1.1, 2.4.1, 3.1.1). Landmarks, the heading
+      order, one <h1>, skip links and touch target size (WCAG 2.2) are reported as best
+      practice, not required.
+    Metrics:
+      pct_pages_structure_violation: Pages without a (valid) page language or a way to skip
+        repeated blocks, with broken list or table markup, regions not scrollable by keyboard,
+        zoom disabled, text spacing that cannot be adjusted or media that plays by itself (WCAG
+        2.0 A and AA, 2.1 AA) / the HTML pages with status 200 in the Internal export (the pages
+        the Accessibility audit tests)
+      pct_pages_structure_best_practice: Pages with best-practice issues: landmarks, the heading
+        order, one <h1>, empty headings, skip links, tabindex, zoom to 500%, table markup, a
+        delayed meta refresh (AAA) or small touch targets (WCAG 2.2 AA) / the HTML pages with
+        status 200 in the Internal export (the pages the Accessibility audit tests); reported,
+        not required
+    Pass: At most 10% of the tested pages have structure or navigation errors.
+    Warn: between the pass and the fail condition.
+    Fail: More than half of the tested pages have structure or navigation errors.
+    Python rule: fail if pct_pages_structure_violation > 0.50; pass if
+      pct_pages_structure_violation <= 0.10
 """.strip(),
 }
 

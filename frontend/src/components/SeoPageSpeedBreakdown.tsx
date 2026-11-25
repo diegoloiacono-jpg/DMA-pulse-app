@@ -1,7 +1,8 @@
 /**
- * The parts of Core Web Vitals under the criterion: LCP, INP (or TBT in the lab), CLS and the Performance score, each
- * against Google's bands, plus the largest PageSpeed opportunities. Values come from SpecialistResult.details (the
- * metrics of the topic: field data of the origin, else of the pages, else Lighthouse lab data).
+ * The PageSpeed values under a criterion (LCP, INP or TBT in the lab, CLS, the Performance score), each against Google's
+ * bands, plus the largest PageSpeed opportunities. Values come from SpecialistResult.details: the metrics of that topic
+ * (field data of the origin, else of the pages, else Lighthouse lab data), so each criterion shows its own part and the
+ * opportunities that improve it; the results page passes the metrics of all four together.
  */
 type Band = "good" | "ni" | "poor";
 
@@ -34,6 +35,7 @@ interface Props {
 
 export default function SeoPageSpeedBreakdown({ details: d }: Props) {
   const lab = d.is_cwv_from_lab === 1;
+  const labNote = lab || (d.inp_ms == null && d.tbt_lab_ms != null && d.is_inp_from_lab === 1);
   const field = d.has_crux_origin === 1 ? "field data, whole site" : "field data, median of the pages";
   const parts: { name: string; title: string; value: string; band: Band; source: string; target: string }[] = [];
   if (d.lcp_ms != null)
@@ -54,6 +56,13 @@ export default function SeoPageSpeedBreakdown({ details: d }: Props) {
   const timeTop = top(TIME_OPPORTUNITIES, 3);
   const sizeTop = top(SIZE_OPPORTUNITIES, 2);
 
+  const facts = [
+    d.performance_score != null ? `Performance score ${Math.round(d.performance_score)} (median, lab)` : null,
+    d.psi_page_weight_kb != null ? `page weight ${Math.round(d.psi_page_weight_kb)} kB` : null,
+    d.psi_dom_size != null ? `DOM ${Math.round(d.psi_dom_size)} elements` : null,
+    d.n_psi_pages != null ? `${Math.round(d.n_psi_pages)} pages measured` : null,
+  ].filter((x): x is string => x !== null);
+
   if (!parts.length && d.performance_score == null) return null;
   return (
     <div className="flex flex-col gap-2 rounded-md border bg-muted/20 px-3 py-2">
@@ -71,19 +80,14 @@ export default function SeoPageSpeedBreakdown({ details: d }: Props) {
           </div>
         ))}
       </div>
-      <p className="text-[11px] text-muted-foreground">
-        {d.performance_score != null && <>Performance score {Math.round(d.performance_score)} (median, lab)</>}
-        {d.psi_page_weight_kb != null && <> · page weight {Math.round(d.psi_page_weight_kb)} kB</>}
-        {d.psi_dom_size != null && <> · DOM {Math.round(d.psi_dom_size)} elements</>}
-        {d.n_psi_pages != null && <> · {Math.round(d.n_psi_pages)} pages measured</>}
-      </p>
+      {facts.length > 0 && <p className="text-[11px] text-muted-foreground">{facts.join(" · ")}</p>}
       {(timeTop.length > 0 || sizeTop.length > 0) && (
         <p className="text-[11px]">
           <span className="font-semibold">Largest opportunities (median per page): </span>
           {[...timeTop.map(([m, l]) => `${l} ${(d[m] / 1000).toFixed(1)} s`), ...sizeTop.map(([m, l]) => `${l} ${Math.round(d[m])} kB`)].join(", ")}
         </p>
       )}
-      {lab && (
+      {labNote && (
         <p className="text-[10px] text-muted-foreground">
           No CrUX field data for this site: these are Lighthouse lab values, measured on a simulated slow mobile connection and
           stricter than what real users see.

@@ -32,7 +32,7 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 
 | Phase | Sources | Topics |
 |---|---|---|
-| 1 | Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (authority: backlinks and Domain Rating) | 47 |
+| 1 | Screaming Frog scheduled crawl (incl. list-mode checks, JS rendering, custom extraction, accessibility audit, PSI integration) + Search Console bulk export & API + PageSpeed Insights/CrUX API + Ahrefs API v3 (authority: backlinks and Domain Rating) | 55 |
 | 2 | GA4 BigQuery export & Admin API, SEO intake form | 3 |
 | 3 | Fixed-prompt LLM steps, Ahrefs Brand Radar, Bing Webmaster API, Wikidata, verified-agent tests | 9 |
 
@@ -100,8 +100,8 @@ Each topic has a fixed tier (`SEO_TOPIC_TIER`). `seo_maturity()` turns the statu
 | Tier | Definition | Topics |
 |---|---|---|
 | Basic | Foundation. Search engines and AI crawlers can reach, render and index the site, the core on-page elements are in place and measurement works. Without these, nothing else pays off. | 18 |
-| Advanced | In order at scale. Technique, structure, performance and on-page are clean across the whole site, including the long tail. | 25 |
-| Expert | Managed. Content is steered by search demand and questions, authority is actively built and AI visibility is measured. | 9 |
+| Advanced | In order at scale. Technique, structure, performance and on-page are clean across the whole site, including the long tail. | 30 |
+| Expert | Managed. Content is steered by search demand and questions, authority is actively built and AI visibility is measured. | 12 |
 | Champion | Leading. Ahead of competitors on authority, a recognised entity, and ready for AI agents and agentic commerce. | 7 |
 
 ## Metrics per topic
@@ -292,6 +292,16 @@ Rule: `na if has_pagination == 0 and is_load_more_only_listing == 0`; `fail if i
 
 Rule: `na if n_market_languages <= 1`; `fail if pct_urls_hreflang_errors > 0.05 or n_forced_geo_redirects > 0`; `pass if pct_urls_hreflang_errors <= 0.01 and has_x_default == 1`
 
+**Mobile Parity** (SEO-N3 · I5 C5 E3 · tier Basic, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `pct_pages_mobile_desktop_diff` | SF mobile | Pages whose word count, internal links or structured data differ more than 10% between the smartphone and desktop crawl / pages compared |
+| `pct_pages_less_on_mobile` | SF mobile | Pages with content, links or structured data missing on mobile (mobile more than 10% lower) / pages compared |
+| `n_pages_viewport_missing` | SF crawl | Pages without a viewport meta tag (Mobile: Viewport Not Set) |
+
+Rule: `fail if pct_pages_less_on_mobile > 0.10`; `pass if pct_pages_mobile_desktop_diff <= 0.02 and n_pages_viewport_missing == 0`
+
 ### Site Structure & Internal Linking (`site_structure`)
 
 **URL Structure** (SEO-09 · I3 C3 E2 · tier Advanced, phase 1)
@@ -334,46 +344,67 @@ Rule: `fail if n_top100_depth_over_4 > 0`; `pass if n_top100_depth_over_3 == 0`
 
 Rule: `fail if pct_click_urls_weakly_linked > 0.05`; `pass if pct_click_urls_orphaned <= 0.01`
 
-### Performance & Mobile (`performance_mobile`)
+### PageSpeed (`pagespeed`)
 
-**Core Web Vitals** (SEO-N2 · I4 C4 E2 · tier Advanced, phase 1)
+**Largest Contentful Paint** (PS-1 · I4 C4 E2 · tier Advanced, phase 1)
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_cwv_failed_mobile` | PSI | Number of LCP, INP and CLS that fail on mobile (LCP > 2.5 s, INP > 200 ms, CLS > 0.1): the CrUX field data (p75) of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab data of the pages (Screaming Frog PageSpeed integration; TBT > 200 ms as the INP proxy) |
-| `has_crux_origin` *(optional)* | PSI | 1 if CrUX field data exists for the origin on mobile, else 0 |
+| `lcp_ms` | PSI | Largest Contentful Paint on mobile in ms: p75 CrUX field data of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab value of the indexable pages (Screaming Frog PageSpeed integration) |
 | `is_cwv_from_lab` *(optional)* | PSI | 1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for the origin or the pages), else 0 |
-| `lcp_ms` *(optional)* | PSI | Largest Contentful Paint used for the count, in ms (p75 field data, else the median lab value of the pages) |
-| `inp_ms` *(optional)* | PSI | Interaction to Next Paint, p75 field data in ms (there is no lab value) |
-| `cls` *(optional)* | PSI | Cumulative Layout Shift used for the count (p75 field data, else the median lab value of the pages) |
-| `tbt_lab_ms` *(optional)* | PSI | Median Total Blocking Time of the pages (lab), in ms: the INP proxy without field data |
-| `performance_score` *(optional)* | PSI | Median Lighthouse Performance score of the pages (0-100, lab) |
+| `has_crux_origin` *(optional)* | PSI | 1 if CrUX field data exists for the origin on mobile, else 0 |
 | `n_psi_pages` *(optional)* | PSI | Indexable pages with PageSpeed lab data in the crawl |
 | `psi_render_blocking_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity render-blocking requests (ms saved) (Screaming Frog PageSpeed integration) |
-| `psi_unused_js_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity unused JavaScript (ms saved) (Screaming Frog PageSpeed integration) |
-| `psi_unused_css_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity unused CSS (ms saved) (Screaming Frog PageSpeed integration) |
-| `psi_js_execution_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity JavaScript execution time (ms) (Screaming Frog PageSpeed integration) |
-| `psi_main_thread_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity main-thread work (ms) (Screaming Frog PageSpeed integration) |
-| `psi_font_display_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity font display (ms saved) (Screaming Frog PageSpeed integration) |
 | `psi_image_delivery_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity image delivery (kB saved) (Screaming Frog PageSpeed integration) |
+| `psi_unused_css_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity unused CSS (ms saved) (Screaming Frog PageSpeed integration) |
+| `psi_font_display_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity font display (ms saved) (Screaming Frog PageSpeed integration) |
 | `psi_cache_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity cache lifetimes (kB saved) (Screaming Frog PageSpeed integration) |
-| `psi_legacy_js_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity legacy JavaScript (kB saved) (Screaming Frog PageSpeed integration) |
-| `psi_page_weight_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity page weight (kB) (Screaming Frog PageSpeed integration) |
-| `psi_dom_size` *(optional)* | PSI | Median per page of the PageSpeed opportunity DOM size (elements) (Screaming Frog PageSpeed integration) |
 
-Rule: `fail if n_cwv_failed_mobile >= 2`; `warn if n_cwv_failed_mobile == 1`; `pass if n_cwv_failed_mobile == 0`
+Rule: `fail if lcp_ms > 4000`; `pass if lcp_ms <= 2500`
 
-Note: The overview shows LCP, INP (or TBT in the lab), CLS, the Performance score and the largest opportunities under the criterion. Lab data simulates a slow mobile connection and is stricter than real users.
+Note: Lab data simulates a slow mobile connection and is stricter than real users.
 
-**Mobile Parity** (SEO-N3 · I5 C5 E3 · tier Basic, phase 1)
+**Interaction to Next Paint** (PS-2 · I4 C4 E2 · tier Advanced, phase 1)
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_pages_mobile_desktop_diff` | SF mobile | Pages whose word count, internal links or structured data differ more than 10% between the smartphone and desktop crawl / pages compared |
-| `pct_pages_less_on_mobile` | SF mobile | Pages with content, links or structured data missing on mobile (mobile more than 10% lower) / pages compared |
-| `n_pages_viewport_missing` | SF crawl | Pages without a viewport meta tag (Mobile: Viewport Not Set) |
+| `is_inp_from_lab` | PSI | 1 if there is no INP field data and the median Lighthouse Total Blocking Time of the pages stands in for it, 0 with field data |
+| `inp_ms` *(optional)* | PSI | Interaction to Next Paint on mobile in ms: p75 CrUX field data of the origin (n8n PageSpeed check), else the median CrUX of the pages (there is no lab value) |
+| `tbt_lab_ms` *(optional)* | PSI | Median Total Blocking Time of the indexable pages (Lighthouse lab, mobile) in ms: the stand-in for INP without field data (Screaming Frog PageSpeed integration) |
+| `has_crux_origin` *(optional)* | PSI | 1 if CrUX field data exists for the origin on mobile, else 0 |
+| `n_psi_pages` *(optional)* | PSI | Indexable pages with PageSpeed lab data in the crawl |
+| `psi_js_execution_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity JavaScript execution time (ms) (Screaming Frog PageSpeed integration) |
+| `psi_main_thread_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity main-thread work (ms) (Screaming Frog PageSpeed integration) |
+| `psi_unused_js_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity unused JavaScript (ms saved) (Screaming Frog PageSpeed integration) |
+| `psi_legacy_js_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity legacy JavaScript (kB saved) (Screaming Frog PageSpeed integration) |
+| `psi_dom_size` *(optional)* | PSI | Median per page of the PageSpeed opportunity DOM size (elements) (Screaming Frog PageSpeed integration) |
 
-Rule: `fail if pct_pages_less_on_mobile > 0.10`; `pass if pct_pages_mobile_desktop_diff <= 0.02 and n_pages_viewport_missing == 0`
+Rule: `fail if is_inp_from_lab == 0 and inp_ms > 500 or is_inp_from_lab == 1 and tbt_lab_ms > 600`; `pass if (is_inp_from_lab == 0 and inp_ms <= 200) or (is_inp_from_lab == 1 and tbt_lab_ms <= 200)`
+
+Note: Without field data the Lighthouse Total Blocking Time stands in for INP (TBT 200/600 ms).
+
+**Cumulative Layout Shift** (PS-3 · I4 C4 E3 · tier Advanced, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `cls` | PSI | Cumulative Layout Shift on mobile: p75 CrUX field data of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab value of the indexable pages (Screaming Frog PageSpeed integration) |
+| `is_cwv_from_lab` *(optional)* | PSI | 1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for the origin or the pages), else 0 |
+| `has_crux_origin` *(optional)* | PSI | 1 if CrUX field data exists for the origin on mobile, else 0 |
+| `n_psi_pages` *(optional)* | PSI | Indexable pages with PageSpeed lab data in the crawl |
+
+Rule: `fail if cls > 0.25`; `pass if cls <= 0.1`
+
+**Performance Score** (PS-4 · I3 C3 E2 · tier Expert, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `performance_score` | PSI | Median Lighthouse Performance score of the indexable pages (0-100, lab, mobile) (Screaming Frog PageSpeed integration) |
+| `n_psi_pages` *(optional)* | PSI | Indexable pages with PageSpeed lab data in the crawl |
+| `psi_page_weight_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity page weight (kB) (Screaming Frog PageSpeed integration) |
+
+Rule: `fail if performance_score < 50`; `pass if performance_score >= 90`
+
+Note: Lab data, not a ranking signal itself; it shows the room for improvement on every page, also without field data.
 
 **Image Weight & Format** (SEO-20 · I2 C3 E3 · tier Advanced, phase 1)
 
@@ -520,17 +551,6 @@ Rule: `fail if pct_indexable_main_or_article < 0.50`; `pass if pct_indexable_mai
 | `pct_editorial_full_author` | Site check | Editorial pages with a visible author, a link to an author page and Article author markup / editorial pages |
 
 Rule: `fail if pct_editorial_with_author < 0.40`; `pass if pct_editorial_full_author >= 0.80`
-
-**Accessibility** (SEO-N11 · I4 C3 E3 · tier Advanced, phase 1)
-
-| Metric | Origin | Definition |
-|---|---|---|
-| `pct_pages_accessibility_good` | SF accessibility | Pages with accessibility score 'Good' / pages audited |
-| `n_templates_high_violations` | SF accessibility | Key templates with high-priority violations |
-
-Rule: `fail if pct_pages_accessibility_good < 0.60`; `pass if pct_pages_accessibility_good >= 0.90 and n_templates_high_violations == 0`
-
-Note: Violations also feed the separate accessibility action list (agent-blocking rules first).
 
 ### Authority & Entity (`authority_entity`)
 
@@ -736,3 +756,62 @@ Rule: `fail if n_verified_agent_blocks > 0`; `pass if is_agent_policy_documented
 Rule: `na if has_online_sales == 0`; `fail if has_ucp_profile == 0 or has_ucp_catalog_search == 0 or pct_test_products_found < 0.50`; `warn if has_ucp_catalog_rest == 0`; `pass if pct_test_products_found >= 0.80 and n_ucp_price_availability_mismatches == 0`
 
 Note: UCP spec 2026-08-25. The agent profile only declares catalog search and lookup; the test never creates carts, checkouts or orders. MCP-only catalogs are not searched yet (warn).
+
+### Accessibility (`accessibility`)
+
+**WCAG Level A** (ACC-1 · I4 C3 E3 · tier Advanced, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `pct_pages_wcag_a_violation` | SF accessibility | Pages with a violation of a WCAG 2.0 or 2.1 Level A rule / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests) |
+| `n_wcag_a_rules_failing` *(optional)* | SF accessibility | Level A rules violated on at least one page |
+
+Rule: `fail if pct_pages_wcag_a_violation > 0.50`; `pass if pct_pages_wcag_a_violation <= 0.10`
+
+**WCAG Level AA** (ACC-2 · I4 C3 E3 · tier Expert, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `pct_pages_wcag_aa_violation` | SF accessibility | Pages with a violation of a WCAG 2.0 or 2.1 Level AA rule / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests) |
+| `n_wcag_aa_rules_failing` *(optional)* | SF accessibility | Level AA rules (WCAG 2.0 and 2.1) violated on at least one page |
+| `pct_pages_wcag22_aa_violation` *(optional)* | SF accessibility | Pages with a violation of a WCAG 2.2 AA rule (touch target size) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required |
+
+Rule: `fail if pct_pages_wcag_aa_violation > 0.50`; `pass if pct_pages_wcag_aa_violation <= 0.10`
+
+Note: WCAG 2.1 AA = Level A and Level AA together: the standard behind the European Accessibility Act (EN 301 549).
+
+**Color Contrast** (ACC-3 · I4 C3 E3 · tier Advanced, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `pct_pages_contrast_violation` | SF accessibility | Pages with text below the contrast minimum (WCAG 1.4.3, AA) or links told apart by colour alone (WCAG 1.4.1, A) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests) |
+| `pct_pages_contrast_aaa` *(optional)* | SF accessibility | Pages below the enhanced contrast of Level AAA (7:1) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required |
+
+Rule: `fail if pct_pages_contrast_violation > 0.50`; `pass if pct_pages_contrast_violation <= 0.10`
+
+**Text Alternatives & Names** (ACC-4 · I4 C4 E3 · tier Advanced, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `pct_pages_unnamed_elements` | SF accessibility | Pages with images, image buttons, SVGs, videos, frames, links or buttons without a text alternative or accessible name, or without a page title (WCAG 2.0 Level A rules) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests) |
+| `pct_pages_names_best_practice` *(optional)* | SF accessibility | Pages with alt text repeated as visible text, links with the same name but different targets (AAA) or unnamed ARIA dialogs and tree items (best practice) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required |
+
+Rule: `fail if pct_pages_unnamed_elements > 0.50`; `pass if pct_pages_unnamed_elements <= 0.10`
+
+**Forms & ARIA** (ACC-5 · I4 C3 E3 · tier Expert, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `pct_pages_form_aria_violation` | SF accessibility | Pages with form fields without a label or accessible name, wrong autocomplete values, nested interactive controls, or invalid, not allowed or focus-hiding ARIA roles and attributes (WCAG 2.0 Level A, 2.1 AA) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests) |
+| `pct_pages_form_aria_best_practice` *(optional)* | SF accessibility | Pages with best-practice form or ARIA issues (no visible label, a role that does not suit the element, focusable content inside role=text, presentational elements that are not ignored) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required |
+
+Rule: `fail if pct_pages_form_aria_violation > 0.50`; `pass if pct_pages_form_aria_violation <= 0.10`
+
+**Structure & Navigation** (ACC-6 · I4 C3 E3 · tier Advanced, phase 1)
+
+| Metric | Origin | Definition |
+|---|---|---|
+| `pct_pages_structure_violation` | SF accessibility | Pages without a (valid) page language or a way to skip repeated blocks, with broken list or table markup, regions not scrollable by keyboard, zoom disabled, text spacing that cannot be adjusted or media that plays by itself (WCAG 2.0 A and AA, 2.1 AA) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests) |
+| `pct_pages_structure_best_practice` *(optional)* | SF accessibility | Pages with best-practice issues: landmarks, the heading order, one <h1>, empty headings, skip links, tabindex, zoom to 500%, table markup, a delayed meta refresh (AAA) or small touch targets (WCAG 2.2 AA) / the HTML pages with status 200 in the Internal export (the pages the Accessibility audit tests); reported, not required |
+
+Rule: `fail if pct_pages_structure_violation > 0.50`; `pass if pct_pages_structure_violation <= 0.10`

@@ -225,13 +225,25 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "details": null
   },
   {
-    "topic": "URL Structure",
-    "category": "site_structure",
+    "topic": "Mobile Parity",
+    "category": "crawling_indexing",
     "status": "pass",
-    "level": "advanced",
+    "level": "basic",
     "source": "topic_results",
     "action": "None",
-    "explanation": "[demo] pct_indexable_url_issue = 0.005, n_session_id_urls = 0.0; rule: pct_indexable_url_issue <= 0.02.",
+    "explanation": "[demo] pct_pages_mobile_desktop_diff = 0.005, pct_pages_less_on_mobile = 0.005, n_pages_viewport_missing = 0.0; rule: pct_pages_mobile_desktop_diff <= 0.02 and n_pages_viewport_missing == 0.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": null
+  },
+  {
+    "topic": "URL Structure",
+    "category": "site_structure",
+    "status": "fail",
+    "level": "advanced",
+    "source": "topic_results",
+    "action": "[demo] Fix the issues behind URL Structure until the pass condition holds.",
+    "explanation": "[demo] pct_indexable_url_issue = 0.03, n_session_id_urls = 1.0; rule: n_session_id_urls > 0.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -273,51 +285,85 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "details": null
   },
   {
-    "topic": "Core Web Vitals",
-    "category": "performance_mobile",
+    "topic": "Largest Contentful Paint",
+    "category": "pagespeed",
     "status": "pass",
     "level": "advanced",
     "source": "topic_results",
     "action": "None",
-    "explanation": "[demo] n_cwv_failed_mobile = 0.0, has_crux_origin = 1.0, is_cwv_from_lab = 0.0; rule: n_cwv_failed_mobile == 0.",
+    "explanation": "[demo] lcp_ms = 100.0, is_cwv_from_lab = 1.0, has_crux_origin = 1.0; rule: lcp_ms <= 2500.",
     "human_override": false,
     "not_applicable": false,
     "details": {
-      "n_cwv_failed_mobile": 0.0,
-      "has_crux_origin": 1.0,
-      "is_cwv_from_lab": 0.0,
       "lcp_ms": 2100.0,
-      "tbt_lab_ms": 120.0,
-      "inp_ms": 140.0,
-      "cls": 0.04,
-      "performance_score": 64.0,
+      "is_cwv_from_lab": 1.0,
+      "has_crux_origin": 0.0,
       "n_psi_pages": 180.0,
       "psi_render_blocking_ms": 1250.0,
-      "psi_unused_js_ms": 820.0,
-      "psi_js_execution_ms": 960.0,
-      "psi_main_thread_ms": 1600.0,
       "psi_unused_css_ms": 140.0,
       "psi_image_delivery_kb": 340.0,
       "psi_cache_kb": 120.0,
-      "psi_page_weight_kb": 2350.0,
+      "psi_font_display_ms": 0.0
+    }
+  },
+  {
+    "topic": "Interaction to Next Paint",
+    "category": "pagespeed",
+    "status": "pass",
+    "level": "advanced",
+    "source": "topic_results",
+    "action": "None",
+    "explanation": "[demo] is_inp_from_lab = 0.0, inp_ms = 1.0, tbt_lab_ms = 0.0; rule: (is_inp_from_lab == 0 and inp_ms <= 200) or (is_inp_from_lab == 1 and tbt_lab_ms <= 200).",
+    "human_override": false,
+    "not_applicable": false,
+    "details": {
+      "is_inp_from_lab": 1.0,
+      "tbt_lab_ms": 120.0,
+      "has_crux_origin": 0.0,
+      "n_psi_pages": 180.0,
+      "psi_unused_js_ms": 820.0,
+      "psi_js_execution_ms": 960.0,
+      "psi_main_thread_ms": 1600.0,
+      "psi_legacy_js_kb": 12.0,
       "psi_dom_size": 1400.0
     }
   },
   {
-    "topic": "Mobile Parity",
-    "category": "performance_mobile",
-    "status": "pass",
-    "level": "basic",
+    "topic": "Cumulative Layout Shift",
+    "category": "pagespeed",
+    "status": "fail",
+    "level": "advanced",
     "source": "topic_results",
-    "action": "None",
-    "explanation": "[demo] pct_pages_mobile_desktop_diff = 0.0, pct_pages_less_on_mobile = 0.03, n_pages_viewport_missing = 0.0; rule: pct_pages_mobile_desktop_diff <= 0.02 and n_pages_viewport_missing == 0.",
+    "action": "[demo] Fix the issues behind Cumulative Layout Shift until the pass condition holds.",
+    "explanation": "[demo] cls = 3.0, is_cwv_from_lab = 1.0, has_crux_origin = 0.0; rule: cls > 0.25.",
     "human_override": false,
     "not_applicable": false,
-    "details": null
+    "details": {
+      "cls": 0.31,
+      "is_cwv_from_lab": 1.0,
+      "has_crux_origin": 0.0,
+      "n_psi_pages": 180.0
+    }
+  },
+  {
+    "topic": "Performance Score",
+    "category": "pagespeed",
+    "status": "fail",
+    "level": "expert",
+    "source": "topic_results",
+    "action": "[demo] Fix the issues behind Performance Score until the pass condition holds.",
+    "explanation": "[demo] performance_score = 3.0, n_psi_pages = 3.0, psi_page_weight_kb = 0.0; rule: performance_score < 50.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": {
+      "performance_score": 38.0,
+      "n_psi_pages": 180.0,
+      "psi_page_weight_kb": 2350.0
+    }
   },
   {
     "topic": "Image Weight & Format",
-    "category": "performance_mobile",
+    "category": "pagespeed",
     "status": "warn",
     "level": "advanced",
     "source": "no_data_source",
@@ -330,11 +376,11 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
   {
     "topic": "Page Titles",
     "category": "onpage_content",
-    "status": "pass",
+    "status": "warn",
     "level": "basic",
     "source": "topic_results",
-    "action": "None",
-    "explanation": "[demo] n_indexable_missing_title = 0.0, pct_indexable_duplicate_title = 0.005, pct_indexable_title_over_561px = 0.005; rule: pct_indexable_duplicate_title <= 0.05 and pct_indexable_title_over_561px <= 0.20.",
+    "action": "[demo] Fix the issues behind Page Titles until the pass condition holds.",
+    "explanation": "[demo] n_indexable_missing_title = 0.0, pct_indexable_duplicate_title = 0.03, pct_indexable_title_over_561px = 0.97; rule: pass condition not met: pct_indexable_title_over_561px <= 0.20.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -342,11 +388,11 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
   {
     "topic": "Meta Descriptions",
     "category": "onpage_content",
-    "status": "warn",
+    "status": "fail",
     "level": "basic",
     "source": "topic_results",
     "action": "[demo] Fix the issues behind Meta Descriptions until the pass condition holds.",
-    "explanation": "[demo] pct_impressions_missing_or_duplicate_meta = 0.12; rule: pass condition not met: pct_impressions_missing_or_duplicate_meta <= 0.10.",
+    "explanation": "[demo] pct_impressions_missing_or_duplicate_meta = 0.97; rule: pct_impressions_missing_or_duplicate_meta > 0.30.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -366,11 +412,11 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
   {
     "topic": "Image Alt Text",
     "category": "onpage_content",
-    "status": "pass",
+    "status": "warn",
     "level": "basic",
-    "source": "topic_results",
-    "action": "None",
-    "explanation": "[demo] pct_content_images_missing_alt = 0.0; rule: pct_content_images_missing_alt <= 0.05.",
+    "source": "no_data_source",
+    "action": "[demo] Measure this topic: its metrics are missing.",
+    "explanation": "[demo] No metrics for this topic in the latest data.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -378,11 +424,11 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
   {
     "topic": "Duplicate & Thin Content",
     "category": "onpage_content",
-    "status": "warn",
+    "status": "pass",
     "level": "advanced",
     "source": "topic_results",
-    "action": "[demo] Fix the issues behind Duplicate & Thin Content until the pass condition holds.",
-    "explanation": "[demo] pct_indexable_duplicate_or_thin = 0.0, n_same_language_markets_unlinked = 1.0; rule: pass condition not met: n_same_language_markets_unlinked == 0.",
+    "action": "None",
+    "explanation": "[demo] pct_indexable_duplicate_or_thin = 0.0, n_same_language_markets_unlinked = 0.0; rule: pct_indexable_duplicate_or_thin <= 0.02 and n_same_language_markets_unlinked == 0.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -508,25 +554,13 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "details": null
   },
   {
-    "topic": "Accessibility",
-    "category": "onpage_content",
-    "status": "pass",
-    "level": "advanced",
-    "source": "topic_results",
-    "action": "None",
-    "explanation": "[demo] pct_pages_accessibility_good = 1.0, n_templates_high_violations = 0.0; rule: pct_pages_accessibility_good >= 0.90 and n_templates_high_violations == 0.",
-    "human_override": false,
-    "not_applicable": false,
-    "details": null
-  },
-  {
     "topic": "Referring Domain Strength",
     "category": "authority_entity",
     "status": "pass",
     "level": "champion",
     "source": "topic_results",
     "action": "None",
-    "explanation": "[demo] refdomains_vs_median_competitor = 3.0, refdomains_growth_12m = 100.0, domain_rating = 3.0; rule: refdomains_vs_median_competitor >= 1 and refdomains_growth_12m > 0.",
+    "explanation": "[demo] refdomains_vs_median_competitor = 10.0, refdomains_growth_12m = 1.0, domain_rating = 100.0; rule: refdomains_vs_median_competitor >= 1 and refdomains_growth_12m > 0.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -534,11 +568,11 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
   {
     "topic": "Fresh Authoritative Links",
     "category": "authority_entity",
-    "status": "warn",
+    "status": "pass",
     "level": "expert",
-    "source": "no_data_source",
-    "action": "[demo] Measure this topic: its metrics are missing.",
-    "explanation": "[demo] No metrics for this topic in the latest data.",
+    "source": "topic_results",
+    "action": "None",
+    "explanation": "[demo] n_new_refdomains_90d_5k = 10.0, median_competitor_new_refdomains_90d_5k = 3.0; rule: n_new_refdomains_90d_5k >= median_competitor_new_refdomains_90d_5k and n_new_refdomains_90d_5k >= 1.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -546,11 +580,11 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
   {
     "topic": "Link-Earning Pages",
     "category": "authority_entity",
-    "status": "warn",
+    "status": "fail",
     "level": "champion",
-    "source": "no_data_source",
-    "action": "[demo] Measure this topic: its metrics are missing.",
-    "explanation": "[demo] No metrics for this topic in the latest data.",
+    "source": "topic_results",
+    "action": "[demo] Fix the issues behind Link-Earning Pages until the pass condition holds.",
+    "explanation": "[demo] n_pages_10plus_refdomains = 3.0, median_competitor_pages_10plus = 1.0; rule: n_pages_10plus_refdomains < 5.",
     "human_override": false,
     "not_applicable": false,
     "details": null
@@ -758,6 +792,78 @@ export const SEO_DEMO_RESULTS: SpecialistResult[] = [
     "human_override": false,
     "not_applicable": false,
     "details": null
+  },
+  {
+    "topic": "WCAG Level A",
+    "category": "accessibility",
+    "status": "pass",
+    "level": "advanced",
+    "source": "topic_results",
+    "action": "None",
+    "explanation": "[demo] pct_pages_wcag_a_violation = 0.0, n_wcag_a_rules_failing = 3.0; rule: pct_pages_wcag_a_violation <= 0.10.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": null
+  },
+  {
+    "topic": "WCAG Level AA",
+    "category": "accessibility",
+    "status": "warn",
+    "level": "expert",
+    "source": "topic_results",
+    "action": "[demo] Fix the issues behind WCAG Level AA until the pass condition holds.",
+    "explanation": "[demo] pct_pages_wcag_aa_violation = 0.12, n_wcag_aa_rules_failing = 10.0, pct_pages_wcag22_aa_violation = 0.03; rule: pass condition not met: pct_pages_wcag_aa_violation <= 0.10.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": null
+  },
+  {
+    "topic": "Color Contrast",
+    "category": "accessibility",
+    "status": "pass",
+    "level": "advanced",
+    "source": "topic_results",
+    "action": "None",
+    "explanation": "[demo] pct_pages_contrast_violation = 0.03, pct_pages_contrast_aaa = 0.03; rule: pct_pages_contrast_violation <= 0.10.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": null
+  },
+  {
+    "topic": "Text Alternatives & Names",
+    "category": "accessibility",
+    "status": "fail",
+    "level": "advanced",
+    "source": "topic_results",
+    "action": "[demo] Fix the issues behind Text Alternatives & Names until the pass condition holds.",
+    "explanation": "[demo] pct_pages_unnamed_elements = 1.0, pct_pages_names_best_practice = 0.0; rule: pct_pages_unnamed_elements > 0.50.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": null
+  },
+  {
+    "topic": "Forms & ARIA",
+    "category": "accessibility",
+    "status": "pass",
+    "level": "expert",
+    "source": "topic_results",
+    "action": "None",
+    "explanation": "[demo] pct_pages_form_aria_violation = 0.0, pct_pages_form_aria_best_practice = 0.005; rule: pct_pages_form_aria_violation <= 0.10.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": null
+  },
+  {
+    "topic": "Structure & Navigation",
+    "category": "accessibility",
+    "status": "pass",
+    "level": "advanced",
+    "source": "topic_results",
+    "action": "None",
+    "explanation": "[demo] pct_pages_structure_violation = 0.03, pct_pages_structure_best_practice = 1.0; rule: pct_pages_structure_violation <= 0.10.",
+    "human_override": false,
+    "not_applicable": false,
+    "details": null
   }
 ];
 
@@ -766,31 +872,31 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
   "category_scores": [
     {
       "name": "crawling_indexing",
-      "score": 72.2,
-      "pass_rate": 66.7,
+      "score": 74.6,
+      "pass_rate": 69.2,
       "weight": 1.0
     },
     {
       "name": "site_structure",
-      "score": 71.4,
-      "pass_rate": 75.0,
+      "score": 50.0,
+      "pass_rate": 50.0,
       "weight": 1.0
     },
     {
-      "name": "performance_mobile",
-      "score": 100.0,
-      "pass_rate": 100.0,
+      "name": "pagespeed",
+      "score": 53.3,
+      "pass_rate": 50.0,
       "weight": 1.0
     },
     {
       "name": "onpage_content",
-      "score": 77.7,
-      "pass_rate": 64.3,
+      "score": 68.8,
+      "pass_rate": 58.3,
       "weight": 1.0
     },
     {
       "name": "authority_entity",
-      "score": 75.0,
+      "score": 68.4,
       "pass_rate": 50.0,
       "weight": 1.0
     },
@@ -799,9 +905,15 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "score": 62.5,
       "pass_rate": 33.3,
       "weight": 1.0
+    },
+    {
+      "name": "accessibility",
+      "score": 75.0,
+      "pass_rate": 66.7,
+      "weight": 1.0
     }
   ],
-  "platform_score": 76.5,
+  "platform_score": 64.7,
   "omnichannel_score": null,
   "maturity_label": "Basic",
   "quick_wins": [
@@ -828,6 +940,17 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "human_override": false
     },
     {
+      "topic": "Page Titles",
+      "category": "onpage_content",
+      "impact": 5.0,
+      "confidence": 4.0,
+      "ease": 4.0,
+      "priority_score": 8.67,
+      "action": "[demo] Fix the issues behind Page Titles until the pass condition holds.",
+      "explanation": "[demo] n_indexable_missing_title = 0.0, pct_indexable_duplicate_title = 0.03, pct_indexable_title_over_561px = 0.97; rule: pass condition not met: pct_indexable_title_over_561px <= 0.20.",
+      "human_override": false
+    },
+    {
       "topic": "HTTPS & Mixed Content",
       "category": "crawling_indexing",
       "impact": 5.0,
@@ -836,17 +959,6 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "priority_score": 8.0,
       "action": "[demo] Fix the issues behind HTTPS & Mixed Content until the pass condition holds.",
       "explanation": "[demo] n_http_urls = 0.0, n_http_not_single_301 = 3.0, n_mixed_content_pages = 100.0; rule: n_mixed_content_pages > 0.",
-      "human_override": false
-    },
-    {
-      "topic": "Duplicate & Thin Content",
-      "category": "onpage_content",
-      "impact": 5.0,
-      "confidence": 4.0,
-      "ease": 3.0,
-      "priority_score": 8.0,
-      "action": "[demo] Fix the issues behind Duplicate & Thin Content until the pass condition holds.",
-      "explanation": "[demo] pct_indexable_duplicate_or_thin = 0.0, n_same_language_markets_unlinked = 1.0; rule: pass condition not met: n_same_language_markets_unlinked == 0.",
       "human_override": false
     },
     {
@@ -872,6 +984,17 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "human_override": false
     },
     {
+      "topic": "Cumulative Layout Shift",
+      "category": "pagespeed",
+      "impact": 4.0,
+      "confidence": 4.0,
+      "ease": 3.0,
+      "priority_score": 7.33,
+      "action": "[demo] Fix the issues behind Cumulative Layout Shift until the pass condition holds.",
+      "explanation": "[demo] cls = 3.0, is_cwv_from_lab = 1.0, has_crux_origin = 0.0; rule: cls > 0.25.",
+      "human_override": false
+    },
+    {
       "topic": "Meta Descriptions",
       "category": "onpage_content",
       "impact": 4.0,
@@ -879,7 +1002,18 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "ease": 4.0,
       "priority_score": 7.33,
       "action": "[demo] Fix the issues behind Meta Descriptions until the pass condition holds.",
-      "explanation": "[demo] pct_impressions_missing_or_duplicate_meta = 0.12; rule: pass condition not met: pct_impressions_missing_or_duplicate_meta <= 0.10.",
+      "explanation": "[demo] pct_impressions_missing_or_duplicate_meta = 0.97; rule: pct_impressions_missing_or_duplicate_meta > 0.30.",
+      "human_override": false
+    },
+    {
+      "topic": "Text Alternatives & Names",
+      "category": "accessibility",
+      "impact": 4.0,
+      "confidence": 4.0,
+      "ease": 3.0,
+      "priority_score": 7.33,
+      "action": "[demo] Fix the issues behind Text Alternatives & Names until the pass condition holds.",
+      "explanation": "[demo] pct_pages_unnamed_elements = 1.0, pct_pages_names_best_practice = 0.0; rule: pct_pages_unnamed_elements > 0.50.",
       "human_override": false
     },
     {
@@ -892,28 +1026,6 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
       "action": "[demo] Measure this topic: its metrics are missing.",
       "explanation": "[demo] No metrics for this topic in the latest data.",
       "human_override": false
-    },
-    {
-      "topic": "AI Crawler Access",
-      "category": "ai_search_readiness",
-      "impact": 5.0,
-      "confidence": 2.0,
-      "ease": 3.0,
-      "priority_score": 6.67,
-      "action": "[demo] Measure this topic: its metrics are missing.",
-      "explanation": "[demo] No metrics for this topic in the latest data.",
-      "human_override": false
-    },
-    {
-      "topic": "Content Freshness",
-      "category": "onpage_content",
-      "impact": 3.0,
-      "confidence": 3.0,
-      "ease": 4.0,
-      "priority_score": 6.67,
-      "action": "[demo] Fix the issues behind Content Freshness until the pass condition holds.",
-      "explanation": "[demo] pct_key_pages_updated_12m = 0.5, pct_key_pages_fresh_and_dated = 1.0, n_date_refresh_without_change = 100.0; rule: n_date_refresh_without_change > 0.",
-      "human_override": false
     }
   ],
   "maturity": {
@@ -921,31 +1033,31 @@ export const SEO_DEMO_SCORING: ScoringOutput = {
     "basic_complete": false,
     "tiers": {
       "Basic": {
-        "pass": 9,
+        "pass": 7,
         "warn": 3,
-        "fail": 3,
-        "score": 0.7,
+        "fail": 4,
+        "score": 0.607,
         "reached": false
       },
       "Advanced": {
-        "pass": 13,
-        "warn": 2,
-        "fail": 2,
-        "score": 0.824,
+        "pass": 16,
+        "warn": 1,
+        "fail": 5,
+        "score": 0.75,
         "reached": false
       },
       "Expert": {
-        "pass": 1,
-        "warn": 1,
-        "fail": 2,
-        "score": 0.375,
+        "pass": 3,
+        "warn": 2,
+        "fail": 3,
+        "score": 0.5,
         "reached": false
       },
       "Champion": {
         "pass": 2,
         "warn": 1,
-        "fail": 0,
-        "score": 0.833,
+        "fail": 1,
+        "score": 0.625,
         "reached": false
       }
     },

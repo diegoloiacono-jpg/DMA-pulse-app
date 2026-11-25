@@ -69,11 +69,11 @@ Content,Readability Difficult,Opportunity,Low,Answer-First Content,onpage_conten
 Content,Readability Very Difficult,Opportunity,Low,Answer-First Content,onpage_content
 Images,Missing Alt Text,Issue,Low,Image Alt Text,onpage_content
 Images,Missing Alt Attribute,Issue,Low,Image Alt Text,onpage_content
-Images,Background Images,Warning,Low,Image Weight & Format,performance_mobile
-Images,Over 100 kb,Opportunity,Medium,Image Weight & Format,performance_mobile
-Images,Alt Text Over 100 Characters,Opportunity,Low,Image Weight & Format,performance_mobile
-Images,Incorrectly Sized Images,Opportunity,Low,Image Weight & Format,performance_mobile
-Images,Missing Size Attributes,Opportunity,Low,Image Weight & Format,performance_mobile
+Images,Background Images,Warning,Low,Image Weight & Format,pagespeed
+Images,Over 100 kb,Opportunity,Medium,Image Weight & Format,pagespeed
+Images,Alt Text Over 100 Characters,Opportunity,Low,Image Weight & Format,pagespeed
+Images,Incorrectly Sized Images,Opportunity,Low,Image Weight & Format,pagespeed
+Images,Missing Size Attributes,Opportunity,Low,Image Weight & Format,pagespeed
 Canonicals,Multiple Conflicting,Issue,High,Canonical Tags,crawling_indexing
 Canonicals,Non-Indexable Canonical,Issue,High,Canonical Tags,crawling_indexing
 Canonicals,Invalid Attribute In Annotation,Issue,High,Canonical Tags,crawling_indexing
@@ -92,7 +92,7 @@ Pagination,Pagination Loop,Issue,Low,Pagination,crawling_indexing
 Pagination,Sequence Error,Issue,Low,Pagination,crawling_indexing
 Pagination,Non-Indexable,Warning,High,Pagination,crawling_indexing
 Directives,Outside <head>,Issue,High,Head Integrity & File Size,crawling_indexing
-Directives,NoImageIndex,Issue,Low,Image Weight & Format,performance_mobile
+Directives,NoImageIndex,Issue,Low,Image Weight & Format,pagespeed
 Directives,Noindex,Warning,High,Index Coverage,crawling_indexing
 Directives,Nofollow,Warning,High,Internal Link Health,site_structure
 Directives,None,Warning,High,Index Coverage,crawling_indexing
@@ -150,160 +150,219 @@ Sitemaps,URLs Not In Sitemap,Issue,Medium,XML Sitemap Quality,crawling_indexing
 Sitemaps,Orphan URLs,Issue,Medium,Orphan Pages,site_structure
 Sitemaps,Non-Indexable URLs In Sitemap,Issue,Medium,XML Sitemap Quality,crawling_indexing
 Sitemaps,URLs In Multiple Sitemaps,Warning,Low,XML Sitemap Quality,crawling_indexing
-PageSpeed,Document Request Latency,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,LCP Request Discovery,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Render Blocking Requests,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Network Dependency Tree,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Use Efficient Cache Lifetimes,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Layout Shift Culprits,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Improve Image Delivery,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Forced Reflow,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Legacy JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Duplicated JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Avoid Enormous Network Payloads,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Minify CSS,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Minify JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Reduce Unused CSS,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Reduce Unused JavaScript,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Reduce JavaScript Execution Time,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Minimize Main-Thread Work,Opportunity,Medium,Core Web Vitals,performance_mobile
-PageSpeed,Optimize DOM Size,Opportunity,Low,Core Web Vitals,performance_mobile
-PageSpeed,Font Display,Opportunity,Low,Core Web Vitals,performance_mobile
-Mobile,Viewport Not Set,Issue,High,Mobile Parity,performance_mobile
-Mobile,Content Not Sized Correctly,Issue,High,Mobile Parity,performance_mobile
-Mobile,Illegible Font Size,Issue,High,Mobile Parity,performance_mobile
-Mobile,Contains Unsupported Plugins,Issue,High,Mobile Parity,performance_mobile
-Mobile,Target Size,Issue,Medium,Mobile Parity,performance_mobile
-Mobile,Mobile Alternate Link,Warning,High,Mobile Parity,performance_mobile
-Accessibility,Best Practice – Accesskey Attribute Value Must Be Unique,Warning,High,Accessibility,onpage_content
-Accessibility,Best Practice – Elements Must Not Have Tabindex Greater Than Zero,Warning,High,Accessibility,onpage_content
+PageSpeed,Document Request Latency,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,LCP Request Discovery,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,Render Blocking Requests,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,Network Dependency Tree,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,Use Efficient Cache Lifetimes,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,Layout Shift Culprits,Opportunity,Medium,Cumulative Layout Shift,pagespeed
+PageSpeed,Improve Image Delivery,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,Forced Reflow,Opportunity,Medium,Interaction to Next Paint,pagespeed
+PageSpeed,Legacy JavaScript,Opportunity,Medium,Interaction to Next Paint,pagespeed
+PageSpeed,Duplicated JavaScript,Opportunity,Medium,Interaction to Next Paint,pagespeed
+PageSpeed,Avoid Enormous Network Payloads,Opportunity,Medium,Performance Score,pagespeed
+PageSpeed,Minify CSS,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,Minify JavaScript,Opportunity,Medium,Interaction to Next Paint,pagespeed
+PageSpeed,Reduce Unused CSS,Opportunity,Medium,Largest Contentful Paint,pagespeed
+PageSpeed,Reduce Unused JavaScript,Opportunity,Medium,Interaction to Next Paint,pagespeed
+PageSpeed,Reduce JavaScript Execution Time,Opportunity,Medium,Interaction to Next Paint,pagespeed
+PageSpeed,Minimize Main-Thread Work,Opportunity,Medium,Interaction to Next Paint,pagespeed
+PageSpeed,Optimize DOM Size,Opportunity,Low,Interaction to Next Paint,pagespeed
+PageSpeed,Font Display,Opportunity,Low,Largest Contentful Paint,pagespeed
+Mobile,Viewport Not Set,Issue,High,Mobile Parity,crawling_indexing
+Mobile,Content Not Sized Correctly,Issue,High,Mobile Parity,crawling_indexing
+Mobile,Illegible Font Size,Issue,High,Mobile Parity,crawling_indexing
+Mobile,Contains Unsupported Plugins,Issue,High,Mobile Parity,crawling_indexing
+Mobile,Target Size,Issue,Medium,Mobile Parity,crawling_indexing
+Mobile,Mobile Alternate Link,Warning,High,Mobile Parity,crawling_indexing
+Accessibility,Best Practice – Accesskey Attribute Value Must Be Unique,Warning,High,Structure & Navigation,accessibility
+Accessibility,Best Practice – Elements Must Not Have Tabindex Greater Than Zero,Warning,High,Structure & Navigation,accessibility
 Accessibility,Best Practice – Elements Must Not Have Tabindex Greater Than Zero,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,Best Practice – ARIA Dialog & Alertdialog Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – ARIA Dialog & Alertdialog Require Accessible Name,Warning,High,Text Alternatives & Names,accessibility
 Accessibility,Best Practice – ARIA Dialog & Alertdialog Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,Best Practice – ARIA Treeitem Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – ARIA Treeitem Nodes Require Accessible Name,Warning,High,Text Alternatives & Names,accessibility
 Accessibility,Best Practice – ARIA Treeitem Nodes Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,Best Practice – Role=text Should Have No Focusable Descendants,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Role=text Should Have No Focusable Descendants,Warning,High,Forms & ARIA,accessibility
 Accessibility,Best Practice – Role=text Should Have No Focusable Descendants,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,Best Practice – Form Elements Should Have Visible Label,Warning,High,Accessibility,onpage_content
-Accessibility,Best Practice – Frames Should Be Tested With axe-core,Warning,High,Accessibility,onpage_content
-Accessibility,Best Practice – Scope Attribute Should Be Used Correctly On Tables,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Scrollable Region Requires Keyboard Access,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Required ARIA Attributes Must Be Provided,Warning,High,Accessibility,onpage_content
+Accessibility,Best Practice – Form Elements Should Have Visible Label,Warning,High,Forms & ARIA,accessibility
+Accessibility,Best Practice – Scope Attribute Should Be Used Correctly On Tables,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Scrollable Region Requires Keyboard Access,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Scrollable Region Requires Keyboard Access,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Required ARIA Attributes Must Be Provided,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Required ARIA Attributes Must Be Provided,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Required ARIA Attributes Must Be Provided,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Attribute Must Be Used As Specified For Role,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Values,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Values,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Values,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Values,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Names,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Names,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Names,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Attributes Require Valid Names,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Commands Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Commands Require Accessible Name,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – ARIA Commands Require Accessible Name,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Commands Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Input Fields Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Input Fields Require Accessible Name,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – ARIA Input Fields Require Accessible Name,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Input Fields Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Meter Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – ARIA Progressbar Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Meter Nodes Require Accessible Name,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – ARIA Meter Nodes Require Accessible Name,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – ARIA Progressbar Nodes Require Accessible Name,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – ARIA Progressbar Nodes Require Accessible Name,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Roles Must Be Contained By Required Parent,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Roles Require Valid Values,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Roles Require Valid Values,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – ARIA Roles Require Valid Values,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Roles Require Valid Values,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Toggle Fields Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – ARIA Tooltip Nodes Require Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Certain ARIA Roles Must Contain Specific Children,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Aria-braille Require Non-braille Equivalent,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Aria-braille Require Non-braille Equivalent,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Aria-braille Require Non-braille Equivalent,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Aria-hidden Elements Contains Focusable Elements,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Aria-hidden=true Must Not Be Used In <body>,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Elements Must Only Use Permitted ARIA Attributes,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Elements Must Use Allowed ARIA Attributes,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – IDs Used In ARIA & Labels Must Be Unique,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Page Requires Means To Bypass Repeated Blocks,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Form <input> Elements Require Labels,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Page Requires Means To Bypass Repeated Blocks,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Page Requires Means To Bypass Repeated Blocks,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Form <input> Elements Require Labels,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Form <input> Elements Require Labels,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Form <input> Elements Require Labels,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Frames Require Title Attribute,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Frames Require Unique Title Attribute,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Frames With Focusable Content Must Not Use tabindex=-1,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Page Must Contain <title>,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Frames Require Title Attribute,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Frames Require Title Attribute,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Frames Require Unique Title Attribute,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Frames Require Unique Title Attribute,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Frames With Focusable Content Must Not Use tabindex=-1,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Frames With Focusable Content Must Not Use tabindex=-1,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Page Must Contain <title>,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Page Must Contain <title>,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Page Must Contain <title>,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – HTML Element Lang Attribute Value Must Be Valid,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – HTML Element Requires Lang Attribute,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Image Button Requires Alternate Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – HTML Element Lang Attribute Value Must Be Valid,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – HTML Element Lang Attribute Value Must Be Valid,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – HTML Element Requires Lang Attribute,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – HTML Element Requires Lang Attribute,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Image Button Requires Alternate Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Image Button Requires Alternate Text,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Image Button Requires Alternate Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Images Require Alternate Text,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – <object> Elements Require Alternate Text,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Active <area> Elements Require Alternate Text,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Elements Marked role=img Require Alternate Text,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – SVG Images & Graphics Require Accessible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Images Require Alternate Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Images Require Alternate Text,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – <object> Elements Require Alternate Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – <object> Elements Require Alternate Text,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Active <area> Elements Require Alternate Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Active <area> Elements Require Alternate Text,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Elements Marked role=img Require Alternate Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Elements Marked role=img Require Alternate Text,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – SVG Images & Graphics Require Accessible Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – SVG Images & Graphics Require Accessible Text,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – SVG Images & Graphics Require Accessible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – <video> Elements Require <track> For Captions,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – <video> or <audio> Elements Must Not Auto-play,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Buttons Require Discernible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <video> Elements Require <track> For Captions,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – <video> Elements Require <track> For Captions,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – <video> or <audio> Elements Must Not Auto-play,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – <video> or <audio> Elements Must Not Auto-play,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Buttons Require Discernible Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Buttons Require Discernible Text,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Buttons Require Discernible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Input Buttons Require Discernible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Input Buttons Require Discernible Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Input Buttons Require Discernible Text,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Input Buttons Require Discernible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Links Require Discernible Text,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Links Require Discernible Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Links Require Discernible Text,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Links Require Discernible Text,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Links Must Be Distinguishable,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Select Element Requires Accessible Name,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Links Must Be Distinguishable,Warning,High,Color Contrast,accessibility
+Accessibility,WCAG 2.0 A – Links Must Be Distinguishable,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Select Element Requires Accessible Name,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Select Element Requires Accessible Name,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – Select Element Requires Accessible Name,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Summary Elements Require Discernible Text,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Deprecated <marquee> Element Must Not Be Used,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Interactive Controls Must Not Be Nested,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – List Items Must Be Contained In List Elements,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Lists Must Only Contain <li> Content Elements,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – <dt> & <dd> Elements Must Be Contained by <dl>,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Summary Elements Require Discernible Text,Warning,High,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Summary Elements Require Discernible Text,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Deprecated <marquee> Element Must Not Be Used,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Deprecated <marquee> Element Must Not Be Used,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Interactive Controls Must Not Be Nested,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Interactive Controls Must Not Be Nested,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – List Items Must Be Contained In List Elements,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – List Items Must Be Contained In List Elements,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Lists Must Only Contain <li> Content Elements,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Lists Must Only Contain <li> Content Elements,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – <dt> & <dd> Elements Must Be Contained by <dl>,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – <dt> & <dd> Elements Must Be Contained by <dl>,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups,Warning,High,WCAG Level A,accessibility
 Accessibility,WCAG 2.0 A – <dl> Must Only Have Ordered <dt> & <dd> Groups,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – <blink> Elements Deprecated & Must Not Be Used,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – <th> Element Requires Associated Data Cells,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Table Header Attr Must Refer To Cell In Same Table,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 AA – Meta Viewport Zoom & Scaling Disabled,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 AA – Lang Attribute Requires Valid Value,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 AA – Text Requires Higher Color Contrast to Background,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.0 AAA – Text Requires Higher Color Contrast Ratio,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly,Warning,High,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – <blink> Elements Deprecated & Must Not Be Used,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – <blink> Elements Deprecated & Must Not Be Used,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – <th> Element Requires Associated Data Cells,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – <th> Element Requires Associated Data Cells,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Table Header Attr Must Refer To Cell In Same Table,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Table Header Attr Must Refer To Cell In Same Table,Warning,High,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 AA – Meta Viewport Zoom & Scaling Disabled,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 AA – Meta Viewport Zoom & Scaling Disabled,Warning,High,WCAG Level AA,accessibility
+Accessibility,WCAG 2.0 AA – Lang Attribute Requires Valid Value,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 AA – Lang Attribute Requires Valid Value,Warning,High,WCAG Level AA,accessibility
+Accessibility,WCAG 2.0 AA – Text Requires Higher Color Contrast to Background,Warning,High,Color Contrast,accessibility
+Accessibility,WCAG 2.0 AA – Text Requires Higher Color Contrast to Background,Warning,High,WCAG Level AA,accessibility
+Accessibility,WCAG 2.0 AAA – Text Requires Higher Color Contrast Ratio,Warning,High,Color Contrast,accessibility
+Accessibility,WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly,Warning,High,Forms & ARIA,accessibility
+Accessibility,WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly,Warning,High,WCAG Level AA,accessibility
 Accessibility,WCAG 2.1 AA – Autocomplete Attribute Must Be Used Correctly,Warning,High,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.1 AA – Inline Text Spacing Must Be Adjustable,Warning,High,Accessibility,onpage_content
-Accessibility,WCAG 2.2 AA – Touch Targets Require Sufficient Size & Spacing,Warning,High,Accessibility,onpage_content
-Accessibility,Best Practice – Skip-link Target Should Exist & Be Focusable,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – All Page Content Must Be Contained By Landmarks,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Page Requires One Main Landmark,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Page Must Not Have More Than One Banner Landmark,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Banner Landmark Must Not Be In Another Landmark,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Page Must Not Have Multiple Contentinfo Landmarks,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Page Requires At Most One Main Landmark,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Complementary Landmarks & Asides Must Be Top Level,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Contentinfo Landmark Must Be Top Level Landmark,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Main Landmark Must Not Be In Another Landmark,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Landmarks Require Unique Role Or Accessible Name,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Page Must Contain <h1>,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Heading Levels Should Only Increase By One,Warning,Medium,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Form Field Must Not Have Multiple Label Elements,Warning,Medium,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – HTML Lang & XML Lang Value Should Match,Warning,Medium,Accessibility,onpage_content
-Accessibility,Best Practice – Ensure Elements Marked Presentational Are Ignored,Warning,Low,Accessibility,onpage_content
+Accessibility,WCAG 2.1 AA – Inline Text Spacing Must Be Adjustable,Warning,High,Structure & Navigation,accessibility
+Accessibility,WCAG 2.1 AA – Inline Text Spacing Must Be Adjustable,Warning,High,WCAG Level AA,accessibility
+Accessibility,WCAG 2.2 AA – Touch Targets Require Sufficient Size & Spacing,Warning,High,Structure & Navigation,accessibility
+Accessibility,Best Practice – Skip-link Target Should Exist & Be Focusable,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – All Page Content Must Be Contained By Landmarks,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Page Requires One Main Landmark,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Page Must Not Have More Than One Banner Landmark,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Banner Landmark Must Not Be In Another Landmark,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Page Must Not Have Multiple Contentinfo Landmarks,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Page Requires At Most One Main Landmark,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Complementary Landmarks & Asides Must Be Top Level,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Contentinfo Landmark Must Be Top Level Landmark,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Main Landmark Must Not Be In Another Landmark,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Landmarks Require Unique Role Or Accessible Name,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Page Must Contain <h1>,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,Best Practice – Heading Levels Should Only Increase By One,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – Form Field Must Not Have Multiple Label Elements,Warning,Medium,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Form Field Must Not Have Multiple Label Elements,Warning,Medium,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – HTML Lang & XML Lang Value Should Match,Warning,Medium,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 A – HTML Lang & XML Lang Value Should Match,Warning,Medium,WCAG Level A,accessibility
+Accessibility,Best Practice – Ensure Elements Marked Presentational Are Ignored,Warning,Low,Forms & ARIA,accessibility
 Accessibility,Best Practice – Ensure Elements Marked Presentational Are Ignored,Warning,Low,Agent Accessibility Tree,ai_search_readiness
-Accessibility,Best Practice – ARIA Role Should Be Appropriate For Element,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – ARIA Role Should Be Appropriate For Element,Warning,Low,Forms & ARIA,accessibility
 Accessibility,Best Practice – ARIA Role Should Be Appropriate For Element,Warning,Low,Agent Accessibility Tree,ai_search_readiness
-Accessibility,Best Practice – Headings Should Not Be Empty,Warning,Low,Accessibility,onpage_content
-Accessibility,Best Practice – Meta Viewport Should Allow Zoom & Scale Up to 500%,Warning,Low,Accessibility,onpage_content
-Accessibility,Best Practice – Alt Text Should Not Be Repeated As Text,Warning,Low,Accessibility,onpage_content
-Accessibility,Best Practice – Table Headers Require Discernible Text,Warning,Low,Accessibility,onpage_content
-Accessibility,Best Practice – Table With Identical Summary & Caption Text,Warning,Low,Accessibility,onpage_content
+Accessibility,Best Practice – Headings Should Not Be Empty,Warning,Low,Structure & Navigation,accessibility
+Accessibility,Best Practice – Meta Viewport Should Allow Zoom & Scale Up to 500%,Warning,Low,Structure & Navigation,accessibility
+Accessibility,Best Practice – Alt Text Should Not Be Repeated As Text,Warning,Low,Text Alternatives & Names,accessibility
+Accessibility,Best Practice – Table Headers Require Discernible Text,Warning,Low,Structure & Navigation,accessibility
+Accessibility,Best Practice – Table With Identical Summary & Caption Text,Warning,Low,Structure & Navigation,accessibility
 Accessibility,Best Practice – Table With Identical Summary & Caption Text,Warning,Low,Agent Accessibility Tree,ai_search_readiness
-Accessibility,WCAG 2.0 A – Deprecated ARIA Roles Must Not Be Used,Warning,Low,Accessibility,onpage_content
-Accessibility,WCAG 2.0 A – Server-Side Image Maps Must Not Be Used,Warning,Low,Accessibility,onpage_content
-Accessibility,WCAG 2.0 AAA – Delayed Meta Refresh Must Not Be Used,Warning,Low,Accessibility,onpage_content
-Accessibility,WCAG 2.0 AAA – Links With Same Accessible Name,Warning,Low,Accessibility,onpage_content
+Accessibility,WCAG 2.0 A – Deprecated ARIA Roles Must Not Be Used,Warning,Low,Forms & ARIA,accessibility
+Accessibility,WCAG 2.0 A – Deprecated ARIA Roles Must Not Be Used,Warning,Low,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 A – Server-Side Image Maps Must Not Be Used,Warning,Low,Text Alternatives & Names,accessibility
+Accessibility,WCAG 2.0 A – Server-Side Image Maps Must Not Be Used,Warning,Low,WCAG Level A,accessibility
+Accessibility,WCAG 2.0 AAA – Delayed Meta Refresh Must Not Be Used,Warning,Low,Structure & Navigation,accessibility
+Accessibility,WCAG 2.0 AAA – Links With Same Accessible Name,Warning,Low,Text Alternatives & Names,accessibility
 Analytics,Orphan URLs,Issue,Medium,Orphan Pages,site_structure
 Analytics,No GA Data,Warning,Low,Index Bloat,onpage_content
 Analytics,Non-Indexable with GA Data,Warning,Low,Index Coverage,crawling_indexing
-Search Console,Page is Not Mobile Friendly,Issue,High,Mobile Parity,performance_mobile
+Search Console,Page is Not Mobile Friendly,Issue,High,Mobile Parity,crawling_indexing
 Search Console,Orphan URLs,Issue,Medium,Orphan Pages,site_structure
 Search Console,"URL is on Google, But Has Issues",Issue,Medium,Index Coverage,crawling_indexing
 Search Console,Rich Result is Invalid,Issue,Medium,Structured Data,onpage_content

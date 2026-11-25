@@ -203,7 +203,7 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                           {cur.explanation || "—"}
                         </td>
                       </tr>
-                      {/* SEO: the parts of the topic under it (Core Web Vitals: LCP, INP/TBT, CLS, opportunities) */}
+                      {/* SEO: the metrics of the topic under it (PageSpeed: the value against Google's bands, opportunities) */}
                       {isSeo && r.details && (
                         <tr>
                           <td colSpan={5} className="px-3 pb-3 pt-0">

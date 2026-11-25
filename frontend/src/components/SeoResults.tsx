@@ -21,7 +21,9 @@ interface Props {
 export default function SeoResults({ output, specialistResults, brandName, benchmarkScore, onNewAudit }: Props) {
   const naCount = specialistResults.filter(r => r.not_applicable).length;
   const noData = specialistResults.filter(r => ["no_data_source", "missing", "parse_error"].includes(r.source)).length;
-  const cwv = specialistResults.find(r => r.topic === "Core Web Vitals" && r.details);
+  // The PageSpeed criteria (category pagespeed) with their metrics: one breakdown with all parts, and the status of each
+  const pagespeed = specialistResults.filter(r => r.category === "pagespeed" && r.details);
+  const psDetails = pagespeed.length ? Object.assign({}, ...pagespeed.map(r => r.details)) as Record<string, number> : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,12 +81,15 @@ export default function SeoResults({ output, specialistResults, brandName, bench
         </div>
       </div>
 
-      {cwv?.details && (
+      {psDetails && (
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Gauge className="h-4 w-4" /> PageSpeed: Core Web Vitals ({cwv.not_applicable ? "n/a" : cwv.status})
+            <Gauge className="h-4 w-4" /> PageSpeed
+            <span className="text-xs font-normal text-muted-foreground">
+              {pagespeed.map(r => `${r.topic} ${r.not_applicable ? "n/a" : r.status}`).join(" · ")}
+            </span>
           </h3>
-          <SeoPageSpeedBreakdown details={cwv.details} />
+          <SeoPageSpeedBreakdown details={psDetails} />
         </div>
       )}
 

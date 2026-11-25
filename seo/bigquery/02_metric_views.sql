@@ -213,7 +213,7 @@ UNION ALL
 SELECT audit_id, 'Source Citations', 'pct_info_pages_citing_dr50', AVG(IF(cites_dr50, 1.0, 0.0))
 FROM ah_cite GROUP BY audit_id
 
--- Core Web Vitals: in v_sf_metrics (the CrUX of the origin from psi_agentic, else the pages' PageSpeed data of the crawl)
+-- PageSpeed (LCP, INP, CLS, Performance Score): in v_sf_metrics (the CrUX of the origin from psi_agentic, else the pages' PageSpeed data of the crawl)
 
 -- Robots.txt Configuration and Error Handling: the site checks of the run
 UNION ALL
