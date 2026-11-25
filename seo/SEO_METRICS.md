@@ -13,8 +13,8 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 | SF extraction | Screaming Frog custom extraction or custom search on the same crawl |
 | SF accessibility | Screaming Frog accessibility audit (axe-core, JavaScript rendering) |
 | SF mobile | Second Screaming Frog crawl with the desktop user agent, compared URL by URL |
-| URL Inspection | Search Console URL Inspection API (via the Screaming Frog integration) |
-| GSC bulk | Search Console bulk data export (searchdata_url_impression, searchdata_site_impression) |
+| URL Inspection | Search Console URL Inspection API (via the Screaming Frog integration: Summary, Coverage, Google-Selected Canonical in the Internal export) |
+| GSC bulk | Search Console performance data: the bulk data export (searchdata_url_impression, searchdata_site_impression), or Clicks and Impressions per page from the Screaming Frog Search Console integration (Internal export) |
 | GSC API | Search Console API (sites.list, sitemaps) |
 | PSI | PageSpeed Insights API (CrUX field data + Lighthouse; category AGENTIC_BROWSING via the n8n workflow seo_pulse, PageSpeed branch) |
 | Ahrefs | Ahrefs API v3 (Site Explorer, Keywords, Management/Rank Tracker) |
@@ -22,7 +22,7 @@ Conventions: `pct_*` = decimal fraction (0.05 = 5%), `n_*` = count, `has_*` / `i
 | GA4 | GA4 BigQuery export and GA4 Admin API |
 | Intake | SEO intake form / brand context (Google Form -> Sheet -> BigQuery) |
 | LLM step | Fixed-prompt LLM scoring on the raw HTML (n8n workflow seo_pulse, LLM branch, OpenAI gpt-6-luna; same prompt, model and settings every run) |
-| Site check | Small HTTP check of a fixed URL (n8n workflow seo_pulse, e.g. the PageSpeed branch for llms.txt and ai-catalog.json, or SF list mode) |
+| Site check | Small HTTP check in the n8n workflow seo_pulse: llms.txt and ai-catalog.json (PageSpeed branch), and in every run robots.txt, a non-existent URL, URL variants and the HTML of up to 30 key pages of the form (section Site checks) |
 | Bing | Bing Webmaster Tools API |
 | Wikidata | Wikidata Query Service and the Wikipedia API (n8n workflow seo_pulse, Wikidata & Wikipedia branch) |
 | Bot test | robots.txt per AI bot and a fetch of the homepage and key pages with each bot's user agent (n8n workflow seo_pulse, verified-agent branch) |
@@ -112,7 +112,7 @@ Each topic has a fixed tier (`SEO_TOPIC_TIER`). `seo_maturity()` turns the statu
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `robots_status` | SF list | HTTP status code of /robots.txt |
+| `robots_status` | Site check | HTTP status code of /robots.txt (after redirects, as search engines follow them) |
 | `n_sitemap_lines` | Site check | Number of Sitemap: lines in robots.txt |
 | `n_blocked_key_urls` | SF crawl | URLs blocked by robots.txt that are in an XML sitemap or are the canonical target of a crawled page |
 | `n_blocked_render_resources` | SF crawl | CSS/JS files blocked by robots.txt that pages need to render (Pages with Blocked Resources) |
@@ -135,10 +135,10 @@ Rule: `fail if n_http_urls > 0 or n_mixed_content_pages > 0 or n_insecure_form_p
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_variants_tested` | SF list | URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
-| `n_variants_ok` | SF list | Variants that 301-redirect in one hop to, or canonicalise to, the preferred URL |
-| `n_variants_200_no_canonical` | SF list | Variants that return 200 without a canonical to the preferred URL |
-| `n_variants_chain_or_302` | SF list | Variants that reach the preferred URL through a redirect chain or a 302/307 |
+| `n_variants_tested` | Site check | URL variants tested (http, www or not, trailing slash, uppercase, index.html) of the homepage and up to 4 key pages of the pulse form; a host that does not exist is not tested |
+| `n_variants_ok` | Site check | Variants that 301/308-redirect in one hop to, or canonicalise to, the preferred URL (a 404 or 410 counts as ok for the trailing slash, uppercase and index.html variants: no duplicate) |
+| `n_variants_200_no_canonical` | Site check | Variants that return 200 without a canonical to the preferred URL |
+| `n_variants_chain_or_302` | Site check | Variants that redirect elsewhere first (a chain) or with a 302, 303 or 307 |
 
 Rule: `fail if n_variants_200_no_canonical > 0 or n_variants_chain_or_302 > 0`; `pass if n_variants_ok == n_variants_tested`
 
@@ -202,7 +202,7 @@ Note: Whether a 302/307 is a permanent move cannot be detected automatically: me
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `nonexistent_url_status` | SF list | HTTP status code of a random non-existent URL (first response, before redirects) |
+| `nonexistent_url_status` | Site check | HTTP status code of a random non-existent URL on the site (first response, before redirects) |
 | `n_soft_404_pages` | SF crawl | Content: Soft 404 Pages |
 | `pct_pages_linking_4xx` | SF crawl | Internal HTML pages linking to an internal 4xx URL (source_pages of Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML pages |
 
@@ -309,7 +309,7 @@ Note: Uppercase and Underscores are not counted: locale folders such as /nl_NL/ 
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_internal_links_to_3xx_4xx` | SF crawl | Internal link occurrences pointing to a 3xx or 4xx URL / all internal link occurrences |
+| `pct_internal_links_to_3xx_4xx` | SF crawl | Internal links (distinct source and destination) pointing to a 3xx or 4xx URL (the Inlinks exports of those issues) / the pages' Unique Outlinks summed |
 | `n_uncrawlable_nav_links` | SF crawl | Navigation links that are not crawlable <a href> links |
 | `n_links_to_localhost` | SF crawl | Outlinks to localhost |
 | `n_internal_nofollow` | SF crawl | Internal nofollow outlinks, including meta nofollow |
@@ -330,7 +330,7 @@ Rule: `fail if n_top100_depth_over_4 > 0`; `pass if n_top100_depth_over_3 == 0`
 | Metric | Origin | Definition |
 |---|---|---|
 | `pct_click_urls_orphaned` | SF crawl | URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the XML sitemaps) |
-| `pct_click_urls_weakly_linked` | SF crawl | URLs with clicks that are orphaned or only linked from non-indexable pages / URLs with clicks |
+| `pct_click_urls_weakly_linked` | SF crawl | URLs with clicks that are orphaned or only linked from non-indexable pages (Links: Non-Indexable Page Inlinks Only) / URLs with clicks (without Search Console access: URLs from the XML sitemaps) |
 
 Rule: `fail if pct_click_urls_weakly_linked > 0.05`; `pass if pct_click_urls_orphaned <= 0.01`
 
@@ -340,10 +340,30 @@ Rule: `fail if pct_click_urls_weakly_linked > 0.05`; `pass if pct_click_urls_orp
 
 | Metric | Origin | Definition |
 |---|---|---|
+| `n_cwv_failed_mobile` | PSI | Number of LCP, INP and CLS that fail on mobile (LCP > 2.5 s, INP > 200 ms, CLS > 0.1): the CrUX field data (p75) of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab data of the pages (Screaming Frog PageSpeed integration; TBT > 200 ms as the INP proxy) |
 | `has_crux_origin` *(optional)* | PSI | 1 if CrUX field data exists for the origin on mobile, else 0 |
-| `n_cwv_failed_mobile` | PSI | Number of LCP, INP and CLS that fail on mobile at p75 (LCP > 2.5 s, INP > 200 ms, CLS > 0.1); without CrUX data, from Lighthouse lab data on the key templates (TBT as the INP proxy) |
+| `is_cwv_from_lab` *(optional)* | PSI | 1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for the origin or the pages), else 0 |
+| `lcp_ms` *(optional)* | PSI | Largest Contentful Paint used for the count, in ms (p75 field data, else the median lab value of the pages) |
+| `inp_ms` *(optional)* | PSI | Interaction to Next Paint, p75 field data in ms (there is no lab value) |
+| `cls` *(optional)* | PSI | Cumulative Layout Shift used for the count (p75 field data, else the median lab value of the pages) |
+| `tbt_lab_ms` *(optional)* | PSI | Median Total Blocking Time of the pages (lab), in ms: the INP proxy without field data |
+| `performance_score` *(optional)* | PSI | Median Lighthouse Performance score of the pages (0-100, lab) |
+| `n_psi_pages` *(optional)* | PSI | Indexable pages with PageSpeed lab data in the crawl |
+| `psi_render_blocking_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity render-blocking requests (ms saved) (Screaming Frog PageSpeed integration) |
+| `psi_unused_js_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity unused JavaScript (ms saved) (Screaming Frog PageSpeed integration) |
+| `psi_unused_css_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity unused CSS (ms saved) (Screaming Frog PageSpeed integration) |
+| `psi_js_execution_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity JavaScript execution time (ms) (Screaming Frog PageSpeed integration) |
+| `psi_main_thread_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity main-thread work (ms) (Screaming Frog PageSpeed integration) |
+| `psi_font_display_ms` *(optional)* | PSI | Median per page of the PageSpeed opportunity font display (ms saved) (Screaming Frog PageSpeed integration) |
+| `psi_image_delivery_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity image delivery (kB saved) (Screaming Frog PageSpeed integration) |
+| `psi_cache_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity cache lifetimes (kB saved) (Screaming Frog PageSpeed integration) |
+| `psi_legacy_js_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity legacy JavaScript (kB saved) (Screaming Frog PageSpeed integration) |
+| `psi_page_weight_kb` *(optional)* | PSI | Median per page of the PageSpeed opportunity page weight (kB) (Screaming Frog PageSpeed integration) |
+| `psi_dom_size` *(optional)* | PSI | Median per page of the PageSpeed opportunity DOM size (elements) (Screaming Frog PageSpeed integration) |
 
 Rule: `fail if n_cwv_failed_mobile >= 2`; `warn if n_cwv_failed_mobile == 1`; `pass if n_cwv_failed_mobile == 0`
+
+Note: The overview shows LCP, INP (or TBT in the lab), CLS, the Performance score and the largest opportunities under the criterion. Lab data simulates a slow mobile connection and is stricter than real users.
 
 **Mobile Parity** (SEO-N3 · I5 C5 E3 · tier Basic, phase 1)
 
@@ -359,10 +379,10 @@ Rule: `fail if pct_pages_less_on_mobile > 0.10`; `pass if pct_pages_mobile_deskt
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_images_over_100kb` | SF crawl | Internal images above 100 KB / internal images crawled |
+| `pct_images_over_100kb` | SF crawl | Internal images above 100 KB (Images: Over 100 kb) / internal images in the Internal export (filter All) |
 | `n_unsized_lcp_images` | PSI | LCP images on the key templates without width and height |
 | `n_unsized_images_causing_cls` | PSI | Images without dimensions listed as layout-shift culprits on the key templates |
-| `pct_images_modern_format` *(optional)* | SF crawl | WebP/AVIF images / internal images (informational) |
+| `pct_images_modern_format` *(optional)* | SF crawl | WebP/AVIF images / internal images in the Internal export (filter All) (informational) |
 
 Rule: `fail if pct_images_over_100kb > 0.25 or n_unsized_images_causing_cls > 0`; `pass if pct_images_over_100kb <= 0.10 and n_unsized_lcp_images == 0`
 
@@ -401,7 +421,7 @@ Rule: `fail if pct_indexable_missing_h1 > 0.05 or pct_indexable_duplicate_h1 > 0
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_content_images_missing_alt` | SF crawl | Content images (inside <main>, excluding background images) without alt text or alt attribute / content images |
+| `pct_content_images_missing_alt` | SF crawl | Internal images without alt text or alt attribute (Images: Missing Alt Text, Missing Alt Attribute; background images are not in these issues) / internal images in the Internal export (filter All) |
 
 Rule: `fail if pct_content_images_missing_alt > 0.20`; `pass if pct_content_images_missing_alt <= 0.05`
 
@@ -436,7 +456,7 @@ Note: Spelling and grammar are not part of the pulse (slow crawl, brand names an
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_page_types_with_sd_errors` | SF crawl | Page types (templates) with structured data validation, parse or rich result validation errors |
+| `n_page_types_with_sd_errors` | SF crawl | Page types (Screaming Frog segments) with structured data validation, parse or rich result validation errors |
 | `pct_pages_expected_type` | SF crawl | Pages carrying the expected schema type for their page type (B2C: Product/Offer, Review, BreadcrumbList, LocalBusiness; B2B: Organization, Service or SoftwareApplication, Article, BreadcrumbList) / pages of those page types. Retired types are not counted. |
 
 Rule: `fail if n_page_types_with_sd_errors > 0 or pct_pages_expected_type < 0.60`; `pass if pct_pages_expected_type >= 0.90`
@@ -445,8 +465,8 @@ Rule: `fail if n_page_types_with_sd_errors > 0 or pct_pages_expected_type < 0.60
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_key_pages_updated_12m` | SF extraction | Key content pages (page types in the brand context) with a visible update date within 12 months / key content pages |
-| `pct_key_pages_fresh_and_dated` | SF extraction | Key content pages updated within 12 months whose visible date matches the schema dateModified / key content pages |
+| `pct_key_pages_updated_12m` | Site check | Key content pages (not the homepage) with a date (dateModified, a <time> element or datePublished) within 12 months / key content pages |
+| `pct_key_pages_fresh_and_dated` | Site check | Key content pages whose dateModified is within 12 months and matches the visible <time> date / key content pages |
 | `n_date_refresh_without_change` *(optional)* | SF crawl | Pages whose date changed since the previous crawl while the content hash did not |
 
 Rule: `fail if pct_key_pages_updated_12m < 0.40 or n_date_refresh_without_change > 0`; `pass if pct_key_pages_fresh_and_dated >= 0.70`
@@ -480,7 +500,7 @@ Rule: `fail if pct_info_pages_citing_dr50 < 0.20 or pct_external_links_broken > 
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_content_pages_list_or_table` | SF extraction | Content pages with a list or table inside <main> / content pages |
+| `pct_content_pages_list_or_table` | Site check | Key content pages of the pulse form (not the homepage) with a list or table inside <main> or <article> / those pages |
 
 Rule: `fail if pct_content_pages_list_or_table < 0.30`; `pass if pct_content_pages_list_or_table >= 0.60`
 
@@ -488,7 +508,7 @@ Rule: `fail if pct_content_pages_list_or_table < 0.30`; `pass if pct_content_pag
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_indexable_main_or_article` | SF extraction | Indexable pages that wrap their main content in <main> or <article> / indexable HTML URLs |
+| `pct_indexable_main_or_article` | Site check | Key pages of the pulse form (up to 30) that wrap their main content in <main>, role=main or <article> / key pages fetched |
 
 Rule: `fail if pct_indexable_main_or_article < 0.50`; `pass if pct_indexable_main_or_article >= 0.90`
 
@@ -496,8 +516,8 @@ Rule: `fail if pct_indexable_main_or_article < 0.50`; `pass if pct_indexable_mai
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `pct_editorial_with_author` | SF extraction | Editorial pages (blog and knowledge page types) showing an author name / editorial pages |
-| `pct_editorial_full_author` | SF extraction | Editorial pages with an author name, a link to an author page and Article author markup / editorial pages |
+| `pct_editorial_with_author` | Site check | Editorial pages among the key pages (Article markup, or a blog, news or knowledge URL) showing an author (byline, rel=author or Article author markup) / editorial pages |
+| `pct_editorial_full_author` | Site check | Editorial pages with a visible author, a link to an author page and Article author markup / editorial pages |
 
 Rule: `fail if pct_editorial_with_author < 0.40`; `pass if pct_editorial_full_author >= 0.80`
 
@@ -564,8 +584,8 @@ Rule: `fail if n_refdomains_dr20_to_4xx > 20`; `pass if n_refdomains_dr20_to_4xx
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `has_valid_org_markup_home` | SF crawl | 1 if the homepage carries valid Organization markup (name, logo, url), else 0 |
-| `n_sameas_profiles` | SF crawl | Number of sameAs profiles in that markup |
+| `has_valid_org_markup_home` | Site check | 1 if the homepage carries Organization markup (or a subtype) with name, logo and url, else 0 |
+| `n_sameas_profiles` | Site check | Number of sameAs profiles in that markup |
 
 Rule: `fail if has_valid_org_markup_home == 0`; `warn if n_sameas_profiles == 0`; `pass if n_sameas_profiles >= 3`
 
@@ -643,8 +663,8 @@ Rule: `fail if n_retrieval_bots_blocked_robots > 0 or n_retrieval_bot_fetches_bl
 
 | Metric | Origin | Definition |
 |---|---|---|
-| `n_top_urls_nosnippet_undocumented` | SF crawl | Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
-| `n_top_urls_partial_snippet_undocumented` | SF extraction | Top 100 URLs with data-nosnippet or a max-snippet limit that the brand context does not document |
+| `n_top_urls_nosnippet_undocumented` | SF crawl | Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the pulse form does not list as intentional (Meta Robots 1, X-Robots-Tag 1; without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks) |
+| `n_top_urls_partial_snippet_undocumented` | Site check | Key pages with data-nosnippet or a max-snippet limit that the pulse form does not list as intentional |
 
 Rule: `fail if n_top_urls_nosnippet_undocumented > 0`; `pass if n_top_urls_partial_snippet_undocumented == 0`
 

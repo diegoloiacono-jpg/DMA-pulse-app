@@ -444,6 +444,10 @@ def _fallback_stubs(category: str, reason: str, frame: pd.DataFrame, gaps: list[
     return out
 
 
+# Topics whose metrics the overview shows under the topic (the PageSpeed breakdown under Core Web Vitals)
+SEO_DETAIL_TOPICS = {"Core Web Vitals"}
+
+
 def run_seo_specialist(
     audit_data: dict[str, pd.DataFrame],
     brand_context: BrandContext | None,
@@ -474,7 +478,12 @@ def run_seo_specialist(
         except Exception as exc:
             logger.error("SEO specialist failed for category %s: %s", category, exc, exc_info=True)
             results = _fallback_stubs(category, str(exc), frame, category_gaps)
-        all_results.extend(seo_finalise_results(results, frame))
+        finalised = seo_finalise_results(results, frame)
+        for r in finalised:   # the parts of the topic for the overview (Core Web Vitals: LCP, INP/TBT, CLS, opportunities)
+            if r.topic in SEO_DETAIL_TOPICS:
+                metrics = rows.get(r.topic, {}).get("metrics") or {}
+                r.details = {k: float(v) for k, v in metrics.items() if v is not None and not pd.isna(v)} or None
+        all_results.extend(finalised)
 
     summary_lines = [
         f"  {r.category}/{r.topic}: {'n/a' if r.not_applicable else r.status}/{r.level} — {r.action[:80]}"

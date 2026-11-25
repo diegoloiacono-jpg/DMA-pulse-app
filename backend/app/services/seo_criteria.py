@@ -676,7 +676,7 @@ SEO_GSC_ONLY: set[str] = {'Index Coverage', 'Index Bloat'}
 # Data contract: topic -> metric -> (origin, definition). pct_* are fractions, has_*/is_* are 1/0.
 SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     'Robots.txt Configuration': {
-        'robots_status': ('SF list', 'HTTP status code of /robots.txt'),
+        'robots_status': ('Site check', 'HTTP status code of /robots.txt (after redirects, as search engines follow them)'),
         'n_sitemap_lines': ('Site check', 'Number of Sitemap: lines in robots.txt'),
         'n_blocked_key_urls': ('SF crawl', 'URLs blocked by robots.txt that are in an XML sitemap or are the canonical target of a crawled page'),
         'n_blocked_render_resources': ('SF crawl', 'CSS/JS files blocked by robots.txt that pages need to render (Pages with Blocked Resources)'),
@@ -689,10 +689,10 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'has_hsts': ('SF crawl', '1 if HTML pages send a Strict-Transport-Security header (Missing HSTS Header = 0), else 0'),
     },
     'Canonical Host & URL Variants': {
-        'n_variants_tested': ('SF list', 'URL variants tested (http/https, www/non-www, trailing slash, uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
-        'n_variants_ok': ('SF list', 'Variants that 301-redirect in one hop to, or canonicalise to, the preferred URL'),
-        'n_variants_200_no_canonical': ('SF list', 'Variants that return 200 without a canonical to the preferred URL'),
-        'n_variants_chain_or_302': ('SF list', 'Variants that reach the preferred URL through a redirect chain or a 302/307'),
+        'n_variants_tested': ('Site check', 'URL variants tested (http, www or not, trailing slash, uppercase, index.html) of the homepage and up to 4 key pages of the pulse form; a host that does not exist is not tested'),
+        'n_variants_ok': ('Site check', 'Variants that 301/308-redirect in one hop to, or canonicalise to, the preferred URL (a 404 or 410 counts as ok for the trailing slash, uppercase and index.html variants: no duplicate)'),
+        'n_variants_200_no_canonical': ('Site check', 'Variants that return 200 without a canonical to the preferred URL'),
+        'n_variants_chain_or_302': ('Site check', 'Variants that redirect elsewhere first (a chain) or with a 302, 303 or 307'),
     },
     'Server Stability': {
         'n_5xx_or_no_response': ('SF crawl', 'Internal URLs returning 5xx or no response'),
@@ -724,7 +724,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_temporary_redirects': ('SF crawl', 'Internal 302/307 redirects (informational: Gemini lists them for a manual check of permanent moves)'),
     },
     'Error Handling & Soft 404s': {
-        'nonexistent_url_status': ('SF list', 'HTTP status code of a random non-existent URL (first response, before redirects)'),
+        'nonexistent_url_status': ('Site check', 'HTTP status code of a random non-existent URL on the site (first response, before redirects)'),
         'n_soft_404_pages': ('SF crawl', 'Content: Soft 404 Pages'),
         'pct_pages_linking_4xx': ('SF crawl', 'Internal HTML pages linking to an internal 4xx URL (source_pages of Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML pages'),
     },
@@ -776,7 +776,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_session_id_urls': ('SF crawl', 'URLs containing session IDs (regex: sid=, sessionid, jsessionid, phpsessid)'),
     },
     'Internal Link Health': {
-        'pct_internal_links_to_3xx_4xx': ('SF crawl', 'Internal link occurrences pointing to a 3xx or 4xx URL / all internal link occurrences'),
+        'pct_internal_links_to_3xx_4xx': ('SF crawl', "Internal links (distinct source and destination) pointing to a 3xx or 4xx URL (the Inlinks exports of those issues) / the pages' Unique Outlinks summed"),
         'n_uncrawlable_nav_links': ('SF crawl', 'Navigation links that are not crawlable <a href> links'),
         'n_links_to_localhost': ('SF crawl', 'Outlinks to localhost'),
         'n_internal_nofollow': ('SF crawl', 'Internal nofollow outlinks, including meta nofollow'),
@@ -787,11 +787,29 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     },
     'Orphan Pages': {
         'pct_click_urls_orphaned': ('SF crawl', 'URLs with Search Console clicks (90 days) without internal inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search Console access: URLs from the XML sitemaps)'),
-        'pct_click_urls_weakly_linked': ('SF crawl', 'URLs with clicks that are orphaned or only linked from non-indexable pages / URLs with clicks'),
+        'pct_click_urls_weakly_linked': ('SF crawl', 'URLs with clicks that are orphaned or only linked from non-indexable pages (Links: Non-Indexable Page Inlinks Only) / URLs with clicks (without Search Console access: URLs from the XML sitemaps)'),
     },
     'Core Web Vitals': {
+        'n_cwv_failed_mobile': ('PSI', 'Number of LCP, INP and CLS that fail on mobile (LCP > 2.5 s, INP > 200 ms, CLS > 0.1): the CrUX field data (p75) of the origin (n8n PageSpeed check), else the median CrUX of the pages, else the median Lighthouse lab data of the pages (Screaming Frog PageSpeed integration; TBT > 200 ms as the INP proxy)'),
         'has_crux_origin': ('PSI', '1 if CrUX field data exists for the origin on mobile, else 0'),
-        'n_cwv_failed_mobile': ('PSI', 'Number of LCP, INP and CLS that fail on mobile at p75 (LCP > 2.5 s, INP > 200 ms, CLS > 0.1); without CrUX data, from Lighthouse lab data on the key templates (TBT as the INP proxy)'),
+        'is_cwv_from_lab': ('PSI', '1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for the origin or the pages), else 0'),
+        'lcp_ms': ('PSI', 'Largest Contentful Paint used for the count, in ms (p75 field data, else the median lab value of the pages)'),
+        'inp_ms': ('PSI', 'Interaction to Next Paint, p75 field data in ms (there is no lab value)'),
+        'cls': ('PSI', 'Cumulative Layout Shift used for the count (p75 field data, else the median lab value of the pages)'),
+        'tbt_lab_ms': ('PSI', 'Median Total Blocking Time of the pages (lab), in ms: the INP proxy without field data'),
+        'performance_score': ('PSI', 'Median Lighthouse Performance score of the pages (0-100, lab)'),
+        'n_psi_pages': ('PSI', 'Indexable pages with PageSpeed lab data in the crawl'),
+        'psi_render_blocking_ms': ('PSI', 'Median per page of the PageSpeed opportunity render-blocking requests (ms saved) (Screaming Frog PageSpeed integration)'),
+        'psi_unused_js_ms': ('PSI', 'Median per page of the PageSpeed opportunity unused JavaScript (ms saved) (Screaming Frog PageSpeed integration)'),
+        'psi_unused_css_ms': ('PSI', 'Median per page of the PageSpeed opportunity unused CSS (ms saved) (Screaming Frog PageSpeed integration)'),
+        'psi_js_execution_ms': ('PSI', 'Median per page of the PageSpeed opportunity JavaScript execution time (ms) (Screaming Frog PageSpeed integration)'),
+        'psi_main_thread_ms': ('PSI', 'Median per page of the PageSpeed opportunity main-thread work (ms) (Screaming Frog PageSpeed integration)'),
+        'psi_font_display_ms': ('PSI', 'Median per page of the PageSpeed opportunity font display (ms saved) (Screaming Frog PageSpeed integration)'),
+        'psi_image_delivery_kb': ('PSI', 'Median per page of the PageSpeed opportunity image delivery (kB saved) (Screaming Frog PageSpeed integration)'),
+        'psi_cache_kb': ('PSI', 'Median per page of the PageSpeed opportunity cache lifetimes (kB saved) (Screaming Frog PageSpeed integration)'),
+        'psi_legacy_js_kb': ('PSI', 'Median per page of the PageSpeed opportunity legacy JavaScript (kB saved) (Screaming Frog PageSpeed integration)'),
+        'psi_page_weight_kb': ('PSI', 'Median per page of the PageSpeed opportunity page weight (kB) (Screaming Frog PageSpeed integration)'),
+        'psi_dom_size': ('PSI', 'Median per page of the PageSpeed opportunity DOM size (elements) (Screaming Frog PageSpeed integration)'),
     },
     'Mobile Parity': {
         'pct_pages_mobile_desktop_diff': ('SF mobile', 'Pages whose word count, internal links or structured data differ more than 10% between the smartphone and desktop crawl / pages compared'),
@@ -799,10 +817,10 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_pages_viewport_missing': ('SF crawl', 'Pages without a viewport meta tag (Mobile: Viewport Not Set)'),
     },
     'Image Weight & Format': {
-        'pct_images_over_100kb': ('SF crawl', 'Internal images above 100 KB / internal images crawled'),
+        'pct_images_over_100kb': ('SF crawl', 'Internal images above 100 KB (Images: Over 100 kb) / internal images in the Internal export (filter All)'),
         'n_unsized_lcp_images': ('PSI', 'LCP images on the key templates without width and height'),
         'n_unsized_images_causing_cls': ('PSI', 'Images without dimensions listed as layout-shift culprits on the key templates'),
-        'pct_images_modern_format': ('SF crawl', 'WebP/AVIF images / internal images (informational)'),
+        'pct_images_modern_format': ('SF crawl', 'WebP/AVIF images / internal images in the Internal export (filter All) (informational)'),
     },
     'Page Titles': {
         'n_indexable_missing_title': ('SF crawl', 'Indexable URLs without a title'),
@@ -817,7 +835,7 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_indexable_duplicate_h1': ('SF crawl', 'Indexable URLs with a duplicate H1 / indexable HTML URLs'),
     },
     'Image Alt Text': {
-        'pct_content_images_missing_alt': ('SF crawl', 'Content images (inside <main>, excluding background images) without alt text or alt attribute / content images'),
+        'pct_content_images_missing_alt': ('SF crawl', 'Internal images without alt text or alt attribute (Images: Missing Alt Text, Missing Alt Attribute; background images are not in these issues) / internal images in the Internal export (filter All)'),
     },
     'Duplicate & Thin Content': {
         'pct_indexable_duplicate_or_thin': ('SF crawl', 'Indexable URLs that are exact duplicates, near duplicates (90% similarity) or low content pages / indexable HTML URLs'),
@@ -830,12 +848,12 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_placeholder_pages': ('SF crawl', 'Live pages with placeholder text (Content: Lorem Ipsum Placeholder)'),
     },
     'Structured Data': {
-        'n_page_types_with_sd_errors': ('SF crawl', 'Page types (templates) with structured data validation, parse or rich result validation errors'),
+        'n_page_types_with_sd_errors': ('SF crawl', 'Page types (Screaming Frog segments) with structured data validation, parse or rich result validation errors'),
         'pct_pages_expected_type': ('SF crawl', 'Pages carrying the expected schema type for their page type (B2C: Product/Offer, Review, BreadcrumbList, LocalBusiness; B2B: Organization, Service or SoftwareApplication, Article, BreadcrumbList) / pages of those page types. Retired types are not counted.'),
     },
     'Content Freshness': {
-        'pct_key_pages_updated_12m': ('SF extraction', 'Key content pages (page types in the brand context) with a visible update date within 12 months / key content pages'),
-        'pct_key_pages_fresh_and_dated': ('SF extraction', 'Key content pages updated within 12 months whose visible date matches the schema dateModified / key content pages'),
+        'pct_key_pages_updated_12m': ('Site check', 'Key content pages (not the homepage) with a date (dateModified, a <time> element or datePublished) within 12 months / key content pages'),
+        'pct_key_pages_fresh_and_dated': ('Site check', 'Key content pages whose dateModified is within 12 months and matches the visible <time> date / key content pages'),
         'n_date_refresh_without_change': ('SF crawl', 'Pages whose date changed since the previous crawl while the content hash did not'),
     },
     'Answer-First Content': {
@@ -849,14 +867,14 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'pct_external_links_broken': ('SF crawl', 'External URLs returning 4xx, 5xx or no response (the Response Codes issues) / external URLs (External export, tab External, filter All)'),
     },
     'Structured Formatting': {
-        'pct_content_pages_list_or_table': ('SF extraction', 'Content pages with a list or table inside <main> / content pages'),
+        'pct_content_pages_list_or_table': ('Site check', 'Key content pages of the pulse form (not the homepage) with a list or table inside <main> or <article> / those pages'),
     },
     'Semantic HTML': {
-        'pct_indexable_main_or_article': ('SF extraction', 'Indexable pages that wrap their main content in <main> or <article> / indexable HTML URLs'),
+        'pct_indexable_main_or_article': ('Site check', 'Key pages of the pulse form (up to 30) that wrap their main content in <main>, role=main or <article> / key pages fetched'),
     },
     'Author & E-E-A-T Signals': {
-        'pct_editorial_with_author': ('SF extraction', 'Editorial pages (blog and knowledge page types) showing an author name / editorial pages'),
-        'pct_editorial_full_author': ('SF extraction', 'Editorial pages with an author name, a link to an author page and Article author markup / editorial pages'),
+        'pct_editorial_with_author': ('Site check', 'Editorial pages among the key pages (Article markup, or a blog, news or knowledge URL) showing an author (byline, rel=author or Article author markup) / editorial pages'),
+        'pct_editorial_full_author': ('Site check', 'Editorial pages with a visible author, a link to an author page and Article author markup / editorial pages'),
     },
     'Accessibility': {
         'pct_pages_accessibility_good': ('SF accessibility', "Pages with accessibility score 'Good' / pages audited"),
@@ -882,8 +900,8 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_refdomains_dr20_to_4xx': ('Ahrefs', 'Referring domains with Domain Rating above 20 that link to 4xx URLs'),
     },
     'Organization Schema & sameAs': {
-        'has_valid_org_markup_home': ('SF crawl', '1 if the homepage carries valid Organization markup (name, logo, url), else 0'),
-        'n_sameas_profiles': ('SF crawl', 'Number of sameAs profiles in that markup'),
+        'has_valid_org_markup_home': ('Site check', '1 if the homepage carries Organization markup (or a subtype) with name, logo and url, else 0'),
+        'n_sameas_profiles': ('Site check', 'Number of sameAs profiles in that markup'),
     },
     'External Profiles': {
         'pct_expected_profiles_exist': ('Site check', 'Expected profiles (brand context; B2B: LinkedIn, Crunchbase, G2; B2C: Instagram, TikTok, comparison sites) that return 200 / expected profiles'),
@@ -919,8 +937,8 @@ SEO_TOPIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
         'n_training_bot_policy_mismatches': ('Bot test', 'Training bots (GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent, Bytespider) whose robots.txt rule for the tested URLs differs from the training-bot policy in the pulse form (allowed or blocked)'),
     },
     'Snippet Directives': {
-        'n_top_urls_nosnippet_undocumented': ('SF crawl', 'Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the brand context does not document (without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
-        'n_top_urls_partial_snippet_undocumented': ('SF extraction', 'Top 100 URLs with data-nosnippet or a max-snippet limit that the brand context does not document'),
+        'n_top_urls_nosnippet_undocumented': ('SF crawl', 'Top 100 URLs by Search Console clicks with nosnippet or max-snippet:0 that the pulse form does not list as intentional (Meta Robots 1, X-Robots-Tag 1; without Search Console access: the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog Unique Inlinks)'),
+        'n_top_urls_partial_snippet_undocumented': ('Site check', 'Key pages with data-nosnippet or a max-snippet limit that the pulse form does not list as intentional'),
     },
     'Agent Accessibility Tree': {
         'pct_pages_no_agent_violation': ('SF accessibility', 'Pages without a violation of the 33 axe rules used by the Lighthouse audit agent-accessibility-tree / pages audited'),
@@ -962,7 +980,7 @@ SEO_OPTIONAL_METRICS: dict[str, set[str]] = {
     'XML Sitemap Quality': {'n_sitemap_errors_gsc'},
     'Redirect Hygiene': {'n_temporary_redirects'},
     'Canonical Tags': {'n_top100_canonical_overridden'},
-    'Core Web Vitals': {'has_crux_origin'},
+    'Core Web Vitals': {'cls', 'has_crux_origin', 'inp_ms', 'is_cwv_from_lab', 'lcp_ms', 'n_psi_pages', 'performance_score', 'psi_cache_kb', 'psi_dom_size', 'psi_font_display_ms', 'psi_image_delivery_kb', 'psi_js_execution_ms', 'psi_legacy_js_kb', 'psi_main_thread_ms', 'psi_page_weight_kb', 'psi_render_blocking_ms', 'psi_unused_css_ms', 'psi_unused_js_ms', 'tbt_lab_ms'},
     'Image Weight & Format': {'pct_images_modern_format'},
     'Content Freshness': {'n_date_refresh_without_change'},
     'Referring Domain Strength': {'domain_rating'},
@@ -2110,7 +2128,8 @@ Can search engines and AI crawlers reach, render and index the site?
       sitemap URLs and render resources (Screaming Frog: Blocked by Robots.txt, Pages with
       Blocked Resources).
     Metrics:
-      robots_status: HTTP status code of /robots.txt
+      robots_status: HTTP status code of /robots.txt (after redirects, as search engines follow
+        them)
       n_sitemap_lines: Number of Sitemap: lines in robots.txt
       n_blocked_key_urls: URLs blocked by robots.txt that are in an XML sitemap or are the
         canonical target of a crawled page
@@ -2151,16 +2170,16 @@ Can search engines and AI crawlers reach, render and index the site?
       index.html) for the homepage and the top 50 URLs by Search Console clicks and crawl them
       in list mode.
     Metrics:
-      n_variants_tested: URL variants tested (http/https, www/non-www, trailing slash,
-        uppercase, index.html) for the homepage and the top 50 URLs by Search Console clicks
-        (without Search Console access: the top 50 key pages: indexable URLs in the XML sitemaps
-        ranked by Screaming Frog Unique Inlinks)
-      n_variants_ok: Variants that 301-redirect in one hop to, or canonicalise to, the preferred
-        URL
+      n_variants_tested: URL variants tested (http, www or not, trailing slash, uppercase,
+        index.html) of the homepage and up to 4 key pages of the pulse form; a host that does
+        not exist is not tested
+      n_variants_ok: Variants that 301/308-redirect in one hop to, or canonicalise to, the
+        preferred URL (a 404 or 410 counts as ok for the trailing slash, uppercase and
+        index.html variants: no duplicate)
       n_variants_200_no_canonical: Variants that return 200 without a canonical to the preferred
         URL
-      n_variants_chain_or_302: Variants that reach the preferred URL through a redirect chain or
-        a 302/307
+      n_variants_chain_or_302: Variants that redirect elsewhere first (a chain) or with a 302,
+        303 or 307
     Pass: 100% of variants 301-redirect in one hop to, or canonicalise to, the single preferred
       URL.
     Warn: between the pass and the fail condition.
@@ -2280,8 +2299,8 @@ Can search engines and AI crawlers reach, render and index the site?
     Audit logic: Request a random non-existent URL in list mode, and scan Content: Soft 404
       Pages and pages linking to Internal Client Error (4xx).
     Metrics:
-      nonexistent_url_status: HTTP status code of a random non-existent URL (first response,
-        before redirects)
+      nonexistent_url_status: HTTP status code of a random non-existent URL on the site (first
+        response, before redirects)
       n_soft_404_pages: Content: Soft 404 Pages
       pct_pages_linking_4xx: Internal HTML pages linking to an internal 4xx URL (source_pages of
         Response Codes: Internal Client Error (4XX), from its Inlinks export) / internal HTML
@@ -2504,8 +2523,9 @@ Do URLs and internal links make key pages easy to find and crawl?
       Uncrawlable Internal Outlinks, Pages Without Internal Outlinks, Outlinks To Localhost,
       Internal Nofollow Outlinks) and meta nofollow.
     Metrics:
-      pct_internal_links_to_3xx_4xx: Internal link occurrences pointing to a 3xx or 4xx URL /
-        all internal link occurrences
+      pct_internal_links_to_3xx_4xx: Internal links (distinct source and destination) pointing
+        to a 3xx or 4xx URL (the Inlinks exports of those issues) / the pages' Unique Outlinks
+        summed
       n_uncrawlable_nav_links: Navigation links that are not crawlable <a href> links
       n_links_to_localhost: Outlinks to localhost
       n_internal_nofollow: Internal nofollow outlinks, including meta nofollow
@@ -2543,7 +2563,8 @@ Do URLs and internal links make key pages easy to find and crawl?
         inlinks (Orphan URLs via sitemap, GSC and GA4) / URLs with clicks (without Search
         Console access: URLs from the XML sitemaps)
       pct_click_urls_weakly_linked: URLs with clicks that are orphaned or only linked from
-        non-indexable pages / URLs with clicks
+        non-indexable pages (Links: Non-Indexable Page Inlinks Only) / URLs with clicks (without
+        Search Console access: URLs from the XML sitemaps)
     Pass: At most 1% of URLs with organic clicks are orphaned.
     Warn: between the pass and the fail condition.
     Fail: More than 5% of URLs with clicks are orphaned or only linked from non-indexable pages.
@@ -2562,10 +2583,44 @@ Is the site fast and equivalent on mobile (Google indexes mobile-first)?
       per page type, mobile and desktop, and report unused JavaScript and JavaScript execution
       time per page type as the main levers for INP.
     Metrics:
+      n_cwv_failed_mobile: Number of LCP, INP and CLS that fail on mobile (LCP > 2.5 s, INP >
+        200 ms, CLS > 0.1): the CrUX field data (p75) of the origin (n8n PageSpeed check), else
+        the median CrUX of the pages, else the median Lighthouse lab data of the pages
+        (Screaming Frog PageSpeed integration; TBT > 200 ms as the INP proxy)
       has_crux_origin: 1 if CrUX field data exists for the origin on mobile, else 0
-      n_cwv_failed_mobile: Number of LCP, INP and CLS that fail on mobile at p75 (LCP > 2.5 s,
-        INP > 200 ms, CLS > 0.1); without CrUX data, from Lighthouse lab data on the key
-        templates (TBT as the INP proxy)
+      is_cwv_from_lab: 1 if LCP and CLS come from Lighthouse lab data (no CrUX field data for
+        the origin or the pages), else 0
+      lcp_ms: Largest Contentful Paint used for the count, in ms (p75 field data, else the
+        median lab value of the pages)
+      inp_ms: Interaction to Next Paint, p75 field data in ms (there is no lab value)
+      cls: Cumulative Layout Shift used for the count (p75 field data, else the median lab value
+        of the pages)
+      tbt_lab_ms: Median Total Blocking Time of the pages (lab), in ms: the INP proxy without
+        field data
+      performance_score: Median Lighthouse Performance score of the pages (0-100, lab)
+      n_psi_pages: Indexable pages with PageSpeed lab data in the crawl
+      psi_render_blocking_ms: Median per page of the PageSpeed opportunity render-blocking
+        requests (ms saved) (Screaming Frog PageSpeed integration)
+      psi_unused_js_ms: Median per page of the PageSpeed opportunity unused JavaScript (ms
+        saved) (Screaming Frog PageSpeed integration)
+      psi_unused_css_ms: Median per page of the PageSpeed opportunity unused CSS (ms saved)
+        (Screaming Frog PageSpeed integration)
+      psi_js_execution_ms: Median per page of the PageSpeed opportunity JavaScript execution
+        time (ms) (Screaming Frog PageSpeed integration)
+      psi_main_thread_ms: Median per page of the PageSpeed opportunity main-thread work (ms)
+        (Screaming Frog PageSpeed integration)
+      psi_font_display_ms: Median per page of the PageSpeed opportunity font display (ms saved)
+        (Screaming Frog PageSpeed integration)
+      psi_image_delivery_kb: Median per page of the PageSpeed opportunity image delivery (kB
+        saved) (Screaming Frog PageSpeed integration)
+      psi_cache_kb: Median per page of the PageSpeed opportunity cache lifetimes (kB saved)
+        (Screaming Frog PageSpeed integration)
+      psi_legacy_js_kb: Median per page of the PageSpeed opportunity legacy JavaScript (kB
+        saved) (Screaming Frog PageSpeed integration)
+      psi_page_weight_kb: Median per page of the PageSpeed opportunity page weight (kB)
+        (Screaming Frog PageSpeed integration)
+      psi_dom_size: Median per page of the PageSpeed opportunity DOM size (elements) (Screaming
+        Frog PageSpeed integration)
     Pass: The origin passes the Core Web Vitals assessment on mobile (LCP 2.5 s or less, INP 200
       ms or less, CLS 0.1 or less at p75). Sites without CrUX field data: Lighthouse lab data
       passes on the key templates.
@@ -2573,6 +2628,9 @@ Is the site fast and equivalent on mobile (Google indexes mobile-first)?
     Fail: The origin fails 2 or more of the 3 metrics on mobile.
     Python rule: fail if n_cwv_failed_mobile >= 2; warn if n_cwv_failed_mobile == 1; pass if
       n_cwv_failed_mobile == 0
+    Note: The overview shows LCP, INP (or TBT in the lab), CLS, the Performance score and the
+      largest opportunities under the criterion. Lab data simulates a slow mobile connection and
+      is stricter than real users.
 
 - Mobile Parity:
     Ref: SEO-N3 · Tier Basic · Impact 5 · Confidence 5 · Ease 3
@@ -2598,11 +2656,13 @@ Is the site fast and equivalent on mobile (Google indexes mobile-first)?
     Audit logic: Scan the Images filters (Over 100 KB, Missing Size Attributes, Incorrectly
       Sized Images) and the share of WebP/AVIF in the image crawl.
     Metrics:
-      pct_images_over_100kb: Internal images above 100 KB / internal images crawled
+      pct_images_over_100kb: Internal images above 100 KB (Images: Over 100 kb) / internal
+        images in the Internal export (filter All)
       n_unsized_lcp_images: LCP images on the key templates without width and height
       n_unsized_images_causing_cls: Images without dimensions listed as layout-shift culprits on
         the key templates
-      pct_images_modern_format: WebP/AVIF images / internal images (informational)
+      pct_images_modern_format: WebP/AVIF images / internal images in the Internal export
+        (filter All) (informational)
     Pass: At most 10% of images exceed 100 KB and 0 LCP images lack width and height.
     Warn: between the pass and the fail condition.
     Fail: More than 25% of images exceed 100 KB, or images without dimensions cause layout
@@ -2666,8 +2726,9 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Ref: SEO-20 · Tier Basic · Impact 3 · Confidence 4 · Ease 4
     Audit logic: Scan Images: Missing Alt Text and Missing Alt Attribute for content images.
     Metrics:
-      pct_content_images_missing_alt: Content images (inside <main>, excluding background
-        images) without alt text or alt attribute / content images
+      pct_content_images_missing_alt: Internal images without alt text or alt attribute (Images:
+        Missing Alt Text, Missing Alt Attribute; background images are not in these issues) /
+        internal images in the Internal export (filter All)
     Pass: At most 5% of content images lack alt text.
     Warn: between the pass and the fail condition.
     Fail: More than 20% of content images lack alt text.
@@ -2726,8 +2787,8 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
       Review, BreadcrumbList, LocalBusiness) vs. B2B (Organization, Service or
       SoftwareApplication, Article, BreadcrumbList).
     Metrics:
-      n_page_types_with_sd_errors: Page types (templates) with structured data validation, parse
-        or rich result validation errors
+      n_page_types_with_sd_errors: Page types (Screaming Frog segments) with structured data
+        validation, parse or rich result validation errors
       pct_pages_expected_type: Pages carrying the expected schema type for their page type (B2C:
         Product/Offer, Review, BreadcrumbList, LocalBusiness; B2B: Organization, Service or
         SoftwareApplication, Article, BreadcrumbList) / pages of those page types. Retired types
@@ -2745,10 +2806,10 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Audit logic: Extract the visible update date and the schema dateModified from key content
       pages (custom extraction) and calculate their age.
     Metrics:
-      pct_key_pages_updated_12m: Key content pages (page types in the brand context) with a
-        visible update date within 12 months / key content pages
-      pct_key_pages_fresh_and_dated: Key content pages updated within 12 months whose visible
-        date matches the schema dateModified / key content pages
+      pct_key_pages_updated_12m: Key content pages (not the homepage) with a date (dateModified,
+        a <time> element or datePublished) within 12 months / key content pages
+      pct_key_pages_fresh_and_dated: Key content pages whose dateModified is within 12 months
+        and matches the visible <time> date / key content pages
       n_date_refresh_without_change: Pages whose date changed since the previous crawl while the
         content hash did not
     Pass: At least 70% of key content pages were updated within 12 months and show a visible
@@ -2818,8 +2879,8 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Ref: AI-33 · Tier Advanced · Impact 2 · Confidence 2 · Ease 4
     Audit logic: Count tables and lists inside <main> per content page (custom extraction).
     Metrics:
-      pct_content_pages_list_or_table: Content pages with a list or table inside <main> /
-        content pages
+      pct_content_pages_list_or_table: Key content pages of the pulse form (not the homepage)
+        with a list or table inside <main> or <article> / those pages
     Pass: At least 60% of content pages contain a list or a table.
     Warn: between the pass and the fail condition.
     Fail: Less than 30% of content pages contain a list or a table.
@@ -2830,8 +2891,8 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Ref: AI-06 · Tier Advanced · Impact 1 · Confidence 2 · Ease 3
     Audit logic: Count <main>, <article> and <nav> elements per template (custom extraction).
     Metrics:
-      pct_indexable_main_or_article: Indexable pages that wrap their main content in <main> or
-        <article> / indexable HTML URLs
+      pct_indexable_main_or_article: Key pages of the pulse form (up to 30) that wrap their main
+        content in <main>, role=main or <article> / key pages fetched
     Pass: At least 90% of indexable pages wrap their main content in <main> or <article>.
     Warn: between the pass and the fail condition.
     Fail: Less than 50% of indexable pages use semantic content elements.
@@ -2843,9 +2904,10 @@ Are pages well marked up, unique, fresh and easy for search engines and AI assis
     Audit logic: Extract the author name, the author page link and the Article author markup on
       blog and knowledge pages (custom extraction).
     Metrics:
-      pct_editorial_with_author: Editorial pages (blog and knowledge page types) showing an
-        author name / editorial pages
-      pct_editorial_full_author: Editorial pages with an author name, a link to an author page
+      pct_editorial_with_author: Editorial pages among the key pages (Article markup, or a blog,
+        news or knowledge URL) showing an author (byline, rel=author or Article author markup) /
+        editorial pages
+      pct_editorial_full_author: Editorial pages with a visible author, a link to an author page
         and Article author markup / editorial pages
     Pass: At least 80% of editorial pages show an author with an author page and author markup.
     Warn: between the pass and the fail condition.
@@ -2960,8 +3022,8 @@ Is the brand an authoritative, well-linked and well-described entity on and off 
     Ref: AI-N1 · Tier Advanced · Impact 3 · Confidence 4 · Ease 3
     Audit logic: Extract the Organization markup from the homepage (name, logo, url, sameAs).
     Metrics:
-      has_valid_org_markup_home: 1 if the homepage carries valid Organization markup (name,
-        logo, url), else 0
+      has_valid_org_markup_home: 1 if the homepage carries Organization markup (or a subtype)
+        with name, logo and url, else 0
       n_sameas_profiles: Number of sameAs profiles in that markup
     Pass: Valid Organization markup with at least 3 sameAs profiles.
     Warn: sameAs is missing.
@@ -3101,11 +3163,11 @@ Can AI search bots and agents access, quote and act on the site?
       for data-nosnippet on indexable pages with traffic.
     Metrics:
       n_top_urls_nosnippet_undocumented: Top 100 URLs by Search Console clicks with nosnippet or
-        max-snippet:0 that the brand context does not document (without Search Console access:
-        the top 100 key pages: indexable URLs in the XML sitemaps ranked by Screaming Frog
-        Unique Inlinks)
-      n_top_urls_partial_snippet_undocumented: Top 100 URLs with data-nosnippet or a max-snippet
-        limit that the brand context does not document
+        max-snippet:0 that the pulse form does not list as intentional (Meta Robots 1,
+        X-Robots-Tag 1; without Search Console access: the top 100 key pages: indexable URLs in
+        the XML sitemaps ranked by Screaming Frog Unique Inlinks)
+      n_top_urls_partial_snippet_undocumented: Key pages with data-nosnippet or a max-snippet
+        limit that the pulse form does not list as intentional
     Pass: No unintended snippet restrictions on top URLs; any restriction matches the brand
       context.
     Warn: between the pass and the fail condition.

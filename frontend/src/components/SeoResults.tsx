@@ -1,10 +1,11 @@
-import { RotateCcw, TrendingUp, Zap } from "lucide-react";
+import { Gauge, RotateCcw, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ScoringOutput, SpecialistResult } from "@/lib/apiClient";
 import { categoryLabel } from "@/lib/categoryLabel";
 import RadarChart from "@/components/RadarChart";
 import ScoringCategoryBreakdown from "@/components/ScoringCategoryBreakdown";
 import SeoStaircase from "@/components/SeoStaircase";
+import SeoPageSpeedBreakdown from "@/components/SeoPageSpeedBreakdown";
 import { seoMaturityText } from "@/utils/seo";
 import { SEO_PLATFORM_LABEL } from "@/data/seoPulse";
 
@@ -20,6 +21,7 @@ interface Props {
 export default function SeoResults({ output, specialistResults, brandName, benchmarkScore, onNewAudit }: Props) {
   const naCount = specialistResults.filter(r => r.not_applicable).length;
   const noData = specialistResults.filter(r => ["no_data_source", "missing", "parse_error"].includes(r.source)).length;
+  const cwv = specialistResults.find(r => r.topic === "Core Web Vitals" && r.details);
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,6 +78,15 @@ export default function SeoResults({ output, specialistResults, brandName, bench
           </ol>
         </div>
       </div>
+
+      {cwv?.details && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Gauge className="h-4 w-4" /> PageSpeed: Core Web Vitals ({cwv.not_applicable ? "n/a" : cwv.status})
+          </h3>
+          <SeoPageSpeedBreakdown details={cwv.details} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">

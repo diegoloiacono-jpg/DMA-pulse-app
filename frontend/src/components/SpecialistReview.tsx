@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
 import { apiClient, SpecialistResult } from "@/lib/apiClient";
 import { categoryLabel } from "@/lib/categoryLabel";
 import { SEO_PLATFORM_ID } from "@/data/seoPulse";
+import SeoPageSpeedBreakdown from "@/components/SeoPageSpeedBreakdown";
 
 interface Props {
   auditId: string;
@@ -113,7 +114,8 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                   .map((r) => {
                     const cur = get(r);
                     return (
-                      <tr key={key(r)} className="hover:bg-muted/30">
+                      <Fragment key={key(r)}>
+                      <tr className="hover:bg-muted/30">
                         <td className="px-3 py-2 font-medium">{r.topic}</td>
 
                         {/* Status selector */}
@@ -201,6 +203,15 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                           {cur.explanation || "—"}
                         </td>
                       </tr>
+                      {/* SEO: the parts of the topic under it (Core Web Vitals: LCP, INP/TBT, CLS, opportunities) */}
+                      {isSeo && r.details && (
+                        <tr>
+                          <td colSpan={5} className="px-3 pb-3 pt-0">
+                            <SeoPageSpeedBreakdown details={r.details} />
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     );
                   })}
               </tbody>

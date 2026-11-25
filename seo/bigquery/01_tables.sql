@@ -19,6 +19,36 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.psi_agentic` (
   webmcp_registered_tools_score FLOAT64, webmcp_registered_tools_mode STRING,
   webmcp_schema_validity_score FLOAT64, webmcp_schema_validity_mode STRING,
   agent_tree_details STRING,                                 -- failing items, JSON (truncated)
+  error STRING,
+  -- CrUX field data of the origin (originLoadingExperience, p75; added 25 Nov 2026): NULL when the origin has none
+  crux_origin_lcp_ms INT64, crux_origin_inp_ms INT64, crux_origin_cls FLOAT64
+) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.psi_agentic` ADD COLUMN IF NOT EXISTS crux_origin_lcp_ms INT64,
+  ADD COLUMN IF NOT EXISTS crux_origin_inp_ms INT64, ADD COLUMN IF NOT EXISTS crux_origin_cls FLOAT64;
+
+-- Site checks (every run): robots.txt (status after redirects, Sitemap: lines), a non-existent URL and URL variants of the
+-- homepage and up to 4 key pages (first response, no redirects followed). One row per request.
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.site_checks` (
+  audit_id STRING, client STRING, market STRING, domain STRING, checked_at TIMESTAMP,
+  kind STRING,               -- robots, nonexistent, variant
+  page_url STRING,           -- variant: the preferred URL it should lead to
+  variant STRING,            -- variant: http, www, slash, uppercase, index
+  url STRING, http_status INT64, location STRING, canonical STRING,
+  outcome STRING,            -- variant: ok, 200_no_canonical, chain_or_302, other, not_tested
+  n_sitemap_lines INT64,     -- robots: Sitemap: lines
+  error STRING
+) PARTITION BY DATE(checked_at) CLUSTER BY client, domain;
+
+-- Page facts (every run): what the HTML of up to 30 key pages of the form shows, read from the full page
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.page_facts` (
+  audit_id STRING, client STRING, market STRING, domain STRING, fetched_at TIMESTAMP,
+  url STRING, is_home BOOL, http_status INT64,
+  has_main BOOL, has_article BOOL, list_or_table_in_main BOOL,
+  is_editorial BOOL,         -- Article markup, or a blog/news/knowledge URL
+  author_visible BOOL, author_link BOOL, article_author_markup BOOL,
+  date_modified DATE, date_published DATE, visible_date DATE,
+  has_data_nosnippet BOOL, max_snippet INT64, snippet_documented BOOL,
+  org_markup BOOL, org_markup_valid BOOL, n_sameas INT64,
   error STRING
 ) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
 
