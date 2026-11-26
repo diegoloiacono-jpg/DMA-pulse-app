@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, FileSpreadsheet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +21,10 @@ interface Props {
   skipValidation?: boolean;
   /** "seo": per-topic N/A in the status menu, and the level column shows the fixed tier */
   platformId?: string;
+  /** SEO: Excel export of one criterion (its rows: URLs, links, PageSpeed pages, n8n checks) or of the whole audit */
+  onExport?: (topic?: string) => void;
+  /** the export that is running: a topic, "all", or null */
+  exporting?: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -31,7 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const LEVEL_ORDER = ["basic", "advanced", "expert", "champion"] as const;
 
-export default function SpecialistReview({ auditId, results, onScoringStarted, skipValidation, platformId }: Props) {
+export default function SpecialistReview({ auditId, results, onScoringStarted, skipValidation, platformId, onExport, exporting }: Props) {
   const isSeo = platformId === SEO_PLATFORM_ID;
   const [edited, setEdited] = useState<Record<string, SpecialistResult>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -68,6 +72,14 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Specialist Review</h2>
+        <div className="flex items-center gap-2">
+        {onExport && (
+          <Button variant="outline" onClick={() => onExport()} disabled={!!exporting}
+                  title="Excel: an overview of all criteria and a tab per criterion with the URLs, links and checks behind it">
+            {exporting === "all" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+            Export all
+          </Button>
+        )}
         <Button onClick={handleApprove} disabled={submitting}>
           {submitting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -76,6 +88,7 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
           )}
           Approve & Score
         </Button>
+        </div>
       </div>
 
       {categories.map((cat) => {
@@ -116,7 +129,19 @@ export default function SpecialistReview({ auditId, results, onScoringStarted, s
                     return (
                       <Fragment key={key(r)}>
                       <tr className="hover:bg-muted/30">
-                        <td className="px-3 py-2 font-medium">{r.topic}</td>
+                        <td className="px-3 py-2 font-medium">
+                          <span className="inline-flex items-center gap-1.5">
+                            {r.topic}
+                            {onExport && (
+                              <button type="button" onClick={() => onExport(r.topic)} disabled={!!exporting}
+                                      className="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                                      title={`Excel export of ${r.topic}: the URLs, links and checks behind it`}
+                                      aria-label={`Export ${r.topic} to Excel`}>
+                                {exporting === r.topic ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                              </button>
+                            )}
+                          </span>
+                        </td>
 
                         {/* Status selector */}
                         <td className="px-3 py-2">

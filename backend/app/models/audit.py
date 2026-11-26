@@ -97,3 +97,5 @@ class AuditState(BaseModel):
     error: str | None = None
     created_at: datetime
     updated_at: datetime
+    # SEO audits only: the site, crawl and n8n run the audit read (for the Excel exports); None for other platforms
+    seo: SeoAuditParams | None = None

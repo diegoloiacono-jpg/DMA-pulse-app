@@ -10,6 +10,7 @@ import { seoMaturityText } from "@/utils/seo";
 import { apiClient, type AuditState, type ScoringOutput } from "@/lib/apiClient";
 import { DEFAULT_BRAND_CONTEXT, getEffectiveBenchmark } from "@/utils/brandContext";
 import { saveSeoSummary } from "@/utils/seoSummary";
+import { auditWorkbook, downloadWorkbook, topicWorkbook } from "@/utils/seoExport";
 import { SEO_CATEGORY_TOPIC_COUNT, SEO_PLATFORM_ID, SEO_PLATFORM_LABEL, SEO_TIERS } from "@/data/seoPulse";
 import { SEO_DEMO_BRAND_CONTEXT, SEO_DEMO_DOMAIN, SEO_DEMO_RESULTS, SEO_DEMO_SCORING } from "@/data/seoDemo";
 
@@ -26,6 +27,9 @@ export default function SeoAudit() {
   const [finalOutput, setFinalOutput] = useState<ScoringOutput | null>(null);
   // Demo: a sample audit that runs entirely in the browser (no backend), e.g. for Lovable
   const [demoMode, setDemoMode] = useState(false);
+  // Excel export running: a topic, "all", or null; and the last export error
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Client and site of the audit: from the pulse, filled in by the backend
   const brandName = auditState?.brand_context.brandName ?? "";
@@ -36,6 +40,7 @@ export default function SeoAudit() {
     setAuditState(null);
     setFinalOutput(null);
     setDemoMode(false);
+    setExportError(null);
   };
 
   const loadDemo = () => {
@@ -65,6 +70,28 @@ export default function SeoAudit() {
   };
 
   const benchmark = getEffectiveBenchmark(DEFAULT_BRAND_CONTEXT);
+
+  // Excel export of one criterion (topic) or the whole audit, from the crawl and n8n run the audit read. Not in the demo
+  // (no backend) and not for an audit started before the backend kept its sources.
+  const seoSources = !demoMode ? auditState?.seo ?? null : null;
+  const exportSeo = async (topic?: string) => {
+    if (!seoSources || !auditState) return;
+    setExporting(topic ?? "all");
+    setExportError(null);
+    try {
+      const data = await apiClient.getSeoExport(seoSources, topic ?? "", topic ? 50000 : 10000);
+      const meta = { brandName, site: data.site };
+      const day = new Date().toISOString().slice(0, 10);
+      const results = auditState.specialist_results;
+      if (topic) downloadWorkbook(topicWorkbook(topic, results.find(r => r.topic === topic), data, meta),
+                                  `SEO ${topic} - ${brandName || data.site} ${day}.xlsx`);
+      else downloadWorkbook(auditWorkbook(results, data, meta), `SEO audit - ${brandName || data.site} ${day}.xlsx`);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,12 +147,19 @@ export default function SeoAudit() {
             pipeline on generated metrics. Not a real client; changes in the reviews are not saved.
           </div>
         )}
+        {exportError && (
+          <div className="rounded-lg border border-score-poor/40 bg-score-poor/10 px-4 py-2 text-xs">
+            <span className="font-semibold">Export failed</span> — {exportError}
+          </div>
+        )}
         {auditState?.status === "specialist_review" && auditId ? (
           <SpecialistReview
             auditId={auditId}
             results={auditState.specialist_results}
             skipValidation={demoMode || !!auditState.scoring_output}
             platformId={SEO_PLATFORM_ID}
+            onExport={seoSources ? exportSeo : undefined}
+            exporting={exporting}
             onScoringStarted={() => {
               if (auditState.scoring_output) {
                 setAuditState(prev => prev ? { ...prev, status: "scoring_review" } : prev);
@@ -166,6 +200,8 @@ export default function SeoAudit() {
             brandName={brandName}
             benchmarkScore={benchmark}
             onNewAudit={resetAudit}
+            onExport={seoSources ? () => exportSeo() : undefined}
+            exporting={exporting === "all"}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

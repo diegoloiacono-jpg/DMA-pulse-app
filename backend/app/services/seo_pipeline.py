@@ -156,6 +156,7 @@ def extract_seo_audit_data(params: SeoAuditParams, brand_context: BrandContext |
         }
     else:
         crawl = crawls.iloc[0]
+        params.crawl_id = str(crawl["crawl_id"])   # the crawl the audit read (also when it took the latest), for the exports
         crawl_date = pd.Timestamp(crawl["crawl_date"]).date()
         crawl_summary = {
             "crawl_date": crawl_date.isoformat(),

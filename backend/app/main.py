@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
@@ -52,6 +53,9 @@ async def verify_google_token(request: Request, call_next):
     request.state.user_email = email
     return await call_next(request)
 
+
+# Compresses larger responses (the SEO Excel export can be several MB of JSON; Cloud Run answers up to 32 MB)
+app.add_middleware(GZipMiddleware, minimum_size=50_000)
 
 # CORSMiddleware added last = outermost layer, so it adds CORS headers to every response.
 app.add_middleware(

@@ -144,6 +144,35 @@ export interface AuditState {
   error: string | null;
   created_at: string;
   updated_at: string;
+  /** SEO audits: the site, crawl and n8n run the audit read (for the Excel exports). */
+  seo?: SeoAuditParams | null;
+}
+
+/** One tab of an SEO Excel export (backend services/seo_export.py). */
+export interface SeoExportSheet {
+  /** the criterion it is filed under (an issue of several criteria: the first of them) */
+  topic: string;
+  /** issue: a Screaming Frog issue with the columns of its file; links: its inlinks; pagespeed: per page; n8n: an n8n check */
+  kind: "issue" | "links" | "pagespeed" | "n8n";
+  /** issue and links: every criterion the issue counts for, its Screaming Frog tab, name, type and priority */
+  topics?: string[];
+  sf_category?: string;
+  issue?: string;
+  issue_type?: string | null;
+  issue_priority?: string | null;
+  title: string;
+  columns: string[];
+  rows: (string | number | boolean | null)[][];
+  /** all rows, of which `rows` holds the first `limit` */
+  total: number;
+}
+
+export interface SeoExport {
+  site: string;
+  crawl_id: string | null;
+  n8n_audit_id: string | null;
+  limit: number;
+  sheets: SeoExportSheet[];
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -218,6 +247,13 @@ export const apiClient = {
   getSeoSources(domain: string, market?: string) {
     const q = new URLSearchParams({ domain, ...(market ? { market } : {}) });
     return request<SeoSources>(`/api/audit/seo/sources?${q}`);
+  },
+
+  /** The rows behind one SEO criterion (topic) or all of them, for the Excel export. */
+  getSeoExport(seo: SeoAuditParams, topic = "", limit = 10000) {
+    const q = new URLSearchParams({ domain: seo.domain, crawl_id: seo.crawl_id ?? "", n8n_audit_id: seo.n8n_audit_id ?? "",
+                                    topic, limit: String(limit) });
+    return request<SeoExport>(`/api/audit/seo/export?${q}`);
   },
 
   /** True when the backend runs SEO audits (branch SEO-feature). Never throws and never reloads. */

@@ -15,6 +15,7 @@ from app.models.audit import (
 )
 from app.services.bigquery import resolve_account_id
 from app.services.data_extraction import extract_audit_data
+from app.services.seo_export import MAX_ROWS, export_sheets
 from app.services.seo_pipeline import (
     apply_pulse_context, extract_seo_audit_data, list_seo_sites, list_seo_sources, normalise_site, run_seo_specialist,
 )
@@ -64,6 +65,7 @@ def _run_seo_pipeline(audit_id: str, params: SeoAuditParams) -> None:
         # the brand context (client, business model, brand terms, competitors, intake) comes from the SEO pulse (the n8n form)
         state.brand_context = apply_pulse_context(state.brand_context, params)
         audit_data = extract_seo_audit_data(params, state.brand_context)
+        state.seo = params   # with the crawl it read, for the exports (GET /api/audit/seo/export)
 
         state.status = AuditStatus.SPECIALIST_RUNNING
         state.updated_at = _now()
@@ -118,6 +120,21 @@ def seo_sources(domain: str, market: str = "") -> dict:
         return list_seo_sources(domain, market)
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/seo/export")
+def seo_export(domain: str, crawl_id: str = "", n8n_audit_id: str = "", topic: str = "", limit: int = 10_000) -> dict:
+    """The rows behind the SEO criteria for the Excel exports: one criterion (topic) or all (topic empty), for the crawl
+    and n8n run of the audit (AuditState.seo). The browser builds the workbook. limit = rows per sheet (max MAX_ROWS)."""
+    site = normalise_site(domain)
+    if not site:
+        raise HTTPException(status_code=422, detail="The export needs a domain")
+    if not 1 <= limit <= MAX_ROWS:
+        raise HTTPException(status_code=422, detail=f"limit must be between 1 and {MAX_ROWS}")
+    try:
+        return export_sheets(site, crawl_id.strip(), n8n_audit_id.strip(), topic.strip(), limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SEO export could not be read from BigQuery: {exc}") from exc
 
 
 @router.post("/run", response_model=dict)
