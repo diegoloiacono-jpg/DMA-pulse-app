@@ -8,22 +8,24 @@ export const SEO_PLATFORM_LABEL = "SEO & AI Search";
 export const SEO_CATEGORY_LABELS: Record<string, string> = {
   "crawling_indexing": "Crawling & Indexing",
   "site_structure": "Site Structure & Internal Linking",
-  "performance_mobile": "Performance & Mobile",
+  "pagespeed": "PageSpeed",
   "onpage_content": "On-page & Content",
   "authority_entity": "Authority & Entity",
   "ai_search_readiness": "AI Readiness",
-  "agentic_commerce": "Agentic Commerce"
+  "agentic_commerce": "Agentic Commerce",
+  "accessibility": "Accessibility"
 };
 
 /** Number of topics per category. */
 export const SEO_CATEGORY_TOPIC_COUNT: Record<string, number> = {
-  "crawling_indexing": 16,
+  "crawling_indexing": 17,
   "site_structure": 4,
-  "performance_mobile": 3,
-  "onpage_content": 16,
+  "pagespeed": 5,
+  "onpage_content": 15,
   "authority_entity": 12,
   "ai_search_readiness": 5,
-  "agentic_commerce": 3
+  "agentic_commerce": 3,
+  "accessibility": 6
 };
 
 /** Maturity tiers, lowest first, with their definitions (sheet 'Maturity'). */
@@ -64,12 +66,15 @@ export const SEO_TOPIC_TIER: Record<string, string> = {
   "Parameters & Faceted Navigation": "Advanced",
   "Pagination": "Advanced",
   "Internationalisation": "Basic",
+  "Mobile Parity": "Basic",
   "URL Structure": "Advanced",
   "Internal Link Health": "Advanced",
   "Click Depth of Key Pages": "Advanced",
   "Orphan Pages": "Advanced",
-  "Core Web Vitals": "Advanced",
-  "Mobile Parity": "Basic",
+  "Largest Contentful Paint": "Advanced",
+  "Interaction to Next Paint": "Advanced",
+  "Cumulative Layout Shift": "Advanced",
+  "Performance Score": "Expert",
   "Image Weight & Format": "Advanced",
   "Page Titles": "Basic",
   "Meta Descriptions": "Basic",
@@ -86,7 +91,6 @@ export const SEO_TOPIC_TIER: Record<string, string> = {
   "Structured Formatting": "Advanced",
   "Semantic HTML": "Advanced",
   "Author & E-E-A-T Signals": "Expert",
-  "Accessibility": "Advanced",
   "Referring Domain Strength": "Champion",
   "Fresh Authoritative Links": "Expert",
   "Link-Earning Pages": "Champion",
@@ -106,7 +110,13 @@ export const SEO_TOPIC_TIER: Record<string, string> = {
   "WebMCP Readiness": "Champion",
   "Product Data Consistency": "Advanced",
   "Verified Agent Access": "Expert",
-  "Agent Catalog Access (UCP)": "Champion"
+  "Agent Catalog Access (UCP)": "Champion",
+  "WCAG Level A": "Advanced",
+  "WCAG Level AA": "Expert",
+  "Color Contrast": "Advanced",
+  "Text Alternatives & Names": "Advanced",
+  "Forms & ARIA": "Expert",
+  "Structure & Navigation": "Advanced"
 };
 
 /** Evaluated and shown, but left out of the scores while the standards mature. */

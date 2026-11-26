@@ -32,6 +32,8 @@ class SpecialistResult(BaseModel):
     human_override: bool = False
     # True when the category does not apply to the brand (e.g. Feeds for B2B)
     not_applicable: bool = False
+    # SEO only: the parts of the topic the overview shows under it (Core Web Vitals: LCP, INP/TBT, CLS, opportunities)
+    details: dict[str, float] | None = None
 
 
 class CategoryScore(BaseModel):

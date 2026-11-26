@@ -91,6 +91,8 @@ export interface SpecialistResult {
   explanation: string;
   human_override: boolean;
   not_applicable?: boolean;
+  /** SEO only: the parts of the topic the overview shows under it (Core Web Vitals: LCP, INP/TBT, CLS, opportunities) */
+  details?: Record<string, number> | null;
 }
 
 export interface CategoryScore {

@@ -19,6 +19,36 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.psi_agentic` (
   webmcp_registered_tools_score FLOAT64, webmcp_registered_tools_mode STRING,
   webmcp_schema_validity_score FLOAT64, webmcp_schema_validity_mode STRING,
   agent_tree_details STRING,                                 -- failing items, JSON (truncated)
+  error STRING,
+  -- CrUX field data of the origin (originLoadingExperience, p75; added 25 Nov 2026): NULL when the origin has none
+  crux_origin_lcp_ms INT64, crux_origin_inp_ms INT64, crux_origin_cls FLOAT64
+) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.psi_agentic` ADD COLUMN IF NOT EXISTS crux_origin_lcp_ms INT64,
+  ADD COLUMN IF NOT EXISTS crux_origin_inp_ms INT64, ADD COLUMN IF NOT EXISTS crux_origin_cls FLOAT64;
+
+-- Site checks (every run): robots.txt (status after redirects, Sitemap: lines), a non-existent URL and URL variants of the
+-- homepage and up to 4 key pages (first response, no redirects followed). One row per request.
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.site_checks` (
+  audit_id STRING, client STRING, market STRING, domain STRING, checked_at TIMESTAMP,
+  kind STRING,               -- robots, nonexistent, variant
+  page_url STRING,           -- variant: the preferred URL it should lead to
+  variant STRING,            -- variant: http, www, slash, uppercase, index
+  url STRING, http_status INT64, location STRING, canonical STRING,
+  outcome STRING,            -- variant: ok, 200_no_canonical, chain_or_302, other, not_tested
+  n_sitemap_lines INT64,     -- robots: Sitemap: lines
+  error STRING
+) PARTITION BY DATE(checked_at) CLUSTER BY client, domain;
+
+-- Page facts (every run): what the HTML of up to 15 key pages of the form shows, read from the full page
+CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.page_facts` (
+  audit_id STRING, client STRING, market STRING, domain STRING, fetched_at TIMESTAMP,
+  url STRING, is_home BOOL, http_status INT64,
+  has_main BOOL, has_article BOOL, list_or_table_in_main BOOL,
+  is_editorial BOOL,         -- Article markup, or a blog/news/knowledge URL
+  author_visible BOOL, author_link BOOL, article_author_markup BOOL,
+  date_modified DATE, date_published DATE, visible_date DATE,
+  has_data_nosnippet BOOL, max_snippet INT64, snippet_documented BOOL,
+  org_markup BOOL, org_markup_valid BOOL, n_sameas INT64,
   error STRING
 ) PARTITION BY DATE(fetched_at) CLUSTER BY client, domain;
 
@@ -117,10 +147,17 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.pulse_runs` (
   business_model STRING,      -- B2B, B2C or D2C
   online_sales BOOL, wikipedia_notable BOOL,
   training_bots STRING,       -- intended policy for AI training bots: allow or block
-  nosnippet_pages STRING      -- URLs or paths where nosnippet/max-snippet is intentional, one per line
+  nosnippet_pages STRING,     -- URLs or paths where nosnippet/max-snippet is intentional, one per line
+  view_key STRING,            -- the random key of the results page link: the page shows the progress while the run is busy
+  site_reachable BOOL,        -- did the homepage answer n8n at the start? FALSE = n8n's own requests to the site were skipped
+  site_error STRING           -- why not (timeout, connection refused, DNS)
 ) PARTITION BY DATE(started_at) CLUSTER BY domain;
 -- Added on 3 Nov 2026, for a table made before
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS brand_terms STRING, ADD COLUMN IF NOT EXISTS competitors STRING;
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS business_model STRING, ADD COLUMN IF NOT EXISTS online_sales BOOL,
   ADD COLUMN IF NOT EXISTS wikipedia_notable BOOL,
   ADD COLUMN IF NOT EXISTS training_bots STRING, ADD COLUMN IF NOT EXISTS nosnippet_pages STRING;
+-- Added on 25 Nov 2026: the progress on the results page
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS view_key STRING;
+-- Added on 25 Nov 2026: the reachability check at the start of a run
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.pulse_runs` ADD COLUMN IF NOT EXISTS site_reachable BOOL, ADD COLUMN IF NOT EXISTS site_error STRING;

@@ -69,6 +69,15 @@ ah_cite AS (
   SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.ahrefs_citations`
   WHERE error IS NULL AND cites_dr50 IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, url ORDER BY fetched_at DESC) = 1
+),
+sc AS (
+  SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.site_checks`
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, kind, IFNULL(url, '') ORDER BY checked_at DESC) = 1
+),
+pf AS (
+  SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.page_facts`
+  WHERE error IS NULL AND http_status = 200
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY audit_id, url ORDER BY fetched_at DESC) = 1
 )
 
 -- Agent Accessibility Tree: key templates where the Lighthouse audit does not fully pass
@@ -140,6 +149,13 @@ UNION ALL
 SELECT audit_id, 'AI Crawler Access', 'n_retrieval_bot_fetches_blocked', CAST(COUNTIF(blocked) AS FLOAT64)
 FROM bots WHERE bot_type IN ('search', 'user') AND http_status IS NOT NULL
 GROUP BY audit_id
+-- training bots whose robots.txt rule differs from the training-bot policy of the pulse form (pulse_runs.training_bots)
+UNION ALL
+SELECT b.audit_id, 'AI Crawler Access', 'n_training_bot_policy_mismatches',
+       CAST(COUNT(DISTINCT IF(b.robots_allowed != (r.training_bots = 'allow'), b.bot, NULL)) AS FLOAT64)
+FROM bots AS b JOIN `YOUR_GCP_PROJECT.seo_raw.pulse_runs` AS r ON r.audit_id = b.audit_id
+WHERE b.bot_type = 'training' AND b.robots_allowed IS NOT NULL AND r.training_bots IN ('allow', 'block')
+GROUP BY b.audit_id
 
 -- Verified Agent Access: product, cart and checkout URLs where the signed agent got a block or challenge
 UNION ALL
@@ -195,4 +211,71 @@ SELECT audit_id, 'Broken Backlinks', 'n_refdomains_dr20_to_4xx', CAST(n_refdomai
 FROM ah WHERE call = 'broken' AND role = 'client' AND n_refdomains_dr20_to_4xx IS NOT NULL
 UNION ALL
 SELECT audit_id, 'Source Citations', 'pct_info_pages_citing_dr50', AVG(IF(cites_dr50, 1.0, 0.0))
-FROM ah_cite GROUP BY audit_id;
+FROM ah_cite GROUP BY audit_id
+
+-- PageSpeed (LCP, INP, CLS, Performance Score): in v_sf_metrics (the CrUX of the origin from psi_agentic, else the pages' PageSpeed data of the crawl)
+
+-- Robots.txt Configuration and Error Handling: the site checks of the run
+UNION ALL
+SELECT audit_id, 'Robots.txt Configuration', 'robots_status', CAST(http_status AS FLOAT64)
+FROM sc WHERE kind = 'robots' AND http_status IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Robots.txt Configuration', 'n_sitemap_lines', CAST(n_sitemap_lines AS FLOAT64)
+FROM sc WHERE kind = 'robots' AND http_status = 200 AND n_sitemap_lines IS NOT NULL
+UNION ALL
+SELECT audit_id, 'Error Handling & Soft 404s', 'nonexistent_url_status', CAST(http_status AS FLOAT64)
+FROM sc WHERE kind = 'nonexistent' AND http_status IS NOT NULL
+
+-- Canonical Host & URL Variants: the variants of the homepage and up to 4 key pages (first response)
+UNION ALL
+SELECT audit_id, 'Canonical Host & URL Variants', 'n_variants_tested', CAST(COUNTIF(outcome != 'not_tested') AS FLOAT64)
+FROM sc WHERE kind = 'variant' GROUP BY audit_id
+UNION ALL
+SELECT audit_id, 'Canonical Host & URL Variants', 'n_variants_ok', CAST(COUNTIF(outcome = 'ok') AS FLOAT64)
+FROM sc WHERE kind = 'variant' GROUP BY audit_id HAVING COUNTIF(outcome != 'not_tested') > 0
+UNION ALL
+SELECT audit_id, 'Canonical Host & URL Variants', 'n_variants_200_no_canonical', CAST(COUNTIF(outcome = '200_no_canonical') AS FLOAT64)
+FROM sc WHERE kind = 'variant' GROUP BY audit_id HAVING COUNTIF(outcome != 'not_tested') > 0
+UNION ALL
+SELECT audit_id, 'Canonical Host & URL Variants', 'n_variants_chain_or_302', CAST(COUNTIF(outcome = 'chain_or_302') AS FLOAT64)
+FROM sc WHERE kind = 'variant' GROUP BY audit_id HAVING COUNTIF(outcome != 'not_tested') > 0
+
+-- Organization Schema & sameAs: the homepage's markup
+UNION ALL
+SELECT audit_id, 'Organization Schema & sameAs', 'has_valid_org_markup_home', IF(LOGICAL_OR(org_markup_valid), 1.0, 0.0)
+FROM pf WHERE is_home GROUP BY audit_id
+UNION ALL
+SELECT audit_id, 'Organization Schema & sameAs', 'n_sameas_profiles', CAST(MAX(IF(org_markup, n_sameas, 0)) AS FLOAT64)
+FROM pf WHERE is_home GROUP BY audit_id
+
+-- Semantic HTML and Structured Formatting: the key pages of the form
+UNION ALL
+SELECT audit_id, 'Semantic HTML', 'pct_indexable_main_or_article', AVG(IF(has_main OR has_article, 1.0, 0.0))
+FROM pf GROUP BY audit_id
+UNION ALL
+SELECT audit_id, 'Structured Formatting', 'pct_content_pages_list_or_table', AVG(IF(list_or_table_in_main, 1.0, 0.0))
+FROM pf WHERE NOT is_home GROUP BY audit_id
+
+-- Author & E-E-A-T Signals: the editorial pages among them (no row without editorial pages)
+UNION ALL
+SELECT audit_id, 'Author & E-E-A-T Signals', 'pct_editorial_with_author', AVG(IF(author_visible OR article_author_markup, 1.0, 0.0))
+FROM pf WHERE is_editorial GROUP BY audit_id
+UNION ALL
+SELECT audit_id, 'Author & E-E-A-T Signals', 'pct_editorial_full_author', AVG(IF(author_visible AND author_link AND article_author_markup, 1.0, 0.0))
+FROM pf WHERE is_editorial GROUP BY audit_id
+
+-- Content Freshness: content pages (not the homepage) updated within 12 months, and whose visible date matches dateModified
+UNION ALL
+SELECT audit_id, 'Content Freshness', 'pct_key_pages_updated_12m',
+       AVG(IF(COALESCE(date_modified, visible_date, date_published) >= DATE_SUB(DATE(fetched_at), INTERVAL 12 MONTH), 1.0, 0.0))
+FROM pf WHERE NOT is_home GROUP BY audit_id
+UNION ALL
+SELECT audit_id, 'Content Freshness', 'pct_key_pages_fresh_and_dated',
+       AVG(IF(date_modified >= DATE_SUB(DATE(fetched_at), INTERVAL 12 MONTH) AND visible_date = date_modified, 1.0, 0.0))
+FROM pf WHERE NOT is_home GROUP BY audit_id
+
+-- Snippet Directives: key pages with data-nosnippet or a max-snippet limit that the pulse form does not list as intentional
+UNION ALL
+SELECT audit_id, 'Snippet Directives', 'n_top_urls_partial_snippet_undocumented',
+       CAST(COUNTIF((has_data_nosnippet OR max_snippet > 0) AND NOT IFNULL(snippet_documented, FALSE)) AS FLOAT64)
+FROM pf GROUP BY audit_id;
