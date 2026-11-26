@@ -40,8 +40,12 @@ ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_crawls` ADD COLUMN IF NOT EXISTS images
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_issues_overview` (
   crawl_id STRING, client STRING, market STRING, domain STRING, crawl_date DATE,
   sf_category STRING, issue_name STRING, issue_type STRING, issue_priority STRING,
-  urls INT64, indexable_urls INT64, source_pages INT64, loaded_at TIMESTAMP
+  urls INT64, indexable_urls INT64, source_pages INT64, loaded_at TIMESTAMP,
+  url_columns STRING,        -- the columns of the issue file (JSON array, Screaming Frog's names): the order of sf_issue_urls.cells
+  link_columns STRING        -- the columns of its Inlinks export (JSON array): the order of sf_issue_inlinks.cells
 ) PARTITION BY crawl_date CLUSTER BY client, domain;
+-- Added on 26 Nov 2026 (the Excel exports show each issue with Screaming Frog's own columns), for a table made before
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issues_overview` ADD COLUMN IF NOT EXISTS url_columns STRING, ADD COLUMN IF NOT EXISTS link_columns STRING;
 
 -- The Internal export of that crawl (HTML pages), a fixed set of columns per page.
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_pages` (
@@ -69,18 +73,24 @@ ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_pages` ADD COLUMN IF NOT EXISTS perf_sc
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_issue_urls` (
   crawl_id STRING, client STRING, market STRING, domain STRING, crawl_date DATE,
   sf_category STRING, issue_name STRING, url STRING, indexable BOOL, loaded_at TIMESTAMP,
-  js_word_pct FLOAT64        -- JS Word Count % of the issue file (JavaScript: Contains JavaScript Content), else NULL
+  js_word_pct FLOAT64,       -- JS Word Count % of the issue file (JavaScript: Contains JavaScript Content), else NULL
+  cells STRING               -- the URL's row in the issue file (JSON array in the order of sf_issues_overview.url_columns)
 ) PARTITION BY crawl_date CLUSTER BY client, domain;
 -- Added on 19 Nov 2026, for a table made before
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issue_urls` ADD COLUMN IF NOT EXISTS js_word_pct FLOAT64;
+-- Added on 26 Nov 2026
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issue_urls` ADD COLUMN IF NOT EXISTS cells STRING;
 
 -- The links to an issue's URLs, from the issue's Inlinks export ("…_inlinks.csv", every link): which page
 -- links where, the fix list for development.
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_issue_inlinks` (
   crawl_id STRING, client STRING, market STRING, domain STRING, crawl_date DATE,
   sf_category STRING, issue_name STRING, source STRING, destination STRING, anchor STRING, link_position STRING,
-  loaded_at TIMESTAMP
+  loaded_at TIMESTAMP,
+  cells STRING               -- the link's row in the Inlinks export (JSON array in the order of sf_issues_overview.link_columns)
 ) PARTITION BY crawl_date CLUSTER BY client, domain;
+-- Added on 26 Nov 2026
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issue_inlinks` ADD COLUMN IF NOT EXISTS cells STRING;
 
 -- Staging for the crawl upload: every part of an upload is appended here (a part sent twice gives copies here, never in
 -- the tables above). The last part moves the crawl into the tables above with one INSERT per table: each row once (by
@@ -92,6 +102,7 @@ ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_crawls_stage` ADD COLUMN IF NOT EXISTS 
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_issues_overview_stage`
 PARTITION BY DATE(loaded_at) OPTIONS (partition_expiration_days = 3)
 AS SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.sf_issues_overview` WHERE FALSE;
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issues_overview_stage` ADD COLUMN IF NOT EXISTS url_columns STRING, ADD COLUMN IF NOT EXISTS link_columns STRING;
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_pages_stage`
 PARTITION BY DATE(loaded_at) OPTIONS (partition_expiration_days = 3)
 AS SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.sf_pages` WHERE FALSE;
@@ -99,9 +110,11 @@ CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_issue_urls_stage`
 PARTITION BY DATE(loaded_at) OPTIONS (partition_expiration_days = 3)
 AS SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.sf_issue_urls` WHERE FALSE;
 ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issue_urls_stage` ADD COLUMN IF NOT EXISTS js_word_pct FLOAT64;
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issue_urls_stage` ADD COLUMN IF NOT EXISTS cells STRING;
 CREATE TABLE IF NOT EXISTS `YOUR_GCP_PROJECT.seo_raw.sf_issue_inlinks_stage`
 PARTITION BY DATE(loaded_at) OPTIONS (partition_expiration_days = 3)
 AS SELECT * FROM `YOUR_GCP_PROJECT.seo_raw.sf_issue_inlinks` WHERE FALSE;
+ALTER TABLE `YOUR_GCP_PROJECT.seo_raw.sf_issue_inlinks_stage` ADD COLUMN IF NOT EXISTS cells STRING;
 
 -- Seed: Screaming Frog issue -> pulse topic. Load seo/sf_issue_map.csv into it (CSV with a header
 -- row, replace the table on every pulse release).

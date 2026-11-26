@@ -1,4 +1,4 @@
-import { Gauge, RotateCcw, TrendingUp, Zap } from "lucide-react";
+import { FileSpreadsheet, Gauge, Loader2, RotateCcw, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ScoringOutput, SpecialistResult } from "@/lib/apiClient";
 import { categoryLabel } from "@/lib/categoryLabel";
@@ -15,10 +15,13 @@ interface Props {
   brandName: string;
   benchmarkScore: number;
   onNewAudit: () => void;
+  /** Excel export of the whole audit (overview + a tab per criterion); absent in the demo */
+  onExport?: () => void;
+  exporting?: boolean;
 }
 
 /** Read-only result of an approved SEO audit. */
-export default function SeoResults({ output, specialistResults, brandName, benchmarkScore, onNewAudit }: Props) {
+export default function SeoResults({ output, specialistResults, brandName, benchmarkScore, onNewAudit, onExport, exporting }: Props) {
   const naCount = specialistResults.filter(r => r.not_applicable).length;
   const noData = specialistResults.filter(r => ["no_data_source", "missing", "parse_error"].includes(r.source)).length;
   // The PageSpeed criteria (category pagespeed) with their metrics: one breakdown with all parts, and the status of each
@@ -39,6 +42,13 @@ export default function SeoResults({ output, specialistResults, brandName, bench
             <span className="text-2xl font-bold tabular-nums">{output.platform_score.toFixed(0)}</span>
             <span className="text-[10px] text-muted-foreground">{seoMaturityText(output.maturity, output.maturity_label)}</span>
           </div>
+          {onExport && (
+            <Button variant="outline" size="sm" onClick={onExport} disabled={exporting}
+                    title="Excel: an overview of all criteria and a tab per criterion with the URLs, links and checks behind it">
+              {exporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-4 w-4" />}
+              Export to Excel
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onNewAudit}>
             <RotateCcw className="mr-1.5 h-4 w-4" /> New audit
           </Button>
